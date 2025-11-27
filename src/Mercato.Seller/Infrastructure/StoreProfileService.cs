@@ -14,6 +14,11 @@ namespace Mercato.Seller.Infrastructure;
 /// </summary>
 public class StoreProfileService : IStoreProfileService
 {
+    /// <summary>
+    /// Maximum length for store slugs, matching database constraint.
+    /// </summary>
+    private const int MaxSlugLength = 200;
+
     private readonly IStoreRepository _repository;
     private readonly ILogger<StoreProfileService> _logger;
 
@@ -334,10 +339,10 @@ public class StoreProfileService : IStoreProfileService
         // Trim hyphens from start and end
         slug = slug.Trim('-');
 
-        // Limit to 200 characters
-        if (slug.Length > 200)
+        // Limit to MaxSlugLength characters
+        if (slug.Length > MaxSlugLength)
         {
-            slug = slug[..200].TrimEnd('-');
+            slug = slug[..MaxSlugLength].TrimEnd('-');
         }
 
         return slug;
