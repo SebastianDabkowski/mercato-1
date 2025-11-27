@@ -40,8 +40,8 @@ public class PasswordResetService : IPasswordResetService
         if (user == null)
         {
             // For security reasons, don't reveal if the email exists or not
-            // Log for audit purposes
-            _logger.LogInformation("Password reset requested for non-existent email: {Email}", command.Email);
+            // Log for audit purposes without revealing the email to protect privacy
+            _logger.LogInformation("Password reset requested for email that was not found in the system.");
             return ForgotPasswordResult.EmailNotFound();
         }
 
