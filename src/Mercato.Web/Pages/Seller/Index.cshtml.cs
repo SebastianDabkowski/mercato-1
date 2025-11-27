@@ -62,6 +62,9 @@ namespace Mercato.Web.Pages.Seller
                 LatestSubmission = submissions.OrderByDescending(s => s.SubmittedAt).FirstOrDefault();
                 
                 // Determine overall KYC status based on submissions
+                // Priority order: Approved > UnderReview > Pending > Rejected
+                // Once verified, a seller remains verified even if new submissions are rejected
+                // Only show Rejected if all submissions have been rejected
                 if (submissions.Any(s => s.Status == Mercato.Seller.Domain.Entities.KycStatus.Approved))
                 {
                     KycStatus = KycVerificationStatus.Verified;
