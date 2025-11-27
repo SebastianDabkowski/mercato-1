@@ -1,0 +1,29 @@
+@page
+@model Mercato.Web.Pages.Account.AccessDeniedModel
+@{
+    ViewData["Title"] = "Access Denied";
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-6 text-center">
+        <h1 class="text-danger">Access Denied</h1>
+        <p class="lead">You do not have permission to access this resource.</p>
+        <p class="text-muted">
+            If you believe you should have access, please contact the administrator
+            or try logging in with a different account.
+        </p>
+        <div class="mt-4">
+            <a asp-page="/Index" class="btn btn-primary">Return to Home</a>
+            @if (User.Identity?.IsAuthenticated == true)
+            {
+                <form method="post" asp-page="/Account/Logout" class="d-inline">
+                    <button type="submit" class="btn btn-outline-secondary ms-2">Log out</button>
+                </form>
+            }
+            else
+            {
+                <a asp-page="/Account/Login" class="btn btn-outline-secondary ms-2">Log in</a>
+            }
+        </div>
+    </div>
+</div>

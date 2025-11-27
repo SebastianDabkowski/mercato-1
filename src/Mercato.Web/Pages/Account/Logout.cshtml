@@ -1,0 +1,26 @@
+@page
+@model Mercato.Web.Pages.Account.LogoutModel
+@{
+    ViewData["Title"] = "Log out";
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-6 text-center">
+        @if (Model.ShowConfirmation)
+        {
+            <h1>Log out</h1>
+            <p class="lead">Are you sure you want to log out?</p>
+            <form method="post">
+                <button type="submit" class="btn btn-primary">Log out</button>
+                <a asp-page="/Index" class="btn btn-outline-secondary ms-2">Cancel</a>
+            </form>
+        }
+        else
+        {
+            <h1>Logged out</h1>
+            <p class="lead">You have been successfully logged out.</p>
+            <a asp-page="/Account/Login" class="btn btn-primary">Log in again</a>
+            <a asp-page="/Index" class="btn btn-outline-secondary ms-2">Return to Home</a>
+        }
+    </div>
+</div>
