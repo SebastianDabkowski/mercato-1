@@ -2,6 +2,8 @@ using Mercato.Identity.Application.Commands;
 using Mercato.Identity.Application.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.AspNetCore.WebUtilities;
+using System.Text;
 
 namespace Mercato.Web.Pages.Account;
 
@@ -43,8 +45,29 @@ public class ForgotPasswordModel : PageModel
         if (result.Succeeded)
         {
             // Always redirect to confirmation page to prevent email enumeration
-            // In production, the token would be sent via email
             _logger.LogInformation("Password reset requested for {Email}", Input.Email);
+
+            // Build the reset link if token was generated (user exists)
+            if (!string.IsNullOrEmpty(result.ResetToken))
+            {
+                // Encode the token for URL safety
+                var encodedToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(result.ResetToken));
+                
+                // Build the password reset URL for email integration
+                // TODO: Implement email sending service to send the reset link
+                // Example: await _emailService.SendPasswordResetEmailAsync(Input.Email, resetLink);
+#pragma warning disable IDE0059 // Unnecessary assignment - kept for future email integration
+                var resetLink = Url.Page(
+                    "/Account/ResetPassword",
+                    pageHandler: null,
+                    values: new { email = Input.Email, token = encodedToken },
+                    protocol: Request.Scheme);
+#pragma warning restore IDE0059
+                
+                // Log that a link was generated (without exposing the actual token for security)
+                _logger.LogInformation("Password reset link generated for user with email: {Email}", Input.Email);
+            }
+
             return RedirectToPage("/Account/ForgotPasswordConfirmation");
         }
 
