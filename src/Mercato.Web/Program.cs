@@ -82,4 +82,4 @@ app.MapRazorPages();
 // TODO: Implement Account/Logout functionality
 // TODO: Implement Account/AccessDenied page
 
-await app.RunAsync();
+app.Run();
