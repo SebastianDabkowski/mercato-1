@@ -32,6 +32,9 @@ public static class IdentityModuleExtensions
         // Register password reset service
         services.AddScoped<IPasswordResetService, PasswordResetService>();
         
+        // Register password change service
+        services.AddScoped<IPasswordChangeService, PasswordChangeService>();
+        
         return services;
     }
 }
