@@ -37,6 +37,10 @@
             </div>
             
             <button type="submit" class="w-100 btn btn-lg btn-primary">Log in</button>
+            
+            <div class="mt-2 text-center">
+                <a asp-page="/Account/ForgotPassword">Forgot your password?</a>
+            </div>
         </form>
         
         @if (Model.IsGoogleLoginEnabled || Model.IsFacebookLoginEnabled)

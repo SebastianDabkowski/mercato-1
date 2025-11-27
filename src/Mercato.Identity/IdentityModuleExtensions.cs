@@ -29,6 +29,9 @@ public static class IdentityModuleExtensions
         // Register account linking service
         services.AddScoped<IAccountLinkingService, AccountLinkingService>();
         
+        // Register password reset service
+        services.AddScoped<IPasswordResetService, PasswordResetService>();
+        
         return services;
     }
 }
