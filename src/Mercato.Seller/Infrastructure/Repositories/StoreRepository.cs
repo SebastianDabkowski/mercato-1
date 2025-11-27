@@ -38,11 +38,35 @@ public class StoreRepository : IStoreRepository
     }
 
     /// <inheritdoc />
+    public async Task<Store?> GetBySlugAsync(string slug)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(slug);
+
+        return await _context.Stores
+            .FirstOrDefaultAsync(s => s.Slug == slug);
+    }
+
+    /// <inheritdoc />
     public async Task<bool> IsStoreNameUniqueAsync(string name, string? excludeSellerId = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
 
         var query = _context.Stores.Where(s => s.Name == name);
+
+        if (!string.IsNullOrWhiteSpace(excludeSellerId))
+        {
+            query = query.Where(s => s.SellerId != excludeSellerId);
+        }
+
+        return !await query.AnyAsync();
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> IsSlugUniqueAsync(string slug, string? excludeSellerId = null)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(slug);
+
+        var query = _context.Stores.Where(s => s.Slug == slug);
 
         if (!string.IsNullOrWhiteSpace(excludeSellerId))
         {

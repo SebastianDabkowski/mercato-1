@@ -101,6 +101,8 @@ public class SellerDbContext : DbContext
             entity.HasKey(e => e.Id);
             entity.Property(e => e.SellerId).IsRequired().HasMaxLength(450);
             entity.Property(e => e.Name).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.Slug).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.Status).IsRequired();
             entity.Property(e => e.Description).HasMaxLength(2000);
             entity.Property(e => e.LogoUrl).HasMaxLength(500);
             entity.Property(e => e.ContactEmail).HasMaxLength(254);
@@ -109,6 +111,7 @@ public class SellerDbContext : DbContext
 
             entity.HasIndex(e => e.SellerId).IsUnique();
             entity.HasIndex(e => e.Name).IsUnique();
+            entity.HasIndex(e => e.Slug).IsUnique();
         });
     }
 }

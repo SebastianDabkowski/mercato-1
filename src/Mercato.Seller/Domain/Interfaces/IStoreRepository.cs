@@ -22,12 +22,27 @@ public interface IStoreRepository
     Task<Store?> GetByIdAsync(Guid id);
 
     /// <summary>
+    /// Gets a store by its SEO-friendly URL slug.
+    /// </summary>
+    /// <param name="slug">The store slug.</param>
+    /// <returns>The store if found; otherwise, null.</returns>
+    Task<Store?> GetBySlugAsync(string slug);
+
+    /// <summary>
     /// Checks if a store name is unique across all stores.
     /// </summary>
     /// <param name="name">The store name to check.</param>
     /// <param name="excludeSellerId">Optional seller ID to exclude from the check (for updates).</param>
     /// <returns>True if the name is unique; otherwise, false.</returns>
     Task<bool> IsStoreNameUniqueAsync(string name, string? excludeSellerId = null);
+
+    /// <summary>
+    /// Checks if a store slug is unique across all stores.
+    /// </summary>
+    /// <param name="slug">The store slug to check.</param>
+    /// <param name="excludeSellerId">Optional seller ID to exclude from the check (for updates).</param>
+    /// <returns>True if the slug is unique; otherwise, false.</returns>
+    Task<bool> IsSlugUniqueAsync(string slug, string? excludeSellerId = null);
 
     /// <summary>
     /// Creates a new store.
