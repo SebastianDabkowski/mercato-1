@@ -158,6 +158,10 @@
     <partial name="_ValidationScriptsPartial" />
     <script>
         document.addEventListener('DOMContentLoaded', function () {
+            // Seller type enum values matching C# SellerType enum
+            var SELLER_TYPE_INDIVIDUAL = '0';
+            var SELLER_TYPE_COMPANY = '1';
+
             var sellerTypeSelect = document.getElementById('sellerTypeSelect');
             var companyFields = document.getElementById('companyFields');
             var individualFields = document.getElementById('individualFields');
@@ -166,8 +170,7 @@
             function toggleFields() {
                 var sellerType = sellerTypeSelect.value;
                 
-                if (sellerType === '1') {
-                    // Company
+                if (sellerType === SELLER_TYPE_COMPANY) {
                     companyFields.style.display = 'block';
                     individualFields.style.display = 'none';
                     commonFields.style.display = 'block';

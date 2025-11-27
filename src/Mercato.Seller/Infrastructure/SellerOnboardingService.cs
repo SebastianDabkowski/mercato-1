@@ -145,6 +145,8 @@ public class SellerOnboardingService : ISellerOnboardingService
         onboarding.BusinessAddress = command.BusinessAddress;
         onboarding.TaxId = command.TaxId;
 
+        // Save type-specific fields and clear opposite type fields for data isolation.
+        // This ensures clean data separation between seller types during verification.
         if (command.SellerType == SellerType.Company)
         {
             onboarding.BusinessName = command.BusinessName;
@@ -152,7 +154,7 @@ public class SellerOnboardingService : ISellerOnboardingService
             onboarding.ContactPersonName = command.ContactPersonName;
             onboarding.ContactPersonEmail = command.ContactPersonEmail;
             onboarding.ContactPersonPhone = command.ContactPersonPhone;
-            // Clear individual fields
+            // Clear individual fields for data isolation
             onboarding.FullName = null;
             onboarding.PersonalIdNumber = null;
         }
@@ -160,7 +162,7 @@ public class SellerOnboardingService : ISellerOnboardingService
         {
             onboarding.FullName = command.FullName;
             onboarding.PersonalIdNumber = command.PersonalIdNumber;
-            // Clear company fields
+            // Clear company fields for data isolation
             onboarding.BusinessName = null;
             onboarding.BusinessRegistrationNumber = null;
             onboarding.ContactPersonName = null;
