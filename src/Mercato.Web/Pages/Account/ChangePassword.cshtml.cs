@@ -16,15 +16,18 @@ public class ChangePasswordModel : PageModel
 {
     private readonly IPasswordChangeService _passwordChangeService;
     private readonly UserManager<IdentityUser> _userManager;
+    private readonly SignInManager<IdentityUser> _signInManager;
     private readonly ILogger<ChangePasswordModel> _logger;
 
     public ChangePasswordModel(
         IPasswordChangeService passwordChangeService,
         UserManager<IdentityUser> userManager,
+        SignInManager<IdentityUser> signInManager,
         ILogger<ChangePasswordModel> logger)
     {
         _passwordChangeService = passwordChangeService;
         _userManager = userManager;
+        _signInManager = signInManager;
         _logger = logger;
     }
 
@@ -137,9 +140,15 @@ public class ChangePasswordModel : PageModel
         if (result.Succeeded)
         {
             _logger.LogInformation("User {UserId} changed their password successfully.", userId);
-            TempData["StatusMessage"] = "Your password has been changed successfully.";
+
+            // Sign out the current user to revoke the current session
+            // All other sessions are already invalidated by UpdateSecurityStampAsync in PasswordChangeService
+            await _signInManager.SignOutAsync();
+            _logger.LogInformation("User {UserId} signed out after password change for security.", userId);
+
+            TempData["StatusMessage"] = "Your password has been changed successfully. Please log in with your new password.";
             TempData["IsError"] = false;
-            return RedirectToPage();
+            return RedirectToPage("/Account/Login");
         }
 
         // Handle specific error cases
