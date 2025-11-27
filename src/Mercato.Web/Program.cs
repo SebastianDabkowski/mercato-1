@@ -88,12 +88,13 @@ using (var scope = app.Services.CreateScope())
 
 // Configure the HTTP request pipeline.
 
-// Global exception handling - should be first to catch all exceptions
-// TODO: Configure exception handling differently for API vs UI responses
+// Global exception handling - logs all exceptions and handles API errors with JSON response.
+// For non-API (page) requests, exceptions are re-thrown and handled by UseExceptionHandler below.
 app.UseGlobalExceptionHandler();
 
 if (!app.Environment.IsDevelopment())
 {
+    // Handles page request exceptions by redirecting to error page
     app.UseExceptionHandler("/Error");
     app.UseHsts();
 }

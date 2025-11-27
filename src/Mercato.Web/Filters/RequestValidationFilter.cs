@@ -6,6 +6,7 @@ namespace Mercato.Web.Filters;
 /// <summary>
 /// Action filter for request validation across the application.
 /// Provides a centralized location for validating incoming requests before they reach the action.
+/// Currently implements logging-only validation; to be extended with blocking behavior as needed.
 /// </summary>
 public class RequestValidationFilter : IAsyncActionFilter
 {
@@ -26,7 +27,10 @@ public class RequestValidationFilter : IAsyncActionFilter
         // TODO: Add input sanitization for XSS prevention
         // TODO: Implement IP-based validation rules
 
-        // Basic model state validation hook
+        // Log model state validation errors for monitoring and debugging.
+        // Note: This filter intentionally does NOT block requests with invalid model state,
+        // as model validation is already handled by ASP.NET Core's built-in model binding.
+        // This hook is for centralized logging and can be extended to add custom validation.
         if (!context.ModelState.IsValid)
         {
             _logger.LogWarning("Request validation failed for {ActionName}. Errors: {Errors}",
@@ -35,11 +39,14 @@ public class RequestValidationFilter : IAsyncActionFilter
                     .SelectMany(v => v.Errors)
                     .Select(e => e.ErrorMessage)));
 
-            // TODO: Return standardized validation error response
-            // For now, let the default model binding behavior handle the response
+            // TODO: Implement custom blocking behavior if needed (e.g., for specific validation rules)
+            // Example: context.Result = new BadRequestObjectResult(new { Errors = ... });
+            // return;
         }
-
-        _logger.LogDebug("Request validation passed for {ActionName}", context.ActionDescriptor.DisplayName);
+        else
+        {
+            _logger.LogDebug("Request validation passed for {ActionName}", context.ActionDescriptor.DisplayName);
+        }
 
         // Execute the action
         await next();

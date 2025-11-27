@@ -1,11 +1,14 @@
 using System.Net;
+using System.Runtime.ExceptionServices;
 using System.Text.Json;
 
 namespace Mercato.Web.Middleware;
 
 /// <summary>
 /// Middleware for centralized exception handling across the application.
-/// Catches unhandled exceptions and returns a consistent error response.
+/// Catches unhandled exceptions, logs them, and returns an appropriate error response.
+/// For API requests (Accept: application/json), returns JSON. For other requests, re-throws
+/// to let the default exception handler/error page handle the response.
 /// </summary>
 public class GlobalExceptionHandlerMiddleware
 {
@@ -26,22 +29,36 @@ public class GlobalExceptionHandlerMiddleware
         }
         catch (Exception ex)
         {
-            await HandleExceptionAsync(context, ex);
+            // TODO: Implement detailed exception categorization (e.g., validation, not found, authorization, etc.)
+            // TODO: Add correlation ID tracking for distributed tracing
+            // TODO: Implement exception-specific response messages based on exception types
+            // TODO: Add integration with external error monitoring services (e.g., Application Insights, Sentry)
+            // TODO: Implement PII scrubbing from error logs for GDPR compliance
+
+            _logger.LogError(ex, "An unhandled exception occurred while processing the request. Path: {Path}, Method: {Method}",
+                context.Request.Path,
+                context.Request.Method);
+
+            // Check if request expects JSON response (API request)
+            var acceptHeader = context.Request.Headers.Accept.ToString();
+            var isApiRequest = acceptHeader.Contains("application/json", StringComparison.OrdinalIgnoreCase);
+
+            if (isApiRequest)
+            {
+                // Return JSON error response for API requests
+                await WriteJsonErrorResponseAsync(context);
+            }
+            else
+            {
+                // Re-throw for non-API requests to let UseExceptionHandler handle it with error page
+                // Use ExceptionDispatchInfo to preserve the original stack trace
+                ExceptionDispatchInfo.Capture(ex).Throw();
+            }
         }
     }
 
-    private async Task HandleExceptionAsync(HttpContext context, Exception exception)
+    private static async Task WriteJsonErrorResponseAsync(HttpContext context)
     {
-        // TODO: Implement detailed exception categorization (e.g., validation, not found, authorization, etc.)
-        // TODO: Add correlation ID tracking for distributed tracing
-        // TODO: Implement exception-specific response messages based on exception types
-        // TODO: Add integration with external error monitoring services (e.g., Application Insights, Sentry)
-        // TODO: Implement PII scrubbing from error logs for GDPR compliance
-
-        _logger.LogError(exception, "An unhandled exception occurred while processing the request. Path: {Path}, Method: {Method}",
-            context.Request.Path,
-            context.Request.Method);
-
         context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
         context.Response.ContentType = "application/json";
 
@@ -70,6 +87,8 @@ public static class GlobalExceptionHandlerMiddlewareExtensions
     /// <summary>
     /// Adds the global exception handler middleware to the application pipeline.
     /// Should be added early in the pipeline to catch exceptions from all downstream middleware.
+    /// For API requests, handles the exception and returns JSON. For page requests, re-throws
+    /// to allow UseExceptionHandler to redirect to an error page.
     /// </summary>
     /// <param name="builder">The application builder.</param>
     /// <returns>The application builder for chaining.</returns>
