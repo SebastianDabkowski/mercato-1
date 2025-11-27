@@ -1,0 +1,60 @@
+using Mercato.Seller.Domain.Entities;
+using Microsoft.EntityFrameworkCore;
+
+namespace Mercato.Seller.Infrastructure.Persistence;
+
+/// <summary>
+/// DbContext for the Seller module.
+/// </summary>
+public class SellerDbContext : DbContext
+{
+    public SellerDbContext(DbContextOptions<SellerDbContext> options)
+        : base(options)
+    {
+    }
+
+    /// <summary>
+    /// Gets or sets the KYC submissions.
+    /// </summary>
+    public DbSet<KycSubmission> KycSubmissions { get; set; }
+
+    /// <summary>
+    /// Gets or sets the KYC audit logs.
+    /// </summary>
+    public DbSet<KycAuditLog> KycAuditLogs { get; set; }
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        base.OnModelCreating(modelBuilder);
+
+        // Configure KycSubmission entity
+        modelBuilder.Entity<KycSubmission>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.SellerId).IsRequired().HasMaxLength(450);
+            entity.Property(e => e.DocumentFileName).IsRequired().HasMaxLength(255);
+            entity.Property(e => e.DocumentContentType).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.DocumentData).IsRequired();
+            entity.Property(e => e.RejectionReason).HasMaxLength(1000);
+            entity.Property(e => e.ReviewedBy).HasMaxLength(450);
+
+            entity.HasIndex(e => e.SellerId);
+            entity.HasIndex(e => e.Status);
+        });
+
+        // Configure KycAuditLog entity
+        modelBuilder.Entity<KycAuditLog>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Action).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.PerformedBy).IsRequired().HasMaxLength(450);
+            entity.Property(e => e.Details).HasMaxLength(2000);
+
+            entity.HasIndex(e => e.KycSubmissionId);
+            entity.HasOne<KycSubmission>()
+                .WithMany()
+                .HasForeignKey(e => e.KycSubmissionId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+    }
+}

@@ -1,0 +1,39 @@
+@page
+@model Mercato.Web.Pages.Seller.Kyc.SubmitModel
+@{
+    ViewData["Title"] = "Submit KYC Document";
+}
+
+<h1>Submit KYC Document</h1>
+
+<div class="row">
+    <div class="col-md-6">
+        <form method="post" enctype="multipart/form-data">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+            <div class="mb-3">
+                <label asp-for="DocumentType" class="form-label">Document Type</label>
+                <select asp-for="DocumentType" asp-items="Html.GetEnumSelectList<Mercato.Seller.Domain.Entities.KycDocumentType>()" class="form-select">
+                    <option value="">-- Select Document Type --</option>
+                </select>
+                <span asp-validation-for="DocumentType" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Document" class="form-label">Document File</label>
+                <input asp-for="Document" type="file" class="form-control" accept=".pdf,.jpg,.jpeg,.png" />
+                <span asp-validation-for="Document" class="text-danger"></span>
+                <div class="form-text">Accepted formats: PDF, JPG, PNG. Maximum size: 5MB.</div>
+            </div>
+
+            <div class="mb-3">
+                <button type="submit" class="btn btn-primary">Submit Document</button>
+                <a asp-page="Index" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
