@@ -18,7 +18,7 @@ public class SellerOnboardingServiceTests
         // Arrange
         var mockRepository = new Mock<ISellerOnboardingRepository>(MockBehavior.Strict);
         mockRepository.Setup(r => r.GetBySellerIdAsync(TestSellerId))
-            .ReturnsAsync((SellerOnboarding?)null);
+            .ReturnsAsync(null as SellerOnboarding);
         mockRepository.Setup(r => r.CreateAsync(It.IsAny<SellerOnboarding>()))
             .Returns(Task.CompletedTask);
 
@@ -94,8 +94,6 @@ public class SellerOnboardingServiceTests
         var mockRepository = new Mock<ISellerOnboardingRepository>(MockBehavior.Strict);
         mockRepository.Setup(r => r.GetBySellerIdAsync(TestSellerId))
             .ReturnsAsync(onboarding);
-        mockRepository.Setup(r => r.CreateAsync(It.IsAny<SellerOnboarding>()))
-            .Returns(Task.CompletedTask);
 
         var service = CreateService(mockRepository.Object);
 
@@ -122,8 +120,6 @@ public class SellerOnboardingServiceTests
         var mockRepository = new Mock<ISellerOnboardingRepository>(MockBehavior.Strict);
         mockRepository.Setup(r => r.GetBySellerIdAsync(TestSellerId))
             .ReturnsAsync(onboarding);
-        mockRepository.Setup(r => r.CreateAsync(It.IsAny<SellerOnboarding>()))
-            .Returns(Task.CompletedTask);
 
         var service = CreateService(mockRepository.Object);
 

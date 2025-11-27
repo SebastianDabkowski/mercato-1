@@ -199,11 +199,20 @@
                                     <dt class="col-sm-4">Account Holder</dt>
                                     <dd class="col-sm-8">@Model.Onboarding?.AccountHolderName</dd>
                                     <dt class="col-sm-4">Account Number</dt>
-                                    <dd class="col-sm-8">****@Model.Onboarding?.BankAccountNumber?.Substring(Math.Max(0, (Model.Onboarding?.BankAccountNumber?.Length ?? 0) - 4))</dd>
+                                    <dd class="col-sm-8">
+                                        @if (!string.IsNullOrEmpty(Model.Onboarding?.BankAccountNumber) && Model.Onboarding.BankAccountNumber.Length >= 4)
+                                        {
+                                            @:••••••••@(Model.Onboarding.BankAccountNumber.Substring(Model.Onboarding.BankAccountNumber.Length - 4))
+                                        }
+                                        else
+                                        {
+                                            @:••••••••
+                                        }
+                                    </dd>
                                     @if (!string.IsNullOrEmpty(Model.Onboarding?.BankRoutingNumber))
                                     {
                                         <dt class="col-sm-4">Routing Number</dt>
-                                        <dd class="col-sm-8">@Model.Onboarding.BankRoutingNumber</dd>
+                                        <dd class="col-sm-8">••••••••</dd>
                                     }
                                 </dl>
                             </div>

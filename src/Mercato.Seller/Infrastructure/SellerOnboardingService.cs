@@ -100,11 +100,8 @@ public class SellerOnboardingService : ISellerOnboardingService
         onboarding.StoreLogoUrl = command.StoreLogoUrl;
         onboarding.LastUpdatedAt = DateTimeOffset.UtcNow;
 
-        // Update current step if this is the first step
-        if (onboarding.CurrentStep == OnboardingStep.StoreProfile && onboarding.IsStoreProfileComplete)
-        {
-            onboarding.CurrentStep = OnboardingStep.VerificationData;
-        }
+        // Advance to next step if store profile is complete
+        AdvanceStepIfComplete(onboarding, OnboardingStep.StoreProfile, OnboardingStep.VerificationData, onboarding.IsStoreProfileComplete);
 
         await _repository.UpdateAsync(onboarding);
         _logger.LogInformation("Saved store profile for seller {SellerId}", command.SellerId);
@@ -176,11 +173,8 @@ public class SellerOnboardingService : ISellerOnboardingService
         onboarding.BusinessRegistrationNumber = command.BusinessRegistrationNumber;
         onboarding.LastUpdatedAt = DateTimeOffset.UtcNow;
 
-        // Update current step if verification data is complete
-        if (onboarding.CurrentStep == OnboardingStep.VerificationData && onboarding.IsVerificationDataComplete)
-        {
-            onboarding.CurrentStep = OnboardingStep.PayoutBasics;
-        }
+        // Advance to next step if verification data is complete
+        AdvanceStepIfComplete(onboarding, OnboardingStep.VerificationData, OnboardingStep.PayoutBasics, onboarding.IsVerificationDataComplete);
 
         await _repository.UpdateAsync(onboarding);
         _logger.LogInformation("Saved verification data for seller {SellerId}", command.SellerId);
@@ -257,11 +251,8 @@ public class SellerOnboardingService : ISellerOnboardingService
         onboarding.AccountHolderName = command.AccountHolderName;
         onboarding.LastUpdatedAt = DateTimeOffset.UtcNow;
 
-        // Update current step if payout basics is complete
-        if (onboarding.CurrentStep == OnboardingStep.PayoutBasics && onboarding.IsPayoutBasicsComplete)
-        {
-            onboarding.CurrentStep = OnboardingStep.Completed;
-        }
+        // Advance to completed step if payout basics is complete
+        AdvanceStepIfComplete(onboarding, OnboardingStep.PayoutBasics, OnboardingStep.Completed, onboarding.IsPayoutBasicsComplete);
 
         await _repository.UpdateAsync(onboarding);
         _logger.LogInformation("Saved payout basics for seller {SellerId}", command.SellerId);
@@ -385,5 +376,24 @@ public class SellerOnboardingService : ISellerOnboardingService
             errors.Add("Account holder name is required.");
         }
         return errors;
+    }
+
+    /// <summary>
+    /// Advances the onboarding to the next step if the current step is complete.
+    /// </summary>
+    /// <param name="onboarding">The onboarding record to update.</param>
+    /// <param name="currentStep">The step that was just completed.</param>
+    /// <param name="nextStep">The next step to advance to.</param>
+    /// <param name="isCurrentStepComplete">Whether the current step data is complete.</param>
+    private static void AdvanceStepIfComplete(
+        SellerOnboarding onboarding,
+        OnboardingStep currentStep,
+        OnboardingStep nextStep,
+        bool isCurrentStepComplete)
+    {
+        if (onboarding.CurrentStep == currentStep && isCurrentStepComplete)
+        {
+            onboarding.CurrentStep = nextStep;
+        }
     }
 }

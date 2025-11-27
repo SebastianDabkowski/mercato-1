@@ -259,7 +259,7 @@ public class SellerDashboardIndexModelTests
         if (!string.IsNullOrEmpty(sellerId))
         {
             mockOnboardingService.Setup(s => s.GetOnboardingAsync(sellerId))
-                .ReturnsAsync((SellerOnboarding?)null);
+                .ReturnsAsync(null as SellerOnboarding);
         }
         
         var model = new IndexModel(kycService, mockOnboardingService.Object, mockLogger.Object);
