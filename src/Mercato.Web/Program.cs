@@ -98,7 +98,7 @@ if (!string.IsNullOrEmpty(facebookAppId) && !string.IsNullOrEmpty(facebookAppSec
 }
 
 // Register module services
-builder.Services.AddSellerModule();
+builder.Services.AddSellerModule(builder.Configuration);
 builder.Services.AddBuyerModule();
 builder.Services.AddProductModule(builder.Configuration);
 builder.Services.AddOrdersModule(builder.Configuration);

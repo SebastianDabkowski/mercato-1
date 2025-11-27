@@ -1,0 +1,85 @@
+@page
+@model Mercato.Web.Pages.Seller.Kyc.IndexModel
+@{
+    ViewData["Title"] = "KYC Submissions";
+}
+
+<h1>KYC Submissions</h1>
+
+<div class="mb-3">
+    <a asp-page="Submit" class="btn btn-primary">Submit New Document</a>
+</div>
+
+@if (Model.IsKycApproved)
+{
+    <div class="alert alert-success" role="alert">
+        <strong>KYC Verified!</strong> Your identity has been verified. You can now list products for sale.
+    </div>
+}
+else if (Model.Submissions.Any(s => s.Status == Mercato.Seller.Domain.Entities.KycStatus.Pending || s.Status == Mercato.Seller.Domain.Entities.KycStatus.UnderReview))
+{
+    <div class="alert alert-info" role="alert">
+        <strong>KYC In Progress</strong> Your submission is being reviewed. You will be notified once the review is complete.
+    </div>
+}
+else if (Model.Submissions.Any())
+{
+    <div class="alert alert-warning" role="alert">
+        <strong>KYC Required</strong> Please submit valid documents to complete your verification.
+    </div>
+}
+else
+{
+    <div class="alert alert-warning" role="alert">
+        <strong>KYC Required</strong> You must submit KYC documents before you can list products for sale.
+    </div>
+}
+
+@if (Model.Submissions.Any())
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Document Type</th>
+                <th>File Name</th>
+                <th>Status</th>
+                <th>Submitted</th>
+                <th>Reviewed</th>
+                <th>Rejection Reason</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var submission in Model.Submissions)
+            {
+                <tr>
+                    <td>@submission.DocumentType</td>
+                    <td>@submission.DocumentFileName</td>
+                    <td>
+                        @switch (submission.Status)
+                        {
+                            case Mercato.Seller.Domain.Entities.KycStatus.Pending:
+                                <span class="badge bg-secondary">Pending</span>
+                                break;
+                            case Mercato.Seller.Domain.Entities.KycStatus.UnderReview:
+                                <span class="badge bg-info">Under Review</span>
+                                break;
+                            case Mercato.Seller.Domain.Entities.KycStatus.Approved:
+                                <span class="badge bg-success">Approved</span>
+                                break;
+                            case Mercato.Seller.Domain.Entities.KycStatus.Rejected:
+                                <span class="badge bg-danger">Rejected</span>
+                                break;
+                        }
+                    </td>
+                    <td>@submission.SubmittedAt.ToString("g")</td>
+                    <td>@(submission.ReviewedAt?.ToString("g") ?? "-")</td>
+                    <td>@(submission.RejectionReason ?? "-")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+else
+{
+    <p>No KYC submissions found. Please submit your documents to get verified.</p>
+}
