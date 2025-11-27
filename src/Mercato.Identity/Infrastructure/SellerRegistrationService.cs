@@ -13,7 +13,7 @@ public class SellerRegistrationService : ISellerRegistrationService
 {
     private readonly UserManager<IdentityUser> _userManager;
     private readonly ILogger<SellerRegistrationService> _logger;
-    private const string SellerRole = "Seller";
+    private const string BuyerRole = "Buyer";
 
     /// <summary>
     /// Initializes a new instance of the <see cref="SellerRegistrationService"/> class.
@@ -56,13 +56,13 @@ public class SellerRegistrationService : ISellerRegistrationService
             return RegisterSellerResult.Failure(errors);
         }
 
-        // Assign the Seller role
-        var roleResult = await _userManager.AddToRoleAsync(user, SellerRole);
+        // Assign the Buyer role (Seller role will be assigned after KYC approval by admin)
+        var roleResult = await _userManager.AddToRoleAsync(user, BuyerRole);
         if (!roleResult.Succeeded)
         {
             // If role assignment fails, delete the user to maintain consistency
             await _userManager.DeleteAsync(user);
-            return RegisterSellerResult.Failure("Failed to assign seller role. Please try again.");
+            return RegisterSellerResult.Failure("Failed to assign buyer role. Please try again.");
         }
 
         // Store business details as claims

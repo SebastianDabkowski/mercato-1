@@ -2,6 +2,7 @@ using Mercato.Seller.Application.Commands;
 using Mercato.Seller.Application.Services;
 using Mercato.Seller.Domain.Entities;
 using Mercato.Seller.Domain.Interfaces;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
 
 namespace Mercato.Seller.Infrastructure;
@@ -13,8 +14,10 @@ public class KycService : IKycService
 {
     private readonly IKycRepository _kycRepository;
     private readonly ILogger<KycService> _logger;
+    private readonly UserManager<IdentityUser> _userManager;
 
     private const int MaxFileSizeBytes = 5 * 1024 * 1024; // 5MB
+    private const string SellerRole = "Seller";
     private static readonly HashSet<string> AllowedContentTypes =
     [
         "application/pdf",
@@ -23,13 +26,21 @@ public class KycService : IKycService
         "image/png"
     ];
 
-    public KycService(IKycRepository kycRepository, ILogger<KycService> logger)
+    /// <summary>
+    /// Initializes a new instance of the <see cref="KycService"/> class.
+    /// </summary>
+    /// <param name="kycRepository">The KYC repository.</param>
+    /// <param name="logger">The logger.</param>
+    /// <param name="userManager">The user manager for role assignment.</param>
+    public KycService(IKycRepository kycRepository, ILogger<KycService> logger, UserManager<IdentityUser> userManager)
     {
         ArgumentNullException.ThrowIfNull(kycRepository);
         ArgumentNullException.ThrowIfNull(logger);
+        ArgumentNullException.ThrowIfNull(userManager);
 
         _kycRepository = kycRepository;
         _logger = logger;
+        _userManager = userManager;
     }
 
     /// <inheritdoc />
@@ -99,6 +110,94 @@ public class KycService : IKycService
 
         var submissions = await _kycRepository.GetBySellerIdAsync(sellerId);
         return submissions.Any(s => s.Status == KycStatus.Approved);
+    }
+
+    /// <inheritdoc />
+    public async Task<ApproveKycResult> ApproveKycAsync(ApproveKycCommand command)
+    {
+        ArgumentNullException.ThrowIfNull(command);
+        ArgumentException.ThrowIfNullOrWhiteSpace(command.AdminUserId);
+
+        _logger.LogInformation("Processing KYC approval for submission {SubmissionId} by admin {AdminUserId}",
+            command.SubmissionId, command.AdminUserId);
+
+        // Get the KYC submission
+        var submission = await _kycRepository.GetByIdAsync(command.SubmissionId);
+        if (submission == null)
+        {
+            _logger.LogWarning("KYC submission {SubmissionId} not found", command.SubmissionId);
+            return ApproveKycResult.Failure("KYC submission not found.");
+        }
+
+        // Validate the submission is in a valid state for approval
+        if (submission.Status != KycStatus.Pending && submission.Status != KycStatus.UnderReview)
+        {
+            _logger.LogWarning("KYC submission {SubmissionId} is not in a valid state for approval. Current status: {Status}",
+                command.SubmissionId, submission.Status);
+            return ApproveKycResult.Failure($"KYC submission cannot be approved. Current status: {submission.Status}.");
+        }
+
+        // Find the user to assign the Seller role
+        var user = await _userManager.FindByIdAsync(submission.SellerId);
+        if (user == null)
+        {
+            _logger.LogWarning("User {SellerId} not found for KYC submission {SubmissionId}",
+                submission.SellerId, command.SubmissionId);
+            return ApproveKycResult.Failure("Seller user not found.");
+        }
+
+        // Update submission status
+        var oldStatus = submission.Status;
+        submission.Status = KycStatus.Approved;
+        submission.ReviewedAt = DateTimeOffset.UtcNow;
+        submission.ReviewedBy = command.AdminUserId;
+
+        await _kycRepository.UpdateAsync(submission);
+
+        // Assign the Seller role
+        var roleResult = await _userManager.AddToRoleAsync(user, SellerRole);
+        if (!roleResult.Succeeded)
+        {
+            // Compensating transaction: revert the submission status
+            try
+            {
+                submission.Status = oldStatus;
+                submission.ReviewedAt = null;
+                submission.ReviewedBy = null;
+                await _kycRepository.UpdateAsync(submission);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to revert KYC submission {SubmissionId} status after role assignment failure. Manual intervention required.",
+                    command.SubmissionId);
+            }
+
+            var errorDescriptions = roleResult.Errors.Select(e => e.Description);
+            var errorMessage = string.Join(", ", errorDescriptions);
+            _logger.LogError("Failed to assign Seller role to user {SellerId}. Errors: {Errors}",
+                submission.SellerId, errorMessage);
+            return ApproveKycResult.Failure($"Failed to assign Seller role: {errorMessage}");
+        }
+
+        // Create audit log entry
+        var auditLog = new KycAuditLog
+        {
+            Id = Guid.NewGuid(),
+            KycSubmissionId = submission.Id,
+            Action = "Approved",
+            OldStatus = oldStatus,
+            NewStatus = KycStatus.Approved,
+            PerformedBy = command.AdminUserId,
+            PerformedAt = DateTimeOffset.UtcNow,
+            Details = $"KYC submission approved. Seller role assigned to user {submission.SellerId}."
+        };
+
+        await _kycRepository.AddAuditLogAsync(auditLog);
+
+        _logger.LogInformation("KYC submission {SubmissionId} approved successfully. Seller role assigned to user {SellerId}",
+            command.SubmissionId, submission.SellerId);
+
+        return ApproveKycResult.Success();
     }
 
     private static List<string> ValidateCommand(SubmitKycCommand command)
