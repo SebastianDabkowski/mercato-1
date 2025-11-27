@@ -1,3 +1,5 @@
+using Mercato.Admin.Application.Services;
+using Mercato.Admin.Domain.Entities;
 using Mercato.Identity.Application.Commands;
 using Mercato.Identity.Application.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -13,13 +15,16 @@ namespace Mercato.Web.Pages.Account;
 public class ResetPasswordModel : PageModel
 {
     private readonly IPasswordResetService _passwordResetService;
+    private readonly IAuthenticationEventService _authEventService;
     private readonly ILogger<ResetPasswordModel> _logger;
 
     public ResetPasswordModel(
         IPasswordResetService passwordResetService,
+        IAuthenticationEventService authEventService,
         ILogger<ResetPasswordModel> logger)
     {
         _passwordResetService = passwordResetService;
+        _authEventService = authEventService;
         _logger = logger;
     }
 
@@ -71,26 +76,52 @@ public class ResetPasswordModel : PageModel
             return Page();
         }
 
+        var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+        var userAgent = Request.Headers.UserAgent.ToString();
+
         var result = await _passwordResetService.ResetPasswordAsync(Input);
 
         if (result.Succeeded)
         {
             _logger.LogInformation("Password successfully reset for {Email}", Input.Email);
+
+            // Log successful password reset event
+            await _authEventService.LogEventAsync(
+                AuthenticationEventType.PasswordReset,
+                Input.Email,
+                isSuccessful: true,
+                ipAddress: ipAddress,
+                userAgent: userAgent);
+
             return RedirectToPage("/Account/ResetPasswordConfirmation");
         }
+
+        // Determine failure reason for logging
+        string? failureReason = null;
 
         // Handle specific error cases
         if (result.IsInvalidToken || result.IsExpiredToken)
         {
             IsInvalidToken = true;
+            failureReason = result.IsExpiredToken ? "Token expired" : "Invalid token";
             _logger.LogWarning("Invalid or expired token used for password reset for {Email}", Input.Email);
         }
 
         if (result.IsUserNotFound)
         {
             // For security, show a generic error
+            failureReason = "User not found";
             _logger.LogWarning("Password reset attempted for non-existent user: {Email}", Input.Email);
         }
+
+        // Log failed password reset event
+        await _authEventService.LogEventAsync(
+            AuthenticationEventType.PasswordReset,
+            Input.Email,
+            isSuccessful: false,
+            ipAddress: ipAddress,
+            userAgent: userAgent,
+            failureReason: failureReason);
 
         // Add errors to ModelState
         foreach (var error in result.Errors)

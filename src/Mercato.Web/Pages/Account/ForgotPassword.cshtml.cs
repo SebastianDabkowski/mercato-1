@@ -1,3 +1,5 @@
+using Mercato.Admin.Application.Services;
+using Mercato.Admin.Domain.Entities;
 using Mercato.Identity.Application.Commands;
 using Mercato.Identity.Application.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -13,13 +15,16 @@ namespace Mercato.Web.Pages.Account;
 public class ForgotPasswordModel : PageModel
 {
     private readonly IPasswordResetService _passwordResetService;
+    private readonly IAuthenticationEventService _authEventService;
     private readonly ILogger<ForgotPasswordModel> _logger;
 
     public ForgotPasswordModel(
         IPasswordResetService passwordResetService,
+        IAuthenticationEventService authEventService,
         ILogger<ForgotPasswordModel> logger)
     {
         _passwordResetService = passwordResetService;
+        _authEventService = authEventService;
         _logger = logger;
     }
 
@@ -39,6 +44,9 @@ public class ForgotPasswordModel : PageModel
         {
             return Page();
         }
+
+        var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+        var userAgent = Request.Headers.UserAgent.ToString();
 
         var result = await _passwordResetService.RequestPasswordResetAsync(Input);
 
@@ -66,6 +74,14 @@ public class ForgotPasswordModel : PageModel
                 
                 // Log that a link was generated (without exposing the actual token for security)
                 _logger.LogInformation("Password reset link generated for user with email: {Email}", Input.Email);
+
+                // Log password reset request event
+                await _authEventService.LogEventAsync(
+                    AuthenticationEventType.PasswordReset,
+                    Input.Email,
+                    isSuccessful: true,
+                    ipAddress: ipAddress,
+                    userAgent: userAgent);
             }
 
             return RedirectToPage("/Account/ForgotPasswordConfirmation");

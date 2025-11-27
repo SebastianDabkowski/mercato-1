@@ -1,3 +1,5 @@
+using Mercato.Admin.Application.Services;
+using Mercato.Admin.Domain.Entities;
 using Mercato.Identity.Application.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -14,17 +16,21 @@ public class FacebookCallbackModel : PageModel
     private readonly IFacebookLoginService _facebookLoginService;
     private readonly IAccountLinkingService _accountLinkingService;
     private readonly SignInManager<IdentityUser> _signInManager;
+    private readonly IAuthenticationEventService _authEventService;
     private readonly ILogger<FacebookCallbackModel> _logger;
+    private const string BuyerRole = "Buyer";
 
     public FacebookCallbackModel(
         IFacebookLoginService facebookLoginService,
         IAccountLinkingService accountLinkingService,
         SignInManager<IdentityUser> signInManager,
+        IAuthenticationEventService authEventService,
         ILogger<FacebookCallbackModel> logger)
     {
         _facebookLoginService = facebookLoginService;
         _accountLinkingService = accountLinkingService;
         _signInManager = signInManager;
+        _authEventService = authEventService;
         _logger = logger;
     }
 
@@ -33,6 +39,8 @@ public class FacebookCallbackModel : PageModel
     public async Task<IActionResult> OnGetAsync(string? returnUrl = null, string? remoteError = null, bool linkMode = false)
     {
         returnUrl ??= Url.Content("~/");
+        var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+        var userAgent = Request.Headers.UserAgent.ToString();
 
         if (remoteError != null)
         {
@@ -74,6 +82,17 @@ public class FacebookCallbackModel : PageModel
         {
             _logger.LogWarning("Facebook login failed for {Email}: {Error}", email, result.ErrorMessage);
             ErrorMessage = result.ErrorMessage ?? "An error occurred during Facebook login.";
+
+            // Log failed Facebook login event
+            await _authEventService.LogEventAsync(
+                AuthenticationEventType.Login,
+                email,
+                isSuccessful: false,
+                userRole: BuyerRole,
+                ipAddress: ipAddress,
+                userAgent: userAgent,
+                failureReason: $"Facebook OAuth: {result.ErrorMessage}");
+
             return RedirectToPage("/Account/Login", new { errorMessage = ErrorMessage });
         }
 
@@ -91,6 +110,16 @@ public class FacebookCallbackModel : PageModel
             {
                 _logger.LogInformation("Buyer {Email} logged in via Facebook.", email);
             }
+
+            // Log successful Facebook login event
+            await _authEventService.LogEventAsync(
+                AuthenticationEventType.Login,
+                email,
+                isSuccessful: true,
+                userId: result.UserId,
+                userRole: BuyerRole,
+                ipAddress: ipAddress,
+                userAgent: userAgent);
 
             return LocalRedirect(returnUrl);
         }
