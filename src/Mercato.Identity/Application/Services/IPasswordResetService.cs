@@ -13,4 +13,11 @@ public interface IPasswordResetService
     /// <param name="command">The forgot password command.</param>
     /// <returns>The result of the password reset request.</returns>
     Task<ForgotPasswordResult> RequestPasswordResetAsync(ForgotPasswordCommand command);
+
+    /// <summary>
+    /// Resets the user's password using the provided token.
+    /// </summary>
+    /// <param name="command">The reset password command containing email, token, and new password.</param>
+    /// <returns>The result of the password reset operation.</returns>
+    Task<ResetPasswordResult> ResetPasswordAsync(ResetPasswordCommand command);
 }
