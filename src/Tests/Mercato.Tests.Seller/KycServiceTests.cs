@@ -774,6 +774,475 @@ public class KycServiceTests
 
     #endregion
 
+    #region RejectKycAsync Tests
+
+    [Fact]
+    public async Task RejectKycAsync_WithValidCommand_ReturnsSuccess()
+    {
+        // Arrange
+        var submissionId = Guid.NewGuid();
+        var sellerId = "seller-123";
+        var adminUserId = "admin-456";
+        var rejectionReason = "Document is not legible";
+        var submission = new KycSubmission
+        {
+            Id = submissionId,
+            SellerId = sellerId,
+            Status = KycStatus.Pending,
+            DocumentFileName = "id.pdf",
+            DocumentContentType = "application/pdf",
+            DocumentData = [1, 2, 3],
+            SubmittedAt = DateTimeOffset.UtcNow.AddDays(-1)
+        };
+
+        var command = new RejectKycCommand
+        {
+            SubmissionId = submissionId,
+            AdminUserId = adminUserId,
+            RejectionReason = rejectionReason
+        };
+
+        var mockRepository = new Mock<IKycRepository>(MockBehavior.Strict);
+        mockRepository.Setup(r => r.GetByIdAsync(submissionId))
+            .ReturnsAsync(submission);
+        mockRepository.Setup(r => r.UpdateAsync(It.IsAny<KycSubmission>()))
+            .Returns(Task.CompletedTask);
+        mockRepository.Setup(r => r.AddAuditLogAsync(It.IsAny<KycAuditLog>()))
+            .Returns(Task.CompletedTask);
+
+        var mockUserManager = CreateMockUserManager();
+        var mockLogger = new Mock<ILogger<KycService>>();
+        var service = new KycService(mockRepository.Object, mockLogger.Object, mockUserManager.Object);
+
+        // Act
+        var result = await service.RejectKycAsync(command);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.Empty(result.Errors);
+        mockRepository.Verify(r => r.UpdateAsync(It.Is<KycSubmission>(s =>
+            s.Status == KycStatus.Rejected &&
+            s.RejectionReason == rejectionReason &&
+            s.ReviewedBy == adminUserId)), Times.Once);
+        mockRepository.Verify(r => r.AddAuditLogAsync(It.Is<KycAuditLog>(a =>
+            a.Action == "Rejected" &&
+            a.NewStatus == KycStatus.Rejected &&
+            a.OldStatus == KycStatus.Pending)), Times.Once);
+    }
+
+    [Fact]
+    public async Task RejectKycAsync_WithUnderReviewStatus_ReturnsSuccess()
+    {
+        // Arrange
+        var submissionId = Guid.NewGuid();
+        var sellerId = "seller-123";
+        var adminUserId = "admin-456";
+        var submission = new KycSubmission
+        {
+            Id = submissionId,
+            SellerId = sellerId,
+            Status = KycStatus.UnderReview,
+            DocumentFileName = "id.pdf",
+            DocumentContentType = "application/pdf",
+            DocumentData = [1, 2, 3],
+            SubmittedAt = DateTimeOffset.UtcNow.AddDays(-1)
+        };
+
+        var command = new RejectKycCommand
+        {
+            SubmissionId = submissionId,
+            AdminUserId = adminUserId,
+            RejectionReason = "Document expired"
+        };
+
+        var mockRepository = new Mock<IKycRepository>(MockBehavior.Strict);
+        mockRepository.Setup(r => r.GetByIdAsync(submissionId))
+            .ReturnsAsync(submission);
+        mockRepository.Setup(r => r.UpdateAsync(It.IsAny<KycSubmission>()))
+            .Returns(Task.CompletedTask);
+        mockRepository.Setup(r => r.AddAuditLogAsync(It.IsAny<KycAuditLog>()))
+            .Returns(Task.CompletedTask);
+
+        var mockUserManager = CreateMockUserManager();
+        var mockLogger = new Mock<ILogger<KycService>>();
+        var service = new KycService(mockRepository.Object, mockLogger.Object, mockUserManager.Object);
+
+        // Act
+        var result = await service.RejectKycAsync(command);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        mockRepository.Verify(r => r.UpdateAsync(It.Is<KycSubmission>(s =>
+            s.Status == KycStatus.Rejected)), Times.Once);
+    }
+
+    [Fact]
+    public async Task RejectKycAsync_WithNonExistentSubmission_ReturnsError()
+    {
+        // Arrange
+        var submissionId = Guid.NewGuid();
+        var command = new RejectKycCommand
+        {
+            SubmissionId = submissionId,
+            AdminUserId = "admin-456",
+            RejectionReason = "Document not valid"
+        };
+
+        var mockRepository = new Mock<IKycRepository>(MockBehavior.Strict);
+        mockRepository.Setup(r => r.GetByIdAsync(submissionId))
+            .ReturnsAsync((KycSubmission?)null);
+
+        var mockUserManager = CreateMockUserManager();
+        var mockLogger = new Mock<ILogger<KycService>>();
+        var service = new KycService(mockRepository.Object, mockLogger.Object, mockUserManager.Object);
+
+        // Act
+        var result = await service.RejectKycAsync(command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Single(result.Errors);
+        Assert.Contains("not found", result.Errors[0]);
+    }
+
+    [Fact]
+    public async Task RejectKycAsync_WithAlreadyApprovedSubmission_ReturnsError()
+    {
+        // Arrange
+        var submissionId = Guid.NewGuid();
+        var submission = new KycSubmission
+        {
+            Id = submissionId,
+            SellerId = "seller-123",
+            Status = KycStatus.Approved,
+            DocumentFileName = "id.pdf",
+            DocumentContentType = "application/pdf",
+            DocumentData = [1, 2, 3],
+            SubmittedAt = DateTimeOffset.UtcNow.AddDays(-1)
+        };
+
+        var command = new RejectKycCommand
+        {
+            SubmissionId = submissionId,
+            AdminUserId = "admin-456",
+            RejectionReason = "Document not valid"
+        };
+
+        var mockRepository = new Mock<IKycRepository>(MockBehavior.Strict);
+        mockRepository.Setup(r => r.GetByIdAsync(submissionId))
+            .ReturnsAsync(submission);
+
+        var mockUserManager = CreateMockUserManager();
+        var mockLogger = new Mock<ILogger<KycService>>();
+        var service = new KycService(mockRepository.Object, mockLogger.Object, mockUserManager.Object);
+
+        // Act
+        var result = await service.RejectKycAsync(command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Single(result.Errors);
+        Assert.Contains("cannot be rejected", result.Errors[0]);
+    }
+
+    [Fact]
+    public async Task RejectKycAsync_WithAlreadyRejectedSubmission_ReturnsError()
+    {
+        // Arrange
+        var submissionId = Guid.NewGuid();
+        var submission = new KycSubmission
+        {
+            Id = submissionId,
+            SellerId = "seller-123",
+            Status = KycStatus.Rejected,
+            DocumentFileName = "id.pdf",
+            DocumentContentType = "application/pdf",
+            DocumentData = [1, 2, 3],
+            SubmittedAt = DateTimeOffset.UtcNow.AddDays(-1)
+        };
+
+        var command = new RejectKycCommand
+        {
+            SubmissionId = submissionId,
+            AdminUserId = "admin-456",
+            RejectionReason = "Document not valid"
+        };
+
+        var mockRepository = new Mock<IKycRepository>(MockBehavior.Strict);
+        mockRepository.Setup(r => r.GetByIdAsync(submissionId))
+            .ReturnsAsync(submission);
+
+        var mockUserManager = CreateMockUserManager();
+        var mockLogger = new Mock<ILogger<KycService>>();
+        var service = new KycService(mockRepository.Object, mockLogger.Object, mockUserManager.Object);
+
+        // Act
+        var result = await service.RejectKycAsync(command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Single(result.Errors);
+        Assert.Contains("cannot be rejected", result.Errors[0]);
+    }
+
+    [Fact]
+    public async Task RejectKycAsync_WithEmptyRejectionReason_ReturnsError()
+    {
+        // Arrange
+        var command = new RejectKycCommand
+        {
+            SubmissionId = Guid.NewGuid(),
+            AdminUserId = "admin-456",
+            RejectionReason = string.Empty
+        };
+
+        var mockRepository = new Mock<IKycRepository>(MockBehavior.Strict);
+        var mockUserManager = CreateMockUserManager();
+        var mockLogger = new Mock<ILogger<KycService>>();
+        var service = new KycService(mockRepository.Object, mockLogger.Object, mockUserManager.Object);
+
+        // Act
+        var result = await service.RejectKycAsync(command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Single(result.Errors);
+        Assert.Contains("Rejection reason is required", result.Errors[0]);
+    }
+
+    [Fact]
+    public async Task RejectKycAsync_WithNullCommand_ThrowsArgumentNullException()
+    {
+        // Arrange
+        var mockRepository = new Mock<IKycRepository>(MockBehavior.Strict);
+        var mockUserManager = CreateMockUserManager();
+        var mockLogger = new Mock<ILogger<KycService>>();
+        var service = new KycService(mockRepository.Object, mockLogger.Object, mockUserManager.Object);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<ArgumentNullException>(() => service.RejectKycAsync(null!));
+    }
+
+    [Fact]
+    public async Task RejectKycAsync_WithEmptyAdminUserId_ThrowsArgumentException()
+    {
+        // Arrange
+        var command = new RejectKycCommand
+        {
+            SubmissionId = Guid.NewGuid(),
+            AdminUserId = string.Empty,
+            RejectionReason = "Invalid document"
+        };
+
+        var mockRepository = new Mock<IKycRepository>(MockBehavior.Strict);
+        var mockUserManager = CreateMockUserManager();
+        var mockLogger = new Mock<ILogger<KycService>>();
+        var service = new KycService(mockRepository.Object, mockLogger.Object, mockUserManager.Object);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<ArgumentException>(() => service.RejectKycAsync(command));
+    }
+
+    #endregion
+
+    #region GetAllSubmissionsAsync Tests
+
+    [Fact]
+    public async Task GetAllSubmissionsAsync_ReturnsAllSubmissions()
+    {
+        // Arrange
+        var submissions = new List<KycSubmission>
+        {
+            new KycSubmission
+            {
+                Id = Guid.NewGuid(),
+                SellerId = "seller-1",
+                Status = KycStatus.Pending,
+                DocumentFileName = "id1.pdf",
+                DocumentContentType = "application/pdf",
+                DocumentData = [1, 2, 3],
+                SubmittedAt = DateTimeOffset.UtcNow
+            },
+            new KycSubmission
+            {
+                Id = Guid.NewGuid(),
+                SellerId = "seller-2",
+                Status = KycStatus.Approved,
+                DocumentFileName = "id2.pdf",
+                DocumentContentType = "application/pdf",
+                DocumentData = [4, 5, 6],
+                SubmittedAt = DateTimeOffset.UtcNow.AddDays(-1)
+            }
+        };
+
+        var mockRepository = new Mock<IKycRepository>(MockBehavior.Strict);
+        mockRepository.Setup(r => r.GetAllAsync())
+            .ReturnsAsync(submissions);
+
+        var mockLogger = new Mock<ILogger<KycService>>();
+        var mockUserManager = CreateMockUserManager();
+        var service = new KycService(mockRepository.Object, mockLogger.Object, mockUserManager.Object);
+
+        // Act
+        var result = await service.GetAllSubmissionsAsync();
+
+        // Assert
+        Assert.Equal(2, result.Count);
+        mockRepository.Verify(r => r.GetAllAsync(), Times.Once);
+    }
+
+    #endregion
+
+    #region GetSubmissionsByStatusAsync Tests
+
+    [Fact]
+    public async Task GetSubmissionsByStatusAsync_ReturnsFilteredSubmissions()
+    {
+        // Arrange
+        var status = KycStatus.Pending;
+        var submissions = new List<KycSubmission>
+        {
+            new KycSubmission
+            {
+                Id = Guid.NewGuid(),
+                SellerId = "seller-1",
+                Status = KycStatus.Pending,
+                DocumentFileName = "id1.pdf",
+                DocumentContentType = "application/pdf",
+                DocumentData = [1, 2, 3],
+                SubmittedAt = DateTimeOffset.UtcNow
+            }
+        };
+
+        var mockRepository = new Mock<IKycRepository>(MockBehavior.Strict);
+        mockRepository.Setup(r => r.GetByStatusAsync(status))
+            .ReturnsAsync(submissions);
+
+        var mockLogger = new Mock<ILogger<KycService>>();
+        var mockUserManager = CreateMockUserManager();
+        var service = new KycService(mockRepository.Object, mockLogger.Object, mockUserManager.Object);
+
+        // Act
+        var result = await service.GetSubmissionsByStatusAsync(status);
+
+        // Assert
+        Assert.Single(result);
+        Assert.All(result, s => Assert.Equal(KycStatus.Pending, s.Status));
+        mockRepository.Verify(r => r.GetByStatusAsync(status), Times.Once);
+    }
+
+    #endregion
+
+    #region GetSubmissionByIdAsync Tests
+
+    [Fact]
+    public async Task GetSubmissionByIdAsync_WithExistingId_ReturnsSubmission()
+    {
+        // Arrange
+        var submissionId = Guid.NewGuid();
+        var submission = new KycSubmission
+        {
+            Id = submissionId,
+            SellerId = "seller-1",
+            Status = KycStatus.Pending,
+            DocumentFileName = "id.pdf",
+            DocumentContentType = "application/pdf",
+            DocumentData = [1, 2, 3],
+            SubmittedAt = DateTimeOffset.UtcNow
+        };
+
+        var mockRepository = new Mock<IKycRepository>(MockBehavior.Strict);
+        mockRepository.Setup(r => r.GetByIdAsync(submissionId))
+            .ReturnsAsync(submission);
+
+        var mockLogger = new Mock<ILogger<KycService>>();
+        var mockUserManager = CreateMockUserManager();
+        var service = new KycService(mockRepository.Object, mockLogger.Object, mockUserManager.Object);
+
+        // Act
+        var result = await service.GetSubmissionByIdAsync(submissionId);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(submissionId, result.Id);
+        mockRepository.Verify(r => r.GetByIdAsync(submissionId), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetSubmissionByIdAsync_WithNonExistingId_ReturnsNull()
+    {
+        // Arrange
+        var submissionId = Guid.NewGuid();
+
+        var mockRepository = new Mock<IKycRepository>(MockBehavior.Strict);
+        mockRepository.Setup(r => r.GetByIdAsync(submissionId))
+            .ReturnsAsync((KycSubmission?)null);
+
+        var mockLogger = new Mock<ILogger<KycService>>();
+        var mockUserManager = CreateMockUserManager();
+        var service = new KycService(mockRepository.Object, mockLogger.Object, mockUserManager.Object);
+
+        // Act
+        var result = await service.GetSubmissionByIdAsync(submissionId);
+
+        // Assert
+        Assert.Null(result);
+        mockRepository.Verify(r => r.GetByIdAsync(submissionId), Times.Once);
+    }
+
+    #endregion
+
+    #region GetAuditLogsAsync Tests
+
+    [Fact]
+    public async Task GetAuditLogsAsync_ReturnsAuditLogs()
+    {
+        // Arrange
+        var submissionId = Guid.NewGuid();
+        var auditLogs = new List<KycAuditLog>
+        {
+            new KycAuditLog
+            {
+                Id = Guid.NewGuid(),
+                KycSubmissionId = submissionId,
+                Action = "Submitted",
+                OldStatus = null,
+                NewStatus = KycStatus.Pending,
+                PerformedBy = "seller-1",
+                PerformedAt = DateTimeOffset.UtcNow,
+                Details = "KYC submitted"
+            },
+            new KycAuditLog
+            {
+                Id = Guid.NewGuid(),
+                KycSubmissionId = submissionId,
+                Action = "Approved",
+                OldStatus = KycStatus.Pending,
+                NewStatus = KycStatus.Approved,
+                PerformedBy = "admin-1",
+                PerformedAt = DateTimeOffset.UtcNow.AddMinutes(10),
+                Details = "KYC approved"
+            }
+        };
+
+        var mockRepository = new Mock<IKycRepository>(MockBehavior.Strict);
+        mockRepository.Setup(r => r.GetAuditLogsAsync(submissionId))
+            .ReturnsAsync(auditLogs);
+
+        var mockLogger = new Mock<ILogger<KycService>>();
+        var mockUserManager = CreateMockUserManager();
+        var service = new KycService(mockRepository.Object, mockLogger.Object, mockUserManager.Object);
+
+        // Act
+        var result = await service.GetAuditLogsAsync(submissionId);
+
+        // Assert
+        Assert.Equal(2, result.Count);
+        mockRepository.Verify(r => r.GetAuditLogsAsync(submissionId), Times.Once);
+    }
+
+    #endregion
+
     private static SubmitKycCommand CreateValidCommand()
     {
         return new SubmitKycCommand

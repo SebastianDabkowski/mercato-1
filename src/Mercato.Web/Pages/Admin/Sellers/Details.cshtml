@@ -1,0 +1,197 @@
+@page "{id:guid}"
+@model Mercato.Web.Pages.Admin.Sellers.DetailsModel
+@{
+    ViewData["Title"] = "KYC Submission Details";
+}
+
+<h1>KYC Submission Details</h1>
+
+<p class="text-muted">Review the KYC submission details and approve or reject the seller.</p>
+
+@if (Model.Submission == null)
+{
+    <div class="alert alert-danger">
+        KYC submission not found.
+    </div>
+    <a asp-page="Index" class="btn btn-secondary">
+        &laquo; Back to Submissions
+    </a>
+}
+else
+{
+    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <strong>Error!</strong> @Model.ErrorMessage
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Submission Information</h5>
+                </div>
+                <div class="card-body">
+                    <dl class="row mb-0">
+                        <dt class="col-sm-4">Submission ID</dt>
+                        <dd class="col-sm-8"><code>@Model.Submission.Id</code></dd>
+
+                        <dt class="col-sm-4">Seller ID</dt>
+                        <dd class="col-sm-8"><code>@Model.Submission.SellerId</code></dd>
+
+                        <dt class="col-sm-4">Document Type</dt>
+                        <dd class="col-sm-8">@Model.Submission.DocumentType</dd>
+
+                        <dt class="col-sm-4">Document File Name</dt>
+                        <dd class="col-sm-8">@Model.Submission.DocumentFileName</dd>
+
+                        <dt class="col-sm-4">Document Content Type</dt>
+                        <dd class="col-sm-8">@Model.Submission.DocumentContentType</dd>
+
+                        <dt class="col-sm-4">Document Size</dt>
+                        <dd class="col-sm-8">@((Model.Submission.DocumentData.Length / 1024.0).ToString("F2")) KB</dd>
+
+                        <dt class="col-sm-4">Status</dt>
+                        <dd class="col-sm-8">
+                            @{
+                                var badgeClass = Model.Submission.Status switch
+                                {
+                                    Mercato.Seller.Domain.Entities.KycStatus.Pending => "bg-warning text-dark",
+                                    Mercato.Seller.Domain.Entities.KycStatus.UnderReview => "bg-info text-dark",
+                                    Mercato.Seller.Domain.Entities.KycStatus.Approved => "bg-success",
+                                    Mercato.Seller.Domain.Entities.KycStatus.Rejected => "bg-danger",
+                                    _ => "bg-secondary"
+                                };
+                            }
+                            <span class="badge @badgeClass">@Model.Submission.Status</span>
+                        </dd>
+
+                        <dt class="col-sm-4">Submitted At</dt>
+                        <dd class="col-sm-8">@Model.Submission.SubmittedAt.ToString("yyyy-MM-dd HH:mm:ss")</dd>
+
+                        @if (Model.Submission.ReviewedAt.HasValue)
+                        {
+                            <dt class="col-sm-4">Reviewed At</dt>
+                            <dd class="col-sm-8">@Model.Submission.ReviewedAt.Value.ToString("yyyy-MM-dd HH:mm:ss")</dd>
+
+                            <dt class="col-sm-4">Reviewed By</dt>
+                            <dd class="col-sm-8"><code>@Model.Submission.ReviewedBy</code></dd>
+                        }
+
+                        @if (!string.IsNullOrEmpty(Model.Submission.RejectionReason))
+                        {
+                            <dt class="col-sm-4">Rejection Reason</dt>
+                            <dd class="col-sm-8 text-danger">@Model.Submission.RejectionReason</dd>
+                        }
+                    </dl>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Document Preview</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">Document is available for download.</p>
+                    <form method="post" asp-page-handler="DownloadDocument" class="d-inline">
+                        <input type="hidden" name="id" value="@Model.Submission.Id" />
+                        <button type="submit" class="btn btn-outline-primary">
+                            Download Document
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            @if (Model.Submission.Status == Mercato.Seller.Domain.Entities.KycStatus.Pending ||
+                 Model.Submission.Status == Mercato.Seller.Domain.Entities.KycStatus.UnderReview)
+            {
+                <div class="card mb-4">
+                    <div class="card-header bg-warning text-dark">
+                        <h5 class="mb-0">⚠️ Review Actions</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6 mb-3 mb-md-0">
+                                <h6>Approve Seller</h6>
+                                <p class="text-muted small">Approving will grant the user the Seller role.</p>
+                                <form method="post" asp-page-handler="Approve">
+                                    <input type="hidden" name="id" value="@Model.Submission.Id" />
+                                    <div class="form-check mb-2">
+                                        <input type="checkbox" class="form-check-input" id="confirmApprove" name="confirmApprove" required />
+                                        <label class="form-check-label" for="confirmApprove">
+                                            I confirm approval
+                                        </label>
+                                    </div>
+                                    <button type="submit" class="btn btn-success">
+                                        Approve
+                                    </button>
+                                </form>
+                            </div>
+                            <div class="col-md-6">
+                                <h6>Reject Submission</h6>
+                                <p class="text-muted small">Rejecting requires a reason for compliance.</p>
+                                <form method="post" asp-page-handler="Reject">
+                                    <input type="hidden" name="id" value="@Model.Submission.Id" />
+                                    <div class="mb-2">
+                                        <textarea name="rejectionReason" class="form-control" rows="2" 
+                                                  placeholder="Rejection reason (required)" required></textarea>
+                                    </div>
+                                    <button type="submit" class="btn btn-danger">
+                                        Reject
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Audit Log</h5>
+                </div>
+                <div class="card-body">
+                    @if (Model.AuditLogs.Count == 0)
+                    {
+                        <p class="text-muted">No audit log entries.</p>
+                    }
+                    else
+                    {
+                        <div class="timeline">
+                            @foreach (var log in Model.AuditLogs)
+                            {
+                                <div class="mb-3 pb-3 border-bottom">
+                                    <div class="d-flex justify-content-between">
+                                        <strong>@log.Action</strong>
+                                        <small class="text-muted">@log.PerformedAt.ToString("MM/dd HH:mm")</small>
+                                    </div>
+                                    @if (log.OldStatus.HasValue && log.NewStatus.HasValue)
+                                    {
+                                        <small class="text-muted">
+                                            @log.OldStatus → @log.NewStatus
+                                        </small>
+                                    }
+                                    @if (!string.IsNullOrEmpty(log.Details))
+                                    {
+                                        <p class="small mb-0 mt-1">@Html.Encode(log.Details)</p>
+                                    }
+                                    <small class="text-muted">By: @(Html.Encode(log.PerformedBy[..Math.Min(8, log.PerformedBy.Length)]))...</small>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="mt-4">
+        <a asp-page="Index" class="btn btn-secondary">
+            &laquo; Back to Submissions
+        </a>
+    </div>
+}

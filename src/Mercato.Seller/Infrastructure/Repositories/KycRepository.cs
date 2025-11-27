@@ -71,4 +71,21 @@ public class KycRepository : IKycRepository
             .OrderByDescending(l => l.PerformedAt)
             .ToListAsync();
     }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<KycSubmission>> GetAllAsync()
+    {
+        return await _context.KycSubmissions
+            .OrderByDescending(s => s.SubmittedAt)
+            .ToListAsync();
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<KycSubmission>> GetByStatusAsync(KycStatus status)
+    {
+        return await _context.KycSubmissions
+            .Where(s => s.Status == status)
+            .OrderByDescending(s => s.SubmittedAt)
+            .ToListAsync();
+    }
 }
