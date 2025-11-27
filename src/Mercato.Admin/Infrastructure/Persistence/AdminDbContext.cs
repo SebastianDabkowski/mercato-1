@@ -21,6 +21,11 @@ public class AdminDbContext : DbContext
     /// </summary>
     public DbSet<RoleChangeAuditLog> RoleChangeAuditLogs { get; set; } = null!;
 
+    /// <summary>
+    /// Gets or sets the authentication events.
+    /// </summary>
+    public DbSet<AuthenticationEvent> AuthenticationEvents { get; set; } = null!;
+
     /// <inheritdoc/>
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -38,6 +43,23 @@ public class AdminDbContext : DbContext
             entity.Property(e => e.Details).HasMaxLength(1000);
             entity.HasIndex(e => e.UserId);
             entity.HasIndex(e => e.PerformedAt);
+        });
+
+        modelBuilder.Entity<AuthenticationEvent>(entity =>
+        {
+            entity.ToTable("AuthenticationEvents");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Email).IsRequired().HasMaxLength(256);
+            entity.Property(e => e.UserId).HasMaxLength(450);
+            entity.Property(e => e.UserRole).HasMaxLength(50);
+            entity.Property(e => e.IpAddressHash).HasMaxLength(64);
+            entity.Property(e => e.UserAgent).HasMaxLength(500);
+            entity.Property(e => e.FailureReason).HasMaxLength(500);
+            entity.HasIndex(e => e.OccurredAt);
+            entity.HasIndex(e => e.EventType);
+            entity.HasIndex(e => e.Email);
+            entity.HasIndex(e => e.IpAddressHash);
+            entity.HasIndex(e => e.IsSuccessful);
         });
     }
 }

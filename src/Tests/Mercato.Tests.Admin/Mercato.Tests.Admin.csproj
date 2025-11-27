@@ -17,6 +17,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Mercato.Admin\Mercato.Admin.csproj" />
+    <ProjectReference Include="..\..\Mercato.Web\Mercato.Web.csproj" />
   </ItemGroup>
 
   <ItemGroup>
