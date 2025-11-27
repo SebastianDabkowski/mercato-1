@@ -30,6 +30,11 @@ public class SellerDbContext : DbContext
     /// </summary>
     public DbSet<SellerOnboarding> SellerOnboardings { get; set; }
 
+    /// <summary>
+    /// Gets or sets the stores.
+    /// </summary>
+    public DbSet<Store> Stores { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -83,6 +88,22 @@ public class SellerDbContext : DbContext
 
             entity.HasIndex(e => e.SellerId).IsUnique();
             entity.HasIndex(e => e.Status);
+        });
+
+        // Configure Store entity
+        modelBuilder.Entity<Store>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.SellerId).IsRequired().HasMaxLength(450);
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.Description).HasMaxLength(2000);
+            entity.Property(e => e.LogoUrl).HasMaxLength(500);
+            entity.Property(e => e.ContactEmail).HasMaxLength(254);
+            entity.Property(e => e.ContactPhone).HasMaxLength(20);
+            entity.Property(e => e.WebsiteUrl).HasMaxLength(500);
+
+            entity.HasIndex(e => e.SellerId).IsUnique();
+            entity.HasIndex(e => e.Name).IsUnique();
         });
     }
 }

@@ -25,10 +25,12 @@ public static class SellerModuleExtensions
         // Register repositories
         services.AddScoped<IKycRepository, KycRepository>();
         services.AddScoped<ISellerOnboardingRepository, SellerOnboardingRepository>();
+        services.AddScoped<IStoreRepository, StoreRepository>();
 
         // Register services
         services.AddScoped<IKycService, KycService>();
         services.AddScoped<ISellerOnboardingService, SellerOnboardingService>();
+        services.AddScoped<IStoreProfileService, StoreProfileService>();
 
         return services;
     }
