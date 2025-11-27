@@ -17,6 +17,7 @@ public class LoginSellerResult
 
     /// <summary>
     /// Gets a value indicating whether two-factor authentication is required.
+    /// Reserved for future use when two-factor authentication is implemented.
     /// </summary>
     public bool RequiresTwoFactor { get; init; }
 
@@ -53,6 +54,7 @@ public class LoginSellerResult
 
     /// <summary>
     /// Creates a failed login result indicating two-factor authentication is required.
+    /// Reserved for future use when two-factor authentication is implemented.
     /// </summary>
     public static LoginSellerResult TwoFactorRequired()
     {

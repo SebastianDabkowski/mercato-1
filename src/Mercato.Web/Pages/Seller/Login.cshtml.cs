@@ -61,6 +61,8 @@ public class LoginModel : PageModel
         if (result.Succeeded)
         {
             // Perform the actual sign-in using SignInManager
+            // Note: User lookup is needed because the service validates credentials but doesn't return
+            // the user object, maintaining separation between validation and ASP.NET Core Identity sign-in
             var user = await _signInManager.UserManager.FindByEmailAsync(Input.Email);
             if (user != null)
             {
