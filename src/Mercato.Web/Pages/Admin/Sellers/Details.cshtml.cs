@@ -53,7 +53,7 @@ public class DetailsModel : PageModel
         if (Submission == null)
         {
             _logger.LogWarning("KYC submission {SubmissionId} not found", id);
-            return Page();
+            return NotFound();
         }
 
         AuditLogs = await _kycService.GetAuditLogsAsync(id);
@@ -64,8 +64,19 @@ public class DetailsModel : PageModel
     /// <summary>
     /// Handles POST requests to approve a submission.
     /// </summary>
-    public async Task<IActionResult> OnPostApproveAsync(Guid id)
+    public async Task<IActionResult> OnPostApproveAsync(Guid id, bool confirmApprove)
     {
+        if (!confirmApprove)
+        {
+            ErrorMessage = "You must confirm the approval.";
+            Submission = await _kycService.GetSubmissionByIdAsync(id);
+            if (Submission != null)
+            {
+                AuditLogs = await _kycService.GetAuditLogsAsync(id);
+            }
+            return Page();
+        }
+
         var adminUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrEmpty(adminUserId))
         {
