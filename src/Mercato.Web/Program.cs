@@ -1,4 +1,6 @@
 using Mercato.Web.Data;
+using Mercato.Web.Filters;
+using Mercato.Web.Middleware;
 using Mercato.Admin;
 using Mercato.Buyer;
 using Mercato.Cart;
@@ -13,7 +15,14 @@ using Microsoft.EntityFrameworkCore;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-builder.Services.AddRazorPages();
+builder.Services.AddRazorPages(options =>
+{
+    // TODO: Add Razor Pages-specific configuration (e.g., conventions, filters)
+}).AddMvcOptions(options =>
+{
+    // Register request validation filter globally
+    options.AddRequestValidationFilter();
+});
 
 // Configure Entity Framework Core with SQL Server for Identity
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
@@ -78,6 +87,11 @@ using (var scope = app.Services.CreateScope())
 }
 
 // Configure the HTTP request pipeline.
+
+// Global exception handling - should be first to catch all exceptions
+// TODO: Configure exception handling differently for API vs UI responses
+app.UseGlobalExceptionHandler();
+
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error");
