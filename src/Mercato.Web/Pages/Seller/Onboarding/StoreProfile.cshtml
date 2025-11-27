@@ -1,0 +1,91 @@
+@page
+@model Mercato.Web.Pages.Seller.Onboarding.StoreProfileModel
+@{
+    ViewData["Title"] = "Store Profile - Seller Onboarding";
+}
+
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <!-- Progress Indicator -->
+            <div class="mb-4">
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted">Step @Model.CurrentStepNumber of @Model.TotalSteps</span>
+                    <span class="text-muted">@((Model.CurrentStepNumber * 100 / Model.TotalSteps))% Complete</span>
+                </div>
+                <div class="progress" style="height: 8px;">
+                    <div class="progress-bar" role="progressbar" style="width: @((Model.CurrentStepNumber * 100 / Model.TotalSteps))%"></div>
+                </div>
+            </div>
+
+            <!-- Step Indicators -->
+            <nav class="mb-4">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item active"><i class="bi bi-shop me-1"></i>Store Profile</li>
+                    <li class="breadcrumb-item text-muted"><i class="bi bi-shield-check me-1"></i>Verification</li>
+                    <li class="breadcrumb-item text-muted"><i class="bi bi-credit-card me-1"></i>Payout</li>
+                </ol>
+            </nav>
+
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0"><i class="bi bi-shop me-2"></i>Store Profile</h4>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted mb-4">Tell us about your store. This information will be displayed to buyers on your storefront.</p>
+
+                    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+                    {
+                        <div class="alert alert-danger" role="alert">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>@Model.ErrorMessage
+                        </div>
+                    }
+
+                    <form method="post">
+                        <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+                        <div class="mb-3">
+                            <label asp-for="StoreName" class="form-label">Store Name <span class="text-danger">*</span></label>
+                            <input asp-for="StoreName" class="form-control" placeholder="Enter your store name" />
+                            <span asp-validation-for="StoreName" class="text-danger"></span>
+                            <div class="form-text">This is how your store will appear to buyers.</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="StoreDescription" class="form-label">Store Description <span class="text-danger">*</span></label>
+                            <textarea asp-for="StoreDescription" class="form-control" rows="5" placeholder="Describe your store and what you sell..."></textarea>
+                            <span asp-validation-for="StoreDescription" class="text-danger"></span>
+                            <div class="form-text">Provide a detailed description of your store (10-2000 characters).</div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label asp-for="StoreLogoUrl" class="form-label">Store Logo URL (Optional)</label>
+                            <input asp-for="StoreLogoUrl" class="form-control" placeholder="https://example.com/logo.png" />
+                            <span asp-validation-for="StoreLogoUrl" class="text-danger"></span>
+                            <div class="form-text">Provide a URL to your store logo image.</div>
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <a asp-page="/Seller/Index" class="btn btn-outline-secondary">
+                                <i class="bi bi-arrow-left me-1"></i>Cancel
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                Continue <i class="bi bi-arrow-right ms-1"></i>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="text-center mt-3">
+                <small class="text-muted">
+                    <i class="bi bi-info-circle me-1"></i>Your progress is automatically saved.
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

@@ -253,7 +253,16 @@ public class SellerDashboardIndexModelTests
     private static IndexModel CreateModel(IKycService kycService, string? sellerId)
     {
         var mockLogger = new Mock<ILogger<IndexModel>>();
-        var model = new IndexModel(kycService, mockLogger.Object);
+        var mockOnboardingService = new Mock<ISellerOnboardingService>(MockBehavior.Strict);
+        
+        // Setup mock to return null (no onboarding) by default for existing tests
+        if (!string.IsNullOrEmpty(sellerId))
+        {
+            mockOnboardingService.Setup(s => s.GetOnboardingAsync(sellerId))
+                .ReturnsAsync(null as SellerOnboarding);
+        }
+        
+        var model = new IndexModel(kycService, mockOnboardingService.Object, mockLogger.Object);
 
         // Set up HttpContext with user claims
         var claims = new List<Claim>();

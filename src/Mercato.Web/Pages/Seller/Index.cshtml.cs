@@ -6,15 +6,20 @@ using System.Security.Claims;
 
 namespace Mercato.Web.Pages.Seller
 {
-    [Authorize(Roles = "Seller")]
+    [Authorize(Roles = "Buyer,Seller")]
     public class IndexModel : PageModel
     {
         private readonly IKycService _kycService;
+        private readonly ISellerOnboardingService _onboardingService;
         private readonly ILogger<IndexModel> _logger;
 
-        public IndexModel(IKycService kycService, ILogger<IndexModel> logger)
+        public IndexModel(
+            IKycService kycService,
+            ISellerOnboardingService onboardingService,
+            ILogger<IndexModel> logger)
         {
             _kycService = kycService;
+            _onboardingService = onboardingService;
             _logger = logger;
         }
 
@@ -38,6 +43,16 @@ namespace Mercato.Web.Pages.Seller
         /// </summary>
         public string? ErrorMessage { get; private set; }
 
+        /// <summary>
+        /// Gets the seller onboarding record.
+        /// </summary>
+        public SellerOnboarding? Onboarding { get; private set; }
+
+        /// <summary>
+        /// Gets whether the seller needs to complete onboarding.
+        /// </summary>
+        public bool NeedsOnboarding { get; private set; }
+
         public async Task OnGetAsync()
         {
             var sellerId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -51,6 +66,12 @@ namespace Mercato.Web.Pages.Seller
 
             try
             {
+                // Check onboarding status
+                Onboarding = await _onboardingService.GetOnboardingAsync(sellerId);
+                NeedsOnboarding = Onboarding == null ||
+                    (Onboarding.Status != OnboardingStatus.PendingVerification &&
+                     Onboarding.Status != OnboardingStatus.Verified);
+
                 var submissions = await _kycService.GetSubmissionsBySellerAsync(sellerId);
                 
                 if (submissions.Count == 0)

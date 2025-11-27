@@ -25,6 +25,11 @@ public class SellerDbContext : DbContext
     /// </summary>
     public DbSet<KycAuditLog> KycAuditLogs { get; set; }
 
+    /// <summary>
+    /// Gets or sets the seller onboarding records.
+    /// </summary>
+    public DbSet<SellerOnboarding> SellerOnboardings { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -57,6 +62,27 @@ public class SellerDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(e => e.KycSubmissionId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Configure SellerOnboarding entity
+        modelBuilder.Entity<SellerOnboarding>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.SellerId).IsRequired().HasMaxLength(450);
+            entity.Property(e => e.StoreName).HasMaxLength(200);
+            entity.Property(e => e.StoreDescription).HasMaxLength(2000);
+            entity.Property(e => e.StoreLogoUrl).HasMaxLength(500);
+            entity.Property(e => e.BusinessName).HasMaxLength(200);
+            entity.Property(e => e.BusinessAddress).HasMaxLength(500);
+            entity.Property(e => e.TaxId).HasMaxLength(50);
+            entity.Property(e => e.BusinessRegistrationNumber).HasMaxLength(50);
+            entity.Property(e => e.BankName).HasMaxLength(200);
+            entity.Property(e => e.BankAccountNumber).HasMaxLength(50);
+            entity.Property(e => e.BankRoutingNumber).HasMaxLength(20);
+            entity.Property(e => e.AccountHolderName).HasMaxLength(200);
+
+            entity.HasIndex(e => e.SellerId).IsUnique();
+            entity.HasIndex(e => e.Status);
         });
     }
 }
