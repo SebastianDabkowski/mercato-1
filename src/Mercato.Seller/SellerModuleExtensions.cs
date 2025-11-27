@@ -27,12 +27,14 @@ public static class SellerModuleExtensions
         services.AddScoped<ISellerOnboardingRepository, SellerOnboardingRepository>();
         services.AddScoped<IStoreRepository, StoreRepository>();
         services.AddScoped<IPayoutSettingsRepository, PayoutSettingsRepository>();
+        services.AddScoped<IStoreUserRepository, StoreUserRepository>();
 
         // Register services
         services.AddScoped<IKycService, KycService>();
         services.AddScoped<ISellerOnboardingService, SellerOnboardingService>();
         services.AddScoped<IStoreProfileService, StoreProfileService>();
         services.AddScoped<IPayoutSettingsService, PayoutSettingsService>();
+        services.AddScoped<IStoreUserService, StoreUserService>();
 
         return services;
     }
