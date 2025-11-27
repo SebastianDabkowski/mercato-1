@@ -1,0 +1,100 @@
+@page
+@model Mercato.Web.Pages.Seller.Onboarding.VerificationDataModel
+@{
+    ViewData["Title"] = "Verification Data - Seller Onboarding";
+}
+
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <!-- Progress Indicator -->
+            <div class="mb-4">
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted">Step @Model.CurrentStepNumber of @Model.TotalSteps</span>
+                    <span class="text-muted">@((Model.CurrentStepNumber * 100 / Model.TotalSteps))% Complete</span>
+                </div>
+                <div class="progress" style="height: 8px;">
+                    <div class="progress-bar" role="progressbar" style="width: @((Model.CurrentStepNumber * 100 / Model.TotalSteps))%"></div>
+                </div>
+            </div>
+
+            <!-- Step Indicators -->
+            <nav class="mb-4">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item">
+                        <a asp-page="StoreProfile"><i class="bi bi-check-circle-fill text-success me-1"></i>Store Profile</a>
+                    </li>
+                    <li class="breadcrumb-item active"><i class="bi bi-shield-check me-1"></i>Verification</li>
+                    <li class="breadcrumb-item text-muted"><i class="bi bi-credit-card me-1"></i>Payout</li>
+                </ol>
+            </nav>
+
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0"><i class="bi bi-shield-check me-2"></i>Verification Data</h4>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted mb-4">Provide your business information for verification purposes. This helps us ensure the security and legitimacy of sellers on our platform.</p>
+
+                    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+                    {
+                        <div class="alert alert-danger" role="alert">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>@Model.ErrorMessage
+                        </div>
+                    }
+
+                    <form method="post">
+                        <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+                        <div class="mb-3">
+                            <label asp-for="BusinessName" class="form-label">Business Name <span class="text-danger">*</span></label>
+                            <input asp-for="BusinessName" class="form-control" placeholder="Enter your legal business name" />
+                            <span asp-validation-for="BusinessName" class="text-danger"></span>
+                            <div class="form-text">The official registered name of your business.</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="BusinessAddress" class="form-label">Business Address <span class="text-danger">*</span></label>
+                            <textarea asp-for="BusinessAddress" class="form-control" rows="3" placeholder="Enter your full business address"></textarea>
+                            <span asp-validation-for="BusinessAddress" class="text-danger"></span>
+                            <div class="form-text">The registered address of your business.</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="TaxId" class="form-label">Tax Identification Number <span class="text-danger">*</span></label>
+                            <input asp-for="TaxId" class="form-control" placeholder="Enter your tax ID (e.g., EIN, VAT number)" />
+                            <span asp-validation-for="TaxId" class="text-danger"></span>
+                            <div class="form-text">Your tax identification number for tax reporting purposes.</div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label asp-for="BusinessRegistrationNumber" class="form-label">Business Registration Number (Optional)</label>
+                            <input asp-for="BusinessRegistrationNumber" class="form-control" placeholder="Enter your business registration number" />
+                            <span asp-validation-for="BusinessRegistrationNumber" class="text-danger"></span>
+                            <div class="form-text">Your official business registration or company number if applicable.</div>
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <a asp-page="StoreProfile" class="btn btn-outline-secondary">
+                                <i class="bi bi-arrow-left me-1"></i>Back
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                Continue <i class="bi bi-arrow-right ms-1"></i>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="text-center mt-3">
+                <small class="text-muted">
+                    <i class="bi bi-info-circle me-1"></i>Your progress is automatically saved.
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
