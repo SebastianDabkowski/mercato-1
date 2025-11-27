@@ -223,9 +223,20 @@ Three roles are seeded at startup via `RoleSeeder`:
 - **Seller** - For seller users  
 - **Admin** - For administrator users
 
+### Social Login (OAuth)
+
+Buyers can log in using external OAuth providers:
+
+- **Google**: Enabled by configuring `Authentication:Google:ClientId` and `Authentication:Google:ClientSecret`
+- **Facebook**: Enabled by configuring `Authentication:Facebook:AppId` and `Authentication:Facebook:AppSecret`
+
+Social login services are implemented in `Mercato.Identity`:
+- `IGoogleLoginService` / `GoogleLoginService`
+- `IFacebookLoginService` / `FacebookLoginService`
+
 ### Extending Authentication
 
-For new authentication features (e.g., social login, 2FA), add them to `Mercato.Identity` and expose via `AddIdentityModule()`.
+For new authentication features (e.g., additional social login providers, 2FA), add them to `Mercato.Identity` and expose via `AddIdentityModule()`.
 
 ---
 

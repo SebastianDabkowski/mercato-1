@@ -164,6 +164,15 @@ builder.Services.ConfigureApplicationCookie(options =>
 });
 ```
 
+### Social Login (OAuth)
+
+The platform supports social login for buyers via OAuth providers:
+
+- **Google**: Configure `Authentication:Google:ClientId` and `Authentication:Google:ClientSecret` in `appsettings.json`
+- **Facebook**: Configure `Authentication:Facebook:AppId` and `Authentication:Facebook:AppSecret` in `appsettings.json`
+
+When configured, social login buttons appear on the login page automatically.
+
 ### Role Seeding
 
 Roles are seeded at startup in `Mercato.Web/Data/RoleSeeder.cs`:

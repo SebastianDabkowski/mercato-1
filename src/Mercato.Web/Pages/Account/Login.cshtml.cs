@@ -40,7 +40,7 @@ public class LoginModel : PageModel
     public string? ReturnUrl { get; set; }
 
     /// <summary>
-    /// Gets or sets an external error message (e.g., from Google callback).
+    /// Gets or sets an external error message (e.g., from Google or Facebook callback).
     /// </summary>
     public string? ExternalErrorMessage { get; set; }
 
@@ -49,23 +49,35 @@ public class LoginModel : PageModel
     /// </summary>
     public bool IsGoogleLoginEnabled { get; private set; }
 
+    /// <summary>
+    /// Gets a value indicating whether Facebook login is available.
+    /// </summary>
+    public bool IsFacebookLoginEnabled { get; private set; }
+
     public void OnGet(string? returnUrl = null, string? errorMessage = null)
     {
         ReturnUrl = returnUrl;
         ExternalErrorMessage = errorMessage ?? TempData["ErrorMessage"]?.ToString();
         
         // Check if Google login is configured
-        var clientId = _configuration["Authentication:Google:ClientId"];
-        IsGoogleLoginEnabled = !string.IsNullOrEmpty(clientId);
+        var googleClientId = _configuration["Authentication:Google:ClientId"];
+        IsGoogleLoginEnabled = !string.IsNullOrEmpty(googleClientId);
+        
+        // Check if Facebook login is configured
+        var facebookAppId = _configuration["Authentication:Facebook:AppId"];
+        IsFacebookLoginEnabled = !string.IsNullOrEmpty(facebookAppId);
     }
 
     public async Task<IActionResult> OnPostAsync(string? returnUrl = null)
     {
         returnUrl ??= Url.Content("~/");
         
-        // Re-check Google configuration for page render
-        var clientId = _configuration["Authentication:Google:ClientId"];
-        IsGoogleLoginEnabled = !string.IsNullOrEmpty(clientId);
+        // Re-check configuration for page render
+        var googleClientId = _configuration["Authentication:Google:ClientId"];
+        IsGoogleLoginEnabled = !string.IsNullOrEmpty(googleClientId);
+        
+        var facebookAppId = _configuration["Authentication:Facebook:AppId"];
+        IsFacebookLoginEnabled = !string.IsNullOrEmpty(facebookAppId);
 
         if (!ModelState.IsValid)
         {

@@ -23,7 +23,7 @@ This solution uses a modular, layered architecture with a Razor Pages Web App an
 
 ## Key Modules and Features (from PRD)
 **Epics in Scope:**
-- **Identity & Access Management:** Registration and login (buyers/sellers), social login (buyers), email verification, password reset, session management.
+- **Identity & Access Management:** Registration and login (buyers/sellers), social login (buyers via Google and Facebook), email verification, password reset, session management.
 - **Seller Management:** Seller onboarding, store profile/verification, public store page, payout settings.
 - **Product Catalog Management:** Product CRUD, category tree, bulk updates, CSV import/export, product workflow.
 - **Product Search & Navigation:** Search, filters, sorting, category pages, recently viewed items.
