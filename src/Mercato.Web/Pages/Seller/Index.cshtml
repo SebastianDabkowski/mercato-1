@@ -1,24 +1,157 @@
 @page
+@using Mercato.Web.Pages.Seller
 @model Mercato.Web.Pages.Seller.IndexModel
 @{
-    ViewData["Title"] = "Seller Portal";
+    ViewData["Title"] = "Seller Dashboard";
 }
 
-@* TODO: Implement actual UI for Seller section *@
-<h1>Seller Portal</h1>
+<h1>Seller Dashboard</h1>
 
-<div class="alert alert-info">
-    <strong>Coming Soon!</strong> This page is under development.
+<!-- KYC Verification Status Section -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0">
+            <i class="bi bi-shield-check me-2"></i>KYC Verification Status
+        </h5>
+    </div>
+    <div class="card-body">
+        @if (Model.HasError)
+        {
+            <div class="alert alert-danger" role="alert">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                <strong>Error:</strong> @Model.ErrorMessage
+                <div class="mt-2">
+                    <a href="@Url.Page("/Seller/Index")" class="btn btn-outline-danger btn-sm">
+                        <i class="bi bi-arrow-clockwise me-1"></i>Retry
+                    </a>
+                </div>
+            </div>
+        }
+        else
+        {
+            @switch (Model.KycStatus)
+            {
+                case KycVerificationStatus.NotSubmitted:
+                    <div class="alert alert-warning d-flex align-items-start" role="alert">
+                        <i class="bi bi-exclamation-circle-fill me-3 fs-4"></i>
+                        <div>
+                            <h6 class="alert-heading mb-1">KYC Verification Required</h6>
+                            <p class="mb-2">You must complete KYC verification before you can list products for sale.</p>
+                            <p class="mb-0 text-muted small">Submit your documents to verify your identity and business.</p>
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <a asp-page="Kyc/Submit" class="btn btn-primary">
+                            <i class="bi bi-upload me-1"></i>Submit KYC Documents
+                        </a>
+                    </div>
+                    break;
+
+                case KycVerificationStatus.Pending:
+                    <div class="alert alert-secondary d-flex align-items-start" role="alert">
+                        <i class="bi bi-hourglass-split me-3 fs-4"></i>
+                        <div>
+                            <h6 class="alert-heading mb-1">KYC Submission Pending</h6>
+                            <p class="mb-2">Your documents have been submitted and are waiting to be reviewed.</p>
+                            <p class="mb-0 text-muted small">You will be notified once the review begins.</p>
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <a asp-page="Kyc/Index" class="btn btn-outline-secondary">
+                            <i class="bi bi-eye me-1"></i>View Submissions
+                        </a>
+                    </div>
+                    break;
+
+                case KycVerificationStatus.UnderReview:
+                    <div class="alert alert-info d-flex align-items-start" role="alert">
+                        <i class="bi bi-search me-3 fs-4"></i>
+                        <div>
+                            <h6 class="alert-heading mb-1">KYC Under Review</h6>
+                            <p class="mb-2">Your documents are currently being reviewed by our verification team.</p>
+                            <p class="mb-0 text-muted small">This process typically takes 1-3 business days.</p>
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <a asp-page="Kyc/Index" class="btn btn-outline-info">
+                            <i class="bi bi-eye me-1"></i>View Submissions
+                        </a>
+                    </div>
+                    break;
+
+                case KycVerificationStatus.Verified:
+                    <div class="alert alert-success d-flex align-items-start" role="alert">
+                        <i class="bi bi-check-circle-fill me-3 fs-4"></i>
+                        <div>
+                            <h6 class="alert-heading mb-1">KYC Verified</h6>
+                            <p class="mb-2">Your identity has been verified. You can now list products for sale.</p>
+                            <p class="mb-0 text-muted small">Your account is in good standing.</p>
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <a asp-page="Kyc/Index" class="btn btn-outline-success">
+                            <i class="bi bi-eye me-1"></i>View Verification Details
+                        </a>
+                    </div>
+                    break;
+
+                case KycVerificationStatus.Rejected:
+                    <div class="alert alert-danger d-flex align-items-start" role="alert">
+                        <i class="bi bi-x-circle-fill me-3 fs-4"></i>
+                        <div>
+                            <h6 class="alert-heading mb-1">KYC Verification Rejected</h6>
+                            <p class="mb-2">Your KYC submission was not approved. Action is required.</p>
+                            @if (Model.LatestSubmission?.RejectionReason != null)
+                            {
+                                <p class="mb-2"><strong>Reason:</strong> @Model.LatestSubmission.RejectionReason</p>
+                            }
+                            <p class="mb-0 text-muted small">Please review the rejection reason and submit updated documents.</p>
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <a asp-page="Kyc/Submit" class="btn btn-danger">
+                            <i class="bi bi-upload me-1"></i>Resubmit Documents
+                        </a>
+                        <a asp-page="Kyc/Index" class="btn btn-outline-danger ms-2">
+                            <i class="bi bi-eye me-1"></i>View Details
+                        </a>
+                    </div>
+                    break;
+            }
+        }
+    </div>
 </div>
 
-<p>Welcome to the Seller Portal. Here you will be able to:</p>
-<ul>
-    <li>Manage your store</li>
-    <li>Add and edit products</li>
-    <li>View and manage orders</li>
-    <li>Track sales and analytics</li>
-</ul>
+<!-- Seller Portal Features Section -->
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">Seller Portal Features</h5>
+    </div>
+    <div class="card-body">
+        <p>Welcome to the Seller Portal. Here you will be able to:</p>
+        <ul class="list-group list-group-flush">
+            <li class="list-group-item d-flex align-items-center">
+                <i class="bi bi-shop me-3 text-primary"></i>
+                <span>Manage your store</span>
+            </li>
+            <li class="list-group-item d-flex align-items-center">
+                <i class="bi bi-box-seam me-3 text-primary"></i>
+                <span>Add and edit products</span>
+            </li>
+            <li class="list-group-item d-flex align-items-center">
+                <i class="bi bi-receipt me-3 text-primary"></i>
+                <span>View and manage orders</span>
+            </li>
+            <li class="list-group-item d-flex align-items-center">
+                <i class="bi bi-graph-up me-3 text-primary"></i>
+                <span>Track sales and analytics</span>
+            </li>
+        </ul>
+    </div>
+</div>
 
 <div class="mt-4">
-    <a asp-page="Details" class="btn btn-outline-primary">View Seller Details</a>
+    <a asp-page="Details" class="btn btn-outline-primary">
+        <i class="bi bi-person-badge me-1"></i>View Seller Details
+    </a>
 </div>
