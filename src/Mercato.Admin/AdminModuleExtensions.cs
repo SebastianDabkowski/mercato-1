@@ -1,12 +1,35 @@
+using Mercato.Admin.Application.Services;
+using Mercato.Admin.Domain.Interfaces;
+using Mercato.Admin.Infrastructure;
+using Mercato.Admin.Infrastructure.Persistence;
+using Mercato.Admin.Infrastructure.Repositories;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Mercato.Admin;
 
 public static class AdminModuleExtensions
 {
-    public static IServiceCollection AddAdminModule(this IServiceCollection services)
+    public static IServiceCollection AddAdminModule(this IServiceCollection services, IConfiguration? configuration = null)
     {
-        // TODO: Register Admin module services and infrastructure here
+        // Register AdminDbContext
+        if (configuration != null)
+        {
+            var connectionString = configuration.GetConnectionString("DefaultConnection");
+            if (!string.IsNullOrEmpty(connectionString))
+            {
+                services.AddDbContext<AdminDbContext>(options =>
+                    options.UseSqlServer(connectionString));
+            }
+        }
+
+        // Register repositories
+        services.AddScoped<IRoleChangeAuditRepository, RoleChangeAuditRepository>();
+
+        // Register services
+        services.AddScoped<IUserRoleManagementService, UserRoleManagementService>();
+
         return services;
     }
 }
