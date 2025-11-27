@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Mercato.Identity.Application.Commands;
 using Mercato.Identity.Application.Services;
 using Microsoft.AspNetCore.Identity;
@@ -67,10 +68,10 @@ public class SellerRegistrationService : ISellerRegistrationService
         // Store business details as claims
         var claims = new[]
         {
-            new System.Security.Claims.Claim("BusinessName", command.BusinessName),
-            new System.Security.Claims.Claim("BusinessAddress", command.BusinessAddress),
-            new System.Security.Claims.Claim("TaxId", command.TaxId),
-            new System.Security.Claims.Claim("ContactName", command.ContactName)
+            new Claim("BusinessName", command.BusinessName),
+            new Claim("BusinessAddress", command.BusinessAddress),
+            new Claim("TaxId", command.TaxId),
+            new Claim("ContactName", command.ContactName)
         };
 
         var claimsResult = await _userManager.AddClaimsAsync(user, claims);
