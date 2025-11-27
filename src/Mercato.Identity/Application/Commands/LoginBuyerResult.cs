@@ -31,11 +31,18 @@ public class LoginBuyerResult
     public string? ErrorMessage { get; init; }
 
     /// <summary>
-    /// Creates a successful login result.
+    /// Gets the authenticated user's ID. Only set when login is successful.
+    /// Used for secure session token creation without requiring additional database lookups.
     /// </summary>
-    public static LoginBuyerResult Success()
+    public string? UserId { get; init; }
+
+    /// <summary>
+    /// Creates a successful login result with the authenticated user's ID.
+    /// </summary>
+    /// <param name="userId">The authenticated user's ID for session token creation.</param>
+    public static LoginBuyerResult Success(string userId)
     {
-        return new LoginBuyerResult { Succeeded = true };
+        return new LoginBuyerResult { Succeeded = true, UserId = userId };
     }
 
     /// <summary>

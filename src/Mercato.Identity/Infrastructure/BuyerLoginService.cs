@@ -65,6 +65,6 @@ public class BuyerLoginService : IBuyerLoginService
         // Reset failed access count on successful authentication
         await _userManager.ResetAccessFailedCountAsync(user);
 
-        return LoginBuyerResult.Success();
+        return LoginBuyerResult.Success(user.Id);
     }
 }

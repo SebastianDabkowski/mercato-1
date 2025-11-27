@@ -18,7 +18,7 @@ public class BuyerLoginServiceTests
             RememberMe = false
         };
 
-        var user = new IdentityUser { Email = command.Email, UserName = command.Email };
+        var user = new IdentityUser { Id = "user-123", Email = command.Email, UserName = command.Email };
 
         var mockUserManager = CreateMockUserManager();
         mockUserManager.Setup(x => x.FindByEmailAsync(command.Email))
@@ -41,6 +41,7 @@ public class BuyerLoginServiceTests
         Assert.True(result.Succeeded);
         Assert.Null(result.ErrorMessage);
         Assert.False(result.IsLockedOut);
+        Assert.Equal("user-123", result.UserId);
         mockUserManager.Verify(x => x.ResetAccessFailedCountAsync(user), Times.Once);
     }
 
@@ -66,6 +67,7 @@ public class BuyerLoginServiceTests
         // Assert
         Assert.False(result.Succeeded);
         Assert.Contains("Invalid email or password", result.ErrorMessage);
+        Assert.Null(result.UserId);
     }
 
     [Fact]

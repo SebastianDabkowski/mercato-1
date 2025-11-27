@@ -86,10 +86,11 @@ public class LoginModel : PageModel
 
         var result = await _loginService.LoginAsync(Input);
 
-        if (result.Succeeded)
+        if (result.Succeeded && !string.IsNullOrEmpty(result.UserId))
         {
-            // Perform the actual sign-in using SignInManager
-            var user = await _signInManager.UserManager.FindByEmailAsync(Input.Email);
+            // Use the user ID returned from the login service for secure session token creation
+            // This avoids an extra database lookup and ensures the session is tied to the validated user
+            var user = await _signInManager.UserManager.FindByIdAsync(result.UserId);
             if (user != null)
             {
                 await _signInManager.SignInAsync(user, isPersistent: Input.RememberMe);

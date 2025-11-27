@@ -18,7 +18,7 @@ public class SellerLoginServiceTests
             RememberMe = false
         };
 
-        var user = new IdentityUser { Email = command.Email, UserName = command.Email, EmailConfirmed = true };
+        var user = new IdentityUser { Id = "seller-456", Email = command.Email, UserName = command.Email, EmailConfirmed = true };
 
         var mockUserManager = CreateMockUserManager();
         mockUserManager.Setup(x => x.FindByEmailAsync(command.Email))
@@ -44,6 +44,7 @@ public class SellerLoginServiceTests
         Assert.Null(result.ErrorMessage);
         Assert.False(result.IsLockedOut);
         Assert.False(result.EmailNotVerified);
+        Assert.Equal("seller-456", result.UserId);
         mockUserManager.Verify(x => x.ResetAccessFailedCountAsync(user), Times.Once);
     }
 
@@ -69,6 +70,7 @@ public class SellerLoginServiceTests
         // Assert
         Assert.False(result.Succeeded);
         Assert.Contains("Invalid email or password", result.ErrorMessage);
+        Assert.Null(result.UserId);
     }
 
     [Fact]

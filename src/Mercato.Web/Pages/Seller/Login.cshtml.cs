@@ -58,12 +58,11 @@ public class LoginModel : PageModel
 
         var result = await _loginService.LoginAsync(Input);
 
-        if (result.Succeeded)
+        if (result.Succeeded && !string.IsNullOrEmpty(result.UserId))
         {
-            // Perform the actual sign-in using SignInManager
-            // Note: User lookup is needed because the service validates credentials but doesn't return
-            // the user object, maintaining separation between validation and ASP.NET Core Identity sign-in
-            var user = await _signInManager.UserManager.FindByEmailAsync(Input.Email);
+            // Use the user ID returned from the login service for secure session token creation
+            // This avoids an extra database lookup and ensures the session is tied to the validated user
+            var user = await _signInManager.UserManager.FindByIdAsync(result.UserId);
             if (user != null)
             {
                 await _signInManager.SignInAsync(user, isPersistent: Input.RememberMe);
