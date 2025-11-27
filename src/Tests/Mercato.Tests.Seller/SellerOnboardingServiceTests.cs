@@ -152,7 +152,9 @@ public class SellerOnboardingServiceTests
         var command = new SaveVerificationDataCommand
         {
             SellerId = TestSellerId,
-            BusinessName = "Test Business",
+            SellerType = SellerType.Individual,
+            FullName = "Test Person",
+            PersonalIdNumber = "ID12345",
             BusinessAddress = "123 Test Street",
             TaxId = "123456789"
         };
@@ -166,7 +168,7 @@ public class SellerOnboardingServiceTests
     }
 
     [Fact]
-    public async Task SaveVerificationDataAsync_WithStoreProfileComplete_SavesData()
+    public async Task SaveVerificationDataAsync_WithStoreProfileComplete_SavesIndividualData()
     {
         // Arrange
         var onboarding = CreateOnboarding();
@@ -185,7 +187,9 @@ public class SellerOnboardingServiceTests
         var command = new SaveVerificationDataCommand
         {
             SellerId = TestSellerId,
-            BusinessName = "Test Business",
+            SellerType = SellerType.Individual,
+            FullName = "Test Person",
+            PersonalIdNumber = "ID12345",
             BusinessAddress = "123 Test Street, City, Country",
             TaxId = "123456789"
         };
@@ -196,8 +200,124 @@ public class SellerOnboardingServiceTests
         // Assert
         Assert.True(result.Succeeded);
         mockRepository.Verify(r => r.UpdateAsync(It.Is<SellerOnboarding>(o =>
-            o.BusinessName == "Test Business" &&
+            o.FullName == "Test Person" &&
+            o.PersonalIdNumber == "ID12345" &&
+            o.SellerType == SellerType.Individual &&
             o.CurrentStep == OnboardingStep.PayoutBasics)), Times.Once);
+    }
+
+    [Fact]
+    public async Task SaveVerificationDataAsync_ForCompanySeller_WithValidData_SavesData()
+    {
+        // Arrange
+        var onboarding = CreateOnboarding();
+        onboarding.StoreName = "My Store";
+        onboarding.StoreDescription = "My store description that is long enough";
+        onboarding.CurrentStep = OnboardingStep.VerificationData;
+
+        var mockRepository = new Mock<ISellerOnboardingRepository>(MockBehavior.Strict);
+        mockRepository.Setup(r => r.GetBySellerIdAsync(TestSellerId))
+            .ReturnsAsync(onboarding);
+        mockRepository.Setup(r => r.UpdateAsync(It.IsAny<SellerOnboarding>()))
+            .Returns(Task.CompletedTask);
+
+        var service = CreateService(mockRepository.Object);
+
+        var command = new SaveVerificationDataCommand
+        {
+            SellerId = TestSellerId,
+            SellerType = SellerType.Company,
+            BusinessName = "Test Company LLC",
+            BusinessAddress = "123 Business Street, City, Country",
+            TaxId = "TAX123456",
+            BusinessRegistrationNumber = "REG123456",
+            ContactPersonName = "John Doe",
+            ContactPersonEmail = "john@company.com",
+            ContactPersonPhone = "+1234567890"
+        };
+
+        // Act
+        var result = await service.SaveVerificationDataAsync(command);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        mockRepository.Verify(r => r.UpdateAsync(It.Is<SellerOnboarding>(o =>
+            o.BusinessName == "Test Company LLC" &&
+            o.BusinessRegistrationNumber == "REG123456" &&
+            o.ContactPersonName == "John Doe" &&
+            o.ContactPersonEmail == "john@company.com" &&
+            o.ContactPersonPhone == "+1234567890" &&
+            o.SellerType == SellerType.Company &&
+            o.CurrentStep == OnboardingStep.PayoutBasics)), Times.Once);
+    }
+
+    [Fact]
+    public async Task SaveVerificationDataAsync_ForCompanySeller_WithMissingRequiredFields_ReturnsErrors()
+    {
+        // Arrange
+        var onboarding = CreateOnboarding();
+        onboarding.StoreName = "My Store";
+        onboarding.StoreDescription = "My store description that is long enough";
+        onboarding.CurrentStep = OnboardingStep.VerificationData;
+
+        var mockRepository = new Mock<ISellerOnboardingRepository>(MockBehavior.Strict);
+        mockRepository.Setup(r => r.GetBySellerIdAsync(TestSellerId))
+            .ReturnsAsync(onboarding);
+
+        var service = CreateService(mockRepository.Object);
+
+        var command = new SaveVerificationDataCommand
+        {
+            SellerId = TestSellerId,
+            SellerType = SellerType.Company,
+            BusinessAddress = "123 Business Street, City, Country",
+            TaxId = "TAX123456"
+            // Missing: BusinessName, BusinessRegistrationNumber, ContactPersonName, ContactPersonEmail, ContactPersonPhone
+        };
+
+        // Act
+        var result = await service.SaveVerificationDataAsync(command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains(result.Errors, e => e.Contains("Business name is required"));
+        Assert.Contains(result.Errors, e => e.Contains("Business registration number is required"));
+        Assert.Contains(result.Errors, e => e.Contains("Contact person name is required"));
+        Assert.Contains(result.Errors, e => e.Contains("Contact person email is required"));
+        Assert.Contains(result.Errors, e => e.Contains("Contact person phone is required"));
+    }
+
+    [Fact]
+    public async Task SaveVerificationDataAsync_ForIndividualSeller_WithMissingRequiredFields_ReturnsErrors()
+    {
+        // Arrange
+        var onboarding = CreateOnboarding();
+        onboarding.StoreName = "My Store";
+        onboarding.StoreDescription = "My store description that is long enough";
+        onboarding.CurrentStep = OnboardingStep.VerificationData;
+
+        var mockRepository = new Mock<ISellerOnboardingRepository>(MockBehavior.Strict);
+        mockRepository.Setup(r => r.GetBySellerIdAsync(TestSellerId))
+            .ReturnsAsync(onboarding);
+
+        var service = CreateService(mockRepository.Object);
+
+        var command = new SaveVerificationDataCommand
+        {
+            SellerId = TestSellerId,
+            SellerType = SellerType.Individual,
+            BusinessAddress = "123 Home Street, City, Country",
+            TaxId = "TAX123456"
+            // Missing: FullName, PersonalIdNumber
+        };
+
+        // Act
+        var result = await service.SaveVerificationDataAsync(command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains(result.Errors, e => e.Contains("Full name is required"));
+        Assert.Contains(result.Errors, e => e.Contains("Personal ID number is required"));
     }
 
     [Fact]
@@ -234,7 +354,9 @@ public class SellerOnboardingServiceTests
         var onboarding = CreateOnboarding();
         onboarding.StoreName = "My Store";
         onboarding.StoreDescription = "My store description that is long enough";
-        onboarding.BusinessName = "Test Business";
+        onboarding.SellerType = SellerType.Individual;
+        onboarding.FullName = "Test Person";
+        onboarding.PersonalIdNumber = "ID12345678";
         onboarding.BusinessAddress = "123 Test Street";
         onboarding.TaxId = "123456789";
         onboarding.CurrentStep = OnboardingStep.PayoutBasics;
@@ -381,17 +503,85 @@ public class SellerOnboardingServiceTests
     }
 
     [Fact]
-    public void GetVerificationDataValidationErrors_WithMissingFields_ReturnsErrors()
+    public void GetVerificationDataValidationErrors_ForIndividual_WithMissingFields_ReturnsErrors()
     {
         // Arrange
         var onboarding = CreateOnboarding();
+        onboarding.SellerType = SellerType.Individual;
         var service = CreateService(new Mock<ISellerOnboardingRepository>(MockBehavior.Strict).Object);
 
         // Act
         var errors = service.GetVerificationDataValidationErrors(onboarding);
 
         // Assert
-        Assert.Equal(3, errors.Count);
+        Assert.Equal(4, errors.Count);
+        Assert.Contains("Address is required.", errors);
+        Assert.Contains("Tax ID is required.", errors);
+        Assert.Contains("Full name is required.", errors);
+        Assert.Contains("Personal ID number is required.", errors);
+    }
+
+    [Fact]
+    public void GetVerificationDataValidationErrors_ForCompany_WithMissingFields_ReturnsErrors()
+    {
+        // Arrange
+        var onboarding = CreateOnboarding();
+        onboarding.SellerType = SellerType.Company;
+        var service = CreateService(new Mock<ISellerOnboardingRepository>(MockBehavior.Strict).Object);
+
+        // Act
+        var errors = service.GetVerificationDataValidationErrors(onboarding);
+
+        // Assert
+        Assert.Equal(7, errors.Count);
+        Assert.Contains("Address is required.", errors);
+        Assert.Contains("Tax ID is required.", errors);
+        Assert.Contains("Business name is required.", errors);
+        Assert.Contains("Business registration number is required.", errors);
+        Assert.Contains("Contact person name is required.", errors);
+        Assert.Contains("Contact person email is required.", errors);
+        Assert.Contains("Contact person phone is required.", errors);
+    }
+
+    [Fact]
+    public void GetVerificationDataValidationErrors_ForIndividual_WithAllFieldsComplete_ReturnsNoErrors()
+    {
+        // Arrange
+        var onboarding = CreateOnboarding();
+        onboarding.SellerType = SellerType.Individual;
+        onboarding.FullName = "John Doe";
+        onboarding.PersonalIdNumber = "ID12345678";
+        onboarding.BusinessAddress = "123 Main Street, City";
+        onboarding.TaxId = "TAX123456789";
+        var service = CreateService(new Mock<ISellerOnboardingRepository>(MockBehavior.Strict).Object);
+
+        // Act
+        var errors = service.GetVerificationDataValidationErrors(onboarding);
+
+        // Assert
+        Assert.Empty(errors);
+    }
+
+    [Fact]
+    public void GetVerificationDataValidationErrors_ForCompany_WithAllFieldsComplete_ReturnsNoErrors()
+    {
+        // Arrange
+        var onboarding = CreateOnboarding();
+        onboarding.SellerType = SellerType.Company;
+        onboarding.BusinessName = "Test Company LLC";
+        onboarding.BusinessAddress = "123 Business Street, City";
+        onboarding.TaxId = "TAX123456789";
+        onboarding.BusinessRegistrationNumber = "REG123456";
+        onboarding.ContactPersonName = "Jane Smith";
+        onboarding.ContactPersonEmail = "jane@company.com";
+        onboarding.ContactPersonPhone = "+1234567890";
+        var service = CreateService(new Mock<ISellerOnboardingRepository>(MockBehavior.Strict).Object);
+
+        // Act
+        var errors = service.GetVerificationDataValidationErrors(onboarding);
+
+        // Assert
+        Assert.Empty(errors);
     }
 
     [Fact]
@@ -435,11 +625,16 @@ public class SellerOnboardingServiceTests
             SellerId = TestSellerId,
             CurrentStep = OnboardingStep.Completed,
             Status = OnboardingStatus.InProgress,
+            SellerType = SellerType.Company,
             StoreName = "Test Store",
             StoreDescription = "This is a test store description that is long enough.",
             BusinessName = "Test Business",
             BusinessAddress = "123 Test Street, City, Country",
             TaxId = "123456789",
+            BusinessRegistrationNumber = "REG123456",
+            ContactPersonName = "Test Contact",
+            ContactPersonEmail = "contact@test.com",
+            ContactPersonPhone = "+1234567890",
             BankName = "Test Bank",
             BankAccountNumber = "1234567890",
             AccountHolderName = "Test Account Holder",

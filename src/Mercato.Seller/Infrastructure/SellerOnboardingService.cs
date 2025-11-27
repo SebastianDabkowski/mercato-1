@@ -132,24 +132,68 @@ public class SellerOnboardingService : ISellerOnboardingService
             return SaveOnboardingStepResult.Failure("Please complete the store profile step first.");
         }
 
-        // Validate command
-        var errors = new List<string>();
-        if (string.IsNullOrWhiteSpace(command.BusinessName))
+        // Validate command based on seller type
+        var errors = ValidateVerificationDataCommand(command);
+
+        if (errors.Count > 0)
         {
-            errors.Add("Business name is required.");
-        }
-        else if (command.BusinessName.Length < 2 || command.BusinessName.Length > 200)
-        {
-            errors.Add("Business name must be between 2 and 200 characters.");
+            return SaveOnboardingStepResult.Failure(errors);
         }
 
+        // Save the data
+        onboarding.SellerType = command.SellerType;
+        onboarding.BusinessAddress = command.BusinessAddress;
+        onboarding.TaxId = command.TaxId;
+
+        if (command.SellerType == SellerType.Company)
+        {
+            onboarding.BusinessName = command.BusinessName;
+            onboarding.BusinessRegistrationNumber = command.BusinessRegistrationNumber;
+            onboarding.ContactPersonName = command.ContactPersonName;
+            onboarding.ContactPersonEmail = command.ContactPersonEmail;
+            onboarding.ContactPersonPhone = command.ContactPersonPhone;
+            // Clear individual fields
+            onboarding.FullName = null;
+            onboarding.PersonalIdNumber = null;
+        }
+        else
+        {
+            onboarding.FullName = command.FullName;
+            onboarding.PersonalIdNumber = command.PersonalIdNumber;
+            // Clear company fields
+            onboarding.BusinessName = null;
+            onboarding.BusinessRegistrationNumber = null;
+            onboarding.ContactPersonName = null;
+            onboarding.ContactPersonEmail = null;
+            onboarding.ContactPersonPhone = null;
+        }
+
+        onboarding.LastUpdatedAt = DateTimeOffset.UtcNow;
+
+        // Advance to next step if verification data is complete
+        AdvanceStepIfComplete(onboarding, OnboardingStep.VerificationData, OnboardingStep.PayoutBasics, onboarding.IsVerificationDataComplete);
+
+        await _repository.UpdateAsync(onboarding);
+        _logger.LogInformation("Saved verification data for seller {SellerId} as {SellerType}", command.SellerId, command.SellerType);
+
+        return SaveOnboardingStepResult.Success();
+    }
+
+    /// <summary>
+    /// Validates the verification data command based on seller type.
+    /// </summary>
+    private static List<string> ValidateVerificationDataCommand(SaveVerificationDataCommand command)
+    {
+        var errors = new List<string>();
+
+        // Common validations
         if (string.IsNullOrWhiteSpace(command.BusinessAddress))
         {
-            errors.Add("Business address is required.");
+            errors.Add("Address is required.");
         }
         else if (command.BusinessAddress.Length < 5 || command.BusinessAddress.Length > 500)
         {
-            errors.Add("Business address must be between 5 and 500 characters.");
+            errors.Add("Address must be between 5 and 500 characters.");
         }
 
         if (string.IsNullOrWhiteSpace(command.TaxId))
@@ -161,25 +205,85 @@ public class SellerOnboardingService : ISellerOnboardingService
             errors.Add("Tax ID must be between 5 and 50 characters.");
         }
 
-        if (errors.Count > 0)
+        if (command.SellerType == SellerType.Company)
         {
-            return SaveOnboardingStepResult.Failure(errors);
+            ValidateCompanyFields(command, errors);
+        }
+        else
+        {
+            ValidateIndividualFields(command, errors);
         }
 
-        // Save the data
-        onboarding.BusinessName = command.BusinessName;
-        onboarding.BusinessAddress = command.BusinessAddress;
-        onboarding.TaxId = command.TaxId;
-        onboarding.BusinessRegistrationNumber = command.BusinessRegistrationNumber;
-        onboarding.LastUpdatedAt = DateTimeOffset.UtcNow;
+        return errors;
+    }
 
-        // Advance to next step if verification data is complete
-        AdvanceStepIfComplete(onboarding, OnboardingStep.VerificationData, OnboardingStep.PayoutBasics, onboarding.IsVerificationDataComplete);
+    private static void ValidateCompanyFields(SaveVerificationDataCommand command, List<string> errors)
+    {
+        if (string.IsNullOrWhiteSpace(command.BusinessName))
+        {
+            errors.Add("Business name is required.");
+        }
+        else if (command.BusinessName.Length < 2 || command.BusinessName.Length > 200)
+        {
+            errors.Add("Business name must be between 2 and 200 characters.");
+        }
 
-        await _repository.UpdateAsync(onboarding);
-        _logger.LogInformation("Saved verification data for seller {SellerId}", command.SellerId);
+        if (string.IsNullOrWhiteSpace(command.BusinessRegistrationNumber))
+        {
+            errors.Add("Business registration number is required.");
+        }
+        else if (command.BusinessRegistrationNumber.Length > 50)
+        {
+            errors.Add("Business registration number must be at most 50 characters.");
+        }
 
-        return SaveOnboardingStepResult.Success();
+        if (string.IsNullOrWhiteSpace(command.ContactPersonName))
+        {
+            errors.Add("Contact person name is required.");
+        }
+        else if (command.ContactPersonName.Length < 2 || command.ContactPersonName.Length > 200)
+        {
+            errors.Add("Contact person name must be between 2 and 200 characters.");
+        }
+
+        if (string.IsNullOrWhiteSpace(command.ContactPersonEmail))
+        {
+            errors.Add("Contact person email is required.");
+        }
+        else if (command.ContactPersonEmail.Length > 254)
+        {
+            errors.Add("Contact person email must be at most 254 characters.");
+        }
+
+        if (string.IsNullOrWhiteSpace(command.ContactPersonPhone))
+        {
+            errors.Add("Contact person phone is required.");
+        }
+        else if (command.ContactPersonPhone.Length > 20)
+        {
+            errors.Add("Contact person phone must be at most 20 characters.");
+        }
+    }
+
+    private static void ValidateIndividualFields(SaveVerificationDataCommand command, List<string> errors)
+    {
+        if (string.IsNullOrWhiteSpace(command.FullName))
+        {
+            errors.Add("Full name is required.");
+        }
+        else if (command.FullName.Length < 2 || command.FullName.Length > 200)
+        {
+            errors.Add("Full name must be between 2 and 200 characters.");
+        }
+
+        if (string.IsNullOrWhiteSpace(command.PersonalIdNumber))
+        {
+            errors.Add("Personal ID number is required.");
+        }
+        else if (command.PersonalIdNumber.Length < 5 || command.PersonalIdNumber.Length > 50)
+        {
+            errors.Add("Personal ID number must be between 5 and 50 characters.");
+        }
     }
 
     /// <inheritdoc />
@@ -342,18 +446,52 @@ public class SellerOnboardingService : ISellerOnboardingService
         ArgumentNullException.ThrowIfNull(onboarding);
 
         var errors = new List<string>();
-        if (string.IsNullOrWhiteSpace(onboarding.BusinessName))
-        {
-            errors.Add("Business name is required.");
-        }
+
+        // Common validations
         if (string.IsNullOrWhiteSpace(onboarding.BusinessAddress))
         {
-            errors.Add("Business address is required.");
+            errors.Add("Address is required.");
         }
         if (string.IsNullOrWhiteSpace(onboarding.TaxId))
         {
             errors.Add("Tax ID is required.");
         }
+
+        if (onboarding.SellerType == SellerType.Company)
+        {
+            if (string.IsNullOrWhiteSpace(onboarding.BusinessName))
+            {
+                errors.Add("Business name is required.");
+            }
+            if (string.IsNullOrWhiteSpace(onboarding.BusinessRegistrationNumber))
+            {
+                errors.Add("Business registration number is required.");
+            }
+            if (string.IsNullOrWhiteSpace(onboarding.ContactPersonName))
+            {
+                errors.Add("Contact person name is required.");
+            }
+            if (string.IsNullOrWhiteSpace(onboarding.ContactPersonEmail))
+            {
+                errors.Add("Contact person email is required.");
+            }
+            if (string.IsNullOrWhiteSpace(onboarding.ContactPersonPhone))
+            {
+                errors.Add("Contact person phone is required.");
+            }
+        }
+        else
+        {
+            if (string.IsNullOrWhiteSpace(onboarding.FullName))
+            {
+                errors.Add("Full name is required.");
+            }
+            if (string.IsNullOrWhiteSpace(onboarding.PersonalIdNumber))
+            {
+                errors.Add("Personal ID number is required.");
+            }
+        }
+
         return errors;
     }
 

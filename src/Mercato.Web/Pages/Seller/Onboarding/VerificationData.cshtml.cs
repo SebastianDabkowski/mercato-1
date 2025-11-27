@@ -4,6 +4,7 @@ using Mercato.Seller.Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
 
@@ -27,20 +28,85 @@ public class VerificationDataModel : PageModel
     }
 
     /// <summary>
-    /// Gets or sets the business name.
+    /// Gets or sets the seller type.
     /// </summary>
     [BindProperty]
-    [Required(ErrorMessage = "Business name is required.")]
-    [StringLength(200, MinimumLength = 2, ErrorMessage = "Business name must be between 2 and 200 characters.")]
-    public string BusinessName { get; set; } = string.Empty;
+    [Required(ErrorMessage = "Seller type is required.")]
+    public SellerType SellerType { get; set; } = SellerType.Individual;
 
     /// <summary>
-    /// Gets or sets the business address.
+    /// Gets the seller type options for dropdown.
+    /// </summary>
+    public List<SelectListItem> SellerTypeOptions { get; } = new()
+    {
+        new SelectListItem { Value = "0", Text = "Individual" },
+        new SelectListItem { Value = "1", Text = "Company" }
+    };
+
+    // Company-specific fields
+
+    /// <summary>
+    /// Gets or sets the business name (for Company sellers).
     /// </summary>
     [BindProperty]
-    [Required(ErrorMessage = "Business address is required.")]
-    [StringLength(500, MinimumLength = 5, ErrorMessage = "Business address must be between 5 and 500 characters.")]
-    public string BusinessAddress { get; set; } = string.Empty;
+    [StringLength(200, MinimumLength = 2, ErrorMessage = "Business name must be between 2 and 200 characters.")]
+    public string? BusinessName { get; set; }
+
+    /// <summary>
+    /// Gets or sets the business registration number (for Company sellers).
+    /// </summary>
+    [BindProperty]
+    [StringLength(50, ErrorMessage = "Business registration number must be at most 50 characters.")]
+    public string? BusinessRegistrationNumber { get; set; }
+
+    /// <summary>
+    /// Gets or sets the contact person name (for Company sellers).
+    /// </summary>
+    [BindProperty]
+    [StringLength(200, MinimumLength = 2, ErrorMessage = "Contact person name must be between 2 and 200 characters.")]
+    public string? ContactPersonName { get; set; }
+
+    /// <summary>
+    /// Gets or sets the contact person email (for Company sellers).
+    /// </summary>
+    [BindProperty]
+    [EmailAddress(ErrorMessage = "Please enter a valid email address.")]
+    [StringLength(254, ErrorMessage = "Contact person email must be at most 254 characters.")]
+    public string? ContactPersonEmail { get; set; }
+
+    /// <summary>
+    /// Gets or sets the contact person phone (for Company sellers).
+    /// </summary>
+    [BindProperty]
+    [Phone(ErrorMessage = "Please enter a valid phone number.")]
+    [StringLength(20, ErrorMessage = "Contact person phone must be at most 20 characters.")]
+    public string? ContactPersonPhone { get; set; }
+
+    // Individual-specific fields
+
+    /// <summary>
+    /// Gets or sets the full name (for Individual sellers).
+    /// </summary>
+    [BindProperty]
+    [StringLength(200, MinimumLength = 2, ErrorMessage = "Full name must be between 2 and 200 characters.")]
+    public string? FullName { get; set; }
+
+    /// <summary>
+    /// Gets or sets the personal ID number (for Individual sellers).
+    /// </summary>
+    [BindProperty]
+    [StringLength(50, MinimumLength = 5, ErrorMessage = "Personal ID number must be between 5 and 50 characters.")]
+    public string? PersonalIdNumber { get; set; }
+
+    // Common fields
+
+    /// <summary>
+    /// Gets or sets the address.
+    /// </summary>
+    [BindProperty]
+    [Required(ErrorMessage = "Address is required.")]
+    [StringLength(500, MinimumLength = 5, ErrorMessage = "Address must be between 5 and 500 characters.")]
+    public string Address { get; set; } = string.Empty;
 
     /// <summary>
     /// Gets or sets the tax identification number.
@@ -49,13 +115,6 @@ public class VerificationDataModel : PageModel
     [Required(ErrorMessage = "Tax ID is required.")]
     [StringLength(50, MinimumLength = 5, ErrorMessage = "Tax ID must be between 5 and 50 characters.")]
     public string TaxId { get; set; } = string.Empty;
-
-    /// <summary>
-    /// Gets or sets the business registration number.
-    /// </summary>
-    [BindProperty]
-    [StringLength(50, ErrorMessage = "Business registration number must be at most 50 characters.")]
-    public string? BusinessRegistrationNumber { get; set; }
 
     /// <summary>
     /// Gets the current onboarding record.
@@ -104,10 +163,23 @@ public class VerificationDataModel : PageModel
             }
 
             // Pre-fill form with existing data
-            BusinessName = Onboarding.BusinessName ?? string.Empty;
-            BusinessAddress = Onboarding.BusinessAddress ?? string.Empty;
+            SellerType = Onboarding.SellerType;
+            Address = Onboarding.BusinessAddress ?? string.Empty;
             TaxId = Onboarding.TaxId ?? string.Empty;
-            BusinessRegistrationNumber = Onboarding.BusinessRegistrationNumber;
+
+            if (Onboarding.SellerType == SellerType.Company)
+            {
+                BusinessName = Onboarding.BusinessName;
+                BusinessRegistrationNumber = Onboarding.BusinessRegistrationNumber;
+                ContactPersonName = Onboarding.ContactPersonName;
+                ContactPersonEmail = Onboarding.ContactPersonEmail;
+                ContactPersonPhone = Onboarding.ContactPersonPhone;
+            }
+            else
+            {
+                FullName = Onboarding.FullName;
+                PersonalIdNumber = Onboarding.PersonalIdNumber;
+            }
 
             return Page();
         }
@@ -128,6 +200,9 @@ public class VerificationDataModel : PageModel
             return RedirectToPage("/Seller/Login");
         }
 
+        // Clear validation errors for fields not applicable to the selected seller type
+        ClearInapplicableValidationErrors();
+
         if (!ModelState.IsValid)
         {
             return Page();
@@ -138,17 +213,30 @@ public class VerificationDataModel : PageModel
             var command = new SaveVerificationDataCommand
             {
                 SellerId = sellerId,
-                BusinessName = BusinessName,
-                BusinessAddress = BusinessAddress,
-                TaxId = TaxId,
-                BusinessRegistrationNumber = BusinessRegistrationNumber
+                SellerType = SellerType,
+                BusinessAddress = Address,
+                TaxId = TaxId
             };
+
+            if (SellerType == SellerType.Company)
+            {
+                command.BusinessName = BusinessName;
+                command.BusinessRegistrationNumber = BusinessRegistrationNumber;
+                command.ContactPersonName = ContactPersonName;
+                command.ContactPersonEmail = ContactPersonEmail;
+                command.ContactPersonPhone = ContactPersonPhone;
+            }
+            else
+            {
+                command.FullName = FullName;
+                command.PersonalIdNumber = PersonalIdNumber;
+            }
 
             var result = await _onboardingService.SaveVerificationDataAsync(command);
 
             if (result.Succeeded)
             {
-                _logger.LogInformation("Verification data saved for seller {SellerId}", sellerId);
+                _logger.LogInformation("Verification data saved for seller {SellerId} as {SellerType}", sellerId, SellerType);
                 return RedirectToPage("PayoutBasics");
             }
 
@@ -164,6 +252,28 @@ public class VerificationDataModel : PageModel
             _logger.LogError(ex, "Error saving verification data for seller {SellerId}", sellerId);
             ModelState.AddModelError(string.Empty, "An error occurred while saving your data. Please try again.");
             return Page();
+        }
+    }
+
+    /// <summary>
+    /// Clears validation errors for fields that are not applicable to the selected seller type.
+    /// </summary>
+    private void ClearInapplicableValidationErrors()
+    {
+        if (SellerType == SellerType.Company)
+        {
+            // Clear individual field errors
+            ModelState.Remove(nameof(FullName));
+            ModelState.Remove(nameof(PersonalIdNumber));
+        }
+        else
+        {
+            // Clear company field errors
+            ModelState.Remove(nameof(BusinessName));
+            ModelState.Remove(nameof(BusinessRegistrationNumber));
+            ModelState.Remove(nameof(ContactPersonName));
+            ModelState.Remove(nameof(ContactPersonEmail));
+            ModelState.Remove(nameof(ContactPersonPhone));
         }
     }
 }
