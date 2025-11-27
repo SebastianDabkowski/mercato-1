@@ -52,7 +52,7 @@ public class AdminDbContext : DbContext
             entity.Property(e => e.Email).IsRequired().HasMaxLength(256);
             entity.Property(e => e.UserId).HasMaxLength(450);
             entity.Property(e => e.UserRole).HasMaxLength(50);
-            entity.Property(e => e.IpAddressHash).HasMaxLength(50);
+            entity.Property(e => e.IpAddressHash).HasMaxLength(64);
             entity.Property(e => e.UserAgent).HasMaxLength(500);
             entity.Property(e => e.FailureReason).HasMaxLength(500);
             entity.HasIndex(e => e.OccurredAt);

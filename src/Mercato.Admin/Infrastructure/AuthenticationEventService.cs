@@ -215,7 +215,7 @@ public class AuthenticationEventService : IAuthenticationEventService
         }
 
         var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(ipAddress));
-        return Convert.ToBase64String(bytes)[..32]; // Use first 32 chars for better security
+        return Convert.ToBase64String(bytes); // Full 44-char base64 hash for maximum security
     }
 
     /// <summary>
