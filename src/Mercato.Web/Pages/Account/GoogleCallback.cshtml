@@ -1,0 +1,20 @@
+@page
+@model Mercato.Web.Pages.Account.GoogleCallbackModel
+@{
+    ViewData["Title"] = "Processing Google Login";
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-6 text-center">
+        <h1>Processing Google Login</h1>
+        <p>Please wait while we complete your login...</p>
+        
+        @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+        {
+            <div class="alert alert-danger" role="alert">
+                @Model.ErrorMessage
+            </div>
+            <p><a asp-page="/Account/Login">Return to login page</a></p>
+        }
+    </div>
+</div>

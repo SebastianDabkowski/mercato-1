@@ -14,6 +14,9 @@ public static class IdentityModuleExtensions
         // Register buyer login service
         services.AddScoped<IBuyerLoginService, BuyerLoginService>();
         
+        // Register Google login service
+        services.AddScoped<IGoogleLoginService, GoogleLoginService>();
+        
         return services;
     }
 }
