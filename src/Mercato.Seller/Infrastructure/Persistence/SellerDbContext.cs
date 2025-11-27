@@ -40,6 +40,11 @@ public class SellerDbContext : DbContext
     /// </summary>
     public DbSet<PayoutSettings> PayoutSettings { get; set; }
 
+    /// <summary>
+    /// Gets or sets the store users (internal team members).
+    /// </summary>
+    public DbSet<StoreUser> StoreUsers { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -134,6 +139,31 @@ public class SellerDbContext : DbContext
             entity.Property(e => e.PaymentAccountId).HasMaxLength(100);
 
             entity.HasIndex(e => e.SellerId).IsUnique();
+        });
+
+        // Configure StoreUser entity
+        modelBuilder.Entity<StoreUser>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.StoreId).IsRequired();
+            entity.Property(e => e.UserId).HasMaxLength(450);
+            entity.Property(e => e.Email).IsRequired().HasMaxLength(254);
+            entity.Property(e => e.Role).IsRequired();
+            entity.Property(e => e.Status).IsRequired();
+            entity.Property(e => e.InvitationToken).HasMaxLength(100);
+            entity.Property(e => e.InvitedBy).IsRequired().HasMaxLength(450);
+            entity.Property(e => e.DeactivatedBy).HasMaxLength(450);
+            entity.Property(e => e.RoleChangedBy).HasMaxLength(450);
+
+            entity.HasIndex(e => e.StoreId);
+            entity.HasIndex(e => e.UserId);
+            entity.HasIndex(e => e.InvitationToken).IsUnique().HasFilter("[InvitationToken] IS NOT NULL");
+            entity.HasIndex(e => new { e.StoreId, e.Email }).IsUnique();
+
+            entity.HasOne(e => e.Store)
+                .WithMany()
+                .HasForeignKey(e => e.StoreId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
     }
 }
