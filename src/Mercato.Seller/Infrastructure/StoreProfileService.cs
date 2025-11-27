@@ -1,4 +1,6 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text;
+using System.Text.RegularExpressions;
 using Mercato.Seller.Application.Commands;
 using Mercato.Seller.Application.Services;
 using Mercato.Seller.Domain.Entities;
@@ -12,6 +14,11 @@ namespace Mercato.Seller.Infrastructure;
 /// </summary>
 public class StoreProfileService : IStoreProfileService
 {
+    /// <summary>
+    /// Maximum length for store slugs, matching database constraint.
+    /// </summary>
+    private const int MaxSlugLength = 200;
+
     private readonly IStoreRepository _repository;
     private readonly ILogger<StoreProfileService> _logger;
 
@@ -39,6 +46,36 @@ public class StoreProfileService : IStoreProfileService
     public async Task<Store?> GetStoreByIdAsync(Guid id)
     {
         return await _repository.GetByIdAsync(id);
+    }
+
+    /// <inheritdoc />
+    public async Task<Store?> GetPublicStoreBySlugAsync(string slug)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(slug);
+
+        var store = await _repository.GetBySlugAsync(slug);
+        
+        if (store == null)
+        {
+            return null;
+        }
+
+        // Only return stores that are publicly accessible
+        if (store.Status == StoreStatus.Active || store.Status == StoreStatus.LimitedActive)
+        {
+            return store;
+        }
+
+        return null;
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> StoreExistsBySlugAsync(string slug)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(slug);
+        
+        var store = await _repository.GetBySlugAsync(slug);
+        return store != null;
     }
 
     /// <inheritdoc />
@@ -108,12 +145,17 @@ public class StoreProfileService : IStoreProfileService
                 return UpdateStoreProfileResult.Failure("A store with this name already exists.");
             }
 
+            // Generate slug from store name
+            var slug = await GenerateUniqueSlugAsync(command.Name);
+
             // Create new store
             var newStore = new Store
             {
                 Id = Guid.NewGuid(),
                 SellerId = command.SellerId,
                 Name = command.Name,
+                Slug = slug,
+                Status = StoreStatus.PendingVerification,
                 Description = command.Description,
                 LogoUrl = command.LogoUrl,
                 ContactEmail = command.ContactEmail,
@@ -124,7 +166,7 @@ public class StoreProfileService : IStoreProfileService
             };
 
             await _repository.CreateAsync(newStore);
-            _logger.LogInformation("Created new store for seller {SellerId}", command.SellerId);
+            _logger.LogInformation("Created new store for seller {SellerId} with slug {Slug}", command.SellerId, slug);
         }
 
         return UpdateStoreProfileResult.Success();
@@ -245,5 +287,86 @@ public class StoreProfileService : IStoreProfileService
     {
         var emailAttribute = new EmailAddressAttribute();
         return emailAttribute.IsValid(email);
+    }
+
+    /// <summary>
+    /// Generates a unique SEO-friendly slug from the store name.
+    /// </summary>
+    /// <param name="storeName">The store name to generate slug from.</param>
+    /// <returns>A unique slug.</returns>
+    private async Task<string> GenerateUniqueSlugAsync(string storeName)
+    {
+        var baseSlug = GenerateSlug(storeName);
+        var slug = baseSlug;
+        var counter = 1;
+
+        while (!await _repository.IsSlugUniqueAsync(slug))
+        {
+            slug = $"{baseSlug}-{counter}";
+            counter++;
+        }
+
+        return slug;
+    }
+
+    /// <summary>
+    /// Generates an SEO-friendly slug from the given text.
+    /// </summary>
+    /// <param name="text">The text to convert to a slug.</param>
+    /// <returns>An SEO-friendly slug.</returns>
+    private static string GenerateSlug(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return string.Empty;
+        }
+
+        // Convert to lowercase
+        var slug = text.ToLowerInvariant();
+
+        // Remove accents/diacritics
+        slug = RemoveDiacritics(slug);
+
+        // Replace spaces and underscores with hyphens
+        slug = Regex.Replace(slug, @"[\s_]+", "-");
+
+        // Remove non-alphanumeric characters except hyphens
+        slug = Regex.Replace(slug, @"[^a-z0-9\-]", "");
+
+        // Remove consecutive hyphens
+        slug = Regex.Replace(slug, @"-+", "-");
+
+        // Trim hyphens from start and end
+        slug = slug.Trim('-');
+
+        // Limit to MaxSlugLength characters
+        if (slug.Length > MaxSlugLength)
+        {
+            slug = slug[..MaxSlugLength].TrimEnd('-');
+        }
+
+        return slug;
+    }
+
+    /// <summary>
+    /// Removes diacritics (accents) from a string.
+    /// </summary>
+    /// <param name="text">The text to process.</param>
+    /// <returns>Text with diacritics removed.</returns>
+    private static string RemoveDiacritics(string text)
+    {
+        var normalizedString = text.Normalize(NormalizationForm.FormD);
+        var stringBuilder = new StringBuilder();
+
+        foreach (var c in normalizedString)
+        {
+            var unicodeCategory = System.Globalization.CharUnicodeInfo.GetUnicodeCategory(c);
+            if (unicodeCategory != System.Globalization.UnicodeCategory.NonSpacingMark)
+            {
+                stringBuilder.Append(c);
+            }
+        }
+
+        return stringBuilder.ToString().Normalize(NormalizationForm.FormC);
     }
 }

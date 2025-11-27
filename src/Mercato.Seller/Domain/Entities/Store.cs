@@ -21,6 +21,16 @@ public class Store
     public string Name { get; set; } = string.Empty;
 
     /// <summary>
+    /// Gets or sets the SEO-friendly URL slug for the store.
+    /// </summary>
+    public string Slug { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the store status for visibility control.
+    /// </summary>
+    public StoreStatus Status { get; set; } = StoreStatus.PendingVerification;
+
+    /// <summary>
     /// Gets or sets the store description.
     /// </summary>
     public string? Description { get; set; }

@@ -23,6 +23,21 @@ public interface IStoreProfileService
     Task<Store?> GetStoreByIdAsync(Guid id);
 
     /// <summary>
+    /// Gets a publicly accessible store by its SEO-friendly URL slug.
+    /// Only returns stores with Active or LimitedActive status.
+    /// </summary>
+    /// <param name="slug">The store slug.</param>
+    /// <returns>The store if found and publicly accessible; otherwise, null.</returns>
+    Task<Store?> GetPublicStoreBySlugAsync(string slug);
+
+    /// <summary>
+    /// Checks if a store exists by its slug, regardless of its status.
+    /// </summary>
+    /// <param name="slug">The store slug.</param>
+    /// <returns>True if a store with the given slug exists; otherwise, false.</returns>
+    Task<bool> StoreExistsBySlugAsync(string slug);
+
+    /// <summary>
     /// Updates an existing store's profile.
     /// </summary>
     /// <param name="command">The update store profile command.</param>

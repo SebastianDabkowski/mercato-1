@@ -1,4 +1,4 @@
-@page "{id:guid}"
+@page "{slug}"
 @model Mercato.Web.Pages.Store.IndexModel
 @{
     ViewData["Title"] = Model.Store?.Name ?? "Store";
@@ -14,6 +14,23 @@
                         <i class="bi bi-shop-window display-1 text-muted mb-3"></i>
                         <h3>Store Not Found</h3>
                         <p class="text-muted">The store you're looking for doesn't exist or may have been removed.</p>
+                        <a asp-page="/Index" class="btn btn-primary">
+                            <i class="bi bi-house me-1"></i>Back to Home
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+    else if (Model.IsUnavailable)
+    {
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="card shadow-sm">
+                    <div class="card-body text-center py-5">
+                        <i class="bi bi-shop-window display-1 text-warning mb-3"></i>
+                        <h3>Store Unavailable</h3>
+                        <p class="text-muted">This store is currently unavailable. Please check back later.</p>
                         <a asp-page="/Index" class="btn btn-primary">
                             <i class="bi bi-house me-1"></i>Back to Home
                         </a>
@@ -125,6 +142,18 @@
                         </div>
                     </div>
                 }
+
+                <!-- Products Section (Placeholder) -->
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-box-seam me-2"></i>Products</h5>
+                    </div>
+                    <div class="card-body text-center py-5">
+                        <i class="bi bi-box display-1 text-muted mb-3"></i>
+                        <p class="text-muted">Products from this store will be displayed here.</p>
+                        <small class="text-muted">Product listings coming soon!</small>
+                    </div>
+                </div>
 
                 <!-- Back Link -->
                 <div class="text-center">

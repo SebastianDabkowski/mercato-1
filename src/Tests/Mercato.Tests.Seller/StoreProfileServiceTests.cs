@@ -110,6 +110,8 @@ public class StoreProfileServiceTests
             .ReturnsAsync((Store?)null);
         _mockRepository.Setup(r => r.IsStoreNameUniqueAsync(command.Name, null))
             .ReturnsAsync(true);
+        _mockRepository.Setup(r => r.IsSlugUniqueAsync(It.IsAny<string>(), null))
+            .ReturnsAsync(true);
         _mockRepository.Setup(r => r.CreateAsync(It.IsAny<Store>()))
             .Returns(Task.CompletedTask);
 
@@ -124,7 +126,9 @@ public class StoreProfileServiceTests
         _mockRepository.Verify(r => r.CreateAsync(It.Is<Store>(s =>
             s.SellerId == command.SellerId &&
             s.Name == command.Name &&
-            s.Description == command.Description)), Times.Once);
+            s.Description == command.Description &&
+            !string.IsNullOrEmpty(s.Slug) &&
+            s.Status == StoreStatus.PendingVerification)), Times.Once);
     }
 
     [Fact]
@@ -261,6 +265,112 @@ public class StoreProfileServiceTests
 
     #endregion
 
+    #region GetPublicStoreBySlugAsync Tests
+
+    [Fact]
+    public async Task GetPublicStoreBySlugAsync_WhenStoreIsActive_ReturnsStore()
+    {
+        // Arrange
+        var slug = "test-store";
+        var store = CreateTestStore();
+        store.Slug = slug;
+        store.Status = StoreStatus.Active;
+
+        _mockRepository.Setup(r => r.GetBySlugAsync(slug))
+            .ReturnsAsync(store);
+
+        // Act
+        var result = await _service.GetPublicStoreBySlugAsync(slug);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(store.Id, result.Id);
+        Assert.Equal(store.Slug, result.Slug);
+        Assert.Equal(StoreStatus.Active, result.Status);
+        _mockRepository.Verify(r => r.GetBySlugAsync(slug), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetPublicStoreBySlugAsync_WhenStoreIsLimitedActive_ReturnsStore()
+    {
+        // Arrange
+        var slug = "limited-store";
+        var store = CreateTestStore();
+        store.Slug = slug;
+        store.Status = StoreStatus.LimitedActive;
+
+        _mockRepository.Setup(r => r.GetBySlugAsync(slug))
+            .ReturnsAsync(store);
+
+        // Act
+        var result = await _service.GetPublicStoreBySlugAsync(slug);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(store.Id, result.Id);
+        Assert.Equal(StoreStatus.LimitedActive, result.Status);
+        _mockRepository.Verify(r => r.GetBySlugAsync(slug), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetPublicStoreBySlugAsync_WhenStoreIsSuspended_ReturnsNull()
+    {
+        // Arrange
+        var slug = "suspended-store";
+        var store = CreateTestStore();
+        store.Slug = slug;
+        store.Status = StoreStatus.Suspended;
+
+        _mockRepository.Setup(r => r.GetBySlugAsync(slug))
+            .ReturnsAsync(store);
+
+        // Act
+        var result = await _service.GetPublicStoreBySlugAsync(slug);
+
+        // Assert
+        Assert.Null(result);
+        _mockRepository.Verify(r => r.GetBySlugAsync(slug), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetPublicStoreBySlugAsync_WhenStoreIsPendingVerification_ReturnsNull()
+    {
+        // Arrange
+        var slug = "pending-store";
+        var store = CreateTestStore();
+        store.Slug = slug;
+        store.Status = StoreStatus.PendingVerification;
+
+        _mockRepository.Setup(r => r.GetBySlugAsync(slug))
+            .ReturnsAsync(store);
+
+        // Act
+        var result = await _service.GetPublicStoreBySlugAsync(slug);
+
+        // Assert
+        Assert.Null(result);
+        _mockRepository.Verify(r => r.GetBySlugAsync(slug), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetPublicStoreBySlugAsync_WhenStoreNotFound_ReturnsNull()
+    {
+        // Arrange
+        var slug = "non-existent-store";
+
+        _mockRepository.Setup(r => r.GetBySlugAsync(slug))
+            .ReturnsAsync((Store?)null);
+
+        // Act
+        var result = await _service.GetPublicStoreBySlugAsync(slug);
+
+        // Assert
+        Assert.Null(result);
+        _mockRepository.Verify(r => r.GetBySlugAsync(slug), Times.Once);
+    }
+
+    #endregion
+
     #region Helper Methods
 
     private static Store CreateTestStore()
@@ -270,6 +380,8 @@ public class StoreProfileServiceTests
             Id = TestStoreId,
             SellerId = TestSellerId,
             Name = "Test Store",
+            Slug = "test-store",
+            Status = StoreStatus.Active,
             Description = "Test store description",
             LogoUrl = "https://example.com/logo.png",
             ContactEmail = "test@example.com",
