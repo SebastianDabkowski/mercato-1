@@ -3,6 +3,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Mercato.Seller.Infrastructure.Persistence;
 
+// TODO: FIX it: SellerDbContext has entities defined (KycSubmission, KycAuditLog) but no migrations folder.
+// Create migrations using: dotnet ef migrations add InitialSellerSchema -p Mercato.Seller -s Mercato.Web -c SellerDbContext
 /// <summary>
 /// DbContext for the Seller module.
 /// </summary>

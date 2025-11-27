@@ -3,6 +3,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Mercato.Admin.Infrastructure.Persistence;
 
+// TODO: FIX it: AdminDbContext has entities defined (RoleChangeAuditLog, AuthenticationEvent) but no migrations folder.
+// Create migrations using: dotnet ef migrations add InitialAdminSchema -p Mercato.Admin -s Mercato.Web -c AdminDbContext
 /// <summary>
 /// Database context for Admin module.
 /// </summary>

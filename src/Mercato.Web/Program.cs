@@ -109,6 +109,11 @@ builder.Services.AddAdminModule(builder.Configuration);
 
 var app = builder.Build();
 
+// TODO: FIX it: RoleSeeder runs before ensuring database exists or is migrated.
+// This causes startup failure if database is not pre-created. Consider:
+// 1. Adding EnsureCreated/Migrate logic before seeding, or
+// 2. Moving role seeding to a separate initialization step, or
+// 3. Adding try-catch to gracefully handle database unavailability at startup.
 // Seed roles
 using (var scope = app.Services.CreateScope())
 {

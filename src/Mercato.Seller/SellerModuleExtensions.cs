@@ -9,6 +9,8 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Mercato.Seller;
 
+// TODO: FIX it: Consider adding IDesignTimeDbContextFactory<SellerDbContext> for migrations support.
+// This allows running EF Core migrations without requiring the full application startup.
 public static class SellerModuleExtensions
 {
     public static IServiceCollection AddSellerModule(this IServiceCollection services, IConfiguration configuration)

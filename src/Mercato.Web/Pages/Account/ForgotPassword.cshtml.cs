@@ -71,7 +71,8 @@ public class ForgotPasswordModel : PageModel
                 var encodedToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(result.ResetToken));
                 
                 // Build the password reset URL for email integration
-                // TODO: Implement email sending service to send the reset link
+                // TODO: FIX it: Implement email sending service to send the reset link.
+                // Password reset links are generated but not sent to users.
                 // Example: await _emailService.SendPasswordResetEmailAsync(Input.Email, resetLink);
 #pragma warning disable IDE0059 // Unnecessary assignment - kept for future email integration
                 var resetLink = Url.Page(

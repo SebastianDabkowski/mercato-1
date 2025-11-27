@@ -9,6 +9,8 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Mercato.Admin;
 
+// TODO: FIX it: Consider adding IDesignTimeDbContextFactory<AdminDbContext> for migrations support.
+// This allows running EF Core migrations without requiring the full application startup.
 public static class AdminModuleExtensions
 {
     public static IServiceCollection AddAdminModule(this IServiceCollection services, IConfiguration? configuration = null)
