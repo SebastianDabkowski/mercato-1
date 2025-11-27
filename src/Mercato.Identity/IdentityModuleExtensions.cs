@@ -17,6 +17,9 @@ public static class IdentityModuleExtensions
         // Register Google login service
         services.AddScoped<IGoogleLoginService, GoogleLoginService>();
         
+        // Register Facebook login service
+        services.AddScoped<IFacebookLoginService, FacebookLoginService>();
+        
         return services;
     }
 }
