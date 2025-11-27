@@ -2,6 +2,110 @@
 
 This solution uses a modular, layered architecture with a Razor Pages Web App and a feature module for Products.
 
+---
+
+# Mercato Naming Convention and Project Layout
+
+> **IMPORTANT: Planning Phase Only**
+>
+> This section documents the naming convention and project layout for the Mercato modular monolith. **No physical projects or folders should be created yet.** This is a planning phase only, intended to establish consensus on the naming convention and structure before implementation.
+
+## Naming Convention
+
+The Mercato solution follows a simple, consistent naming convention for all projects:
+
+- **Entry Point (ASP.NET Core Web Project):** `Mercato.Web`
+- **Module Class Libraries:** `Mercato.<ModuleName>` (e.g., `Mercato.Identity`, `Mercato.Product`)
+
+This convention prioritizes:
+- Simplicity and readability
+- Clear identification of the solution (all projects start with `Mercato.`)
+- Short, meaningful module names that align with business domains
+
+## Module to Project Mapping
+
+The following table maps each module to its corresponding project name:
+
+| Module | Project Name | Primary Responsibility |
+|--------|--------------|------------------------|
+| Web | `Mercato.Web` | UI and hosting (entry point), Razor Pages, app startup, DI configuration |
+| Identity | `Mercato.Identity` | Authentication, authorization, user management, RBAC |
+| Seller | `Mercato.Seller` | Seller accounts, store management, onboarding, payout settings |
+| Buyer | `Mercato.Buyer` | Buyer profiles, preferences, purchase history, wish lists |
+| Product | `Mercato.Product` | Product catalog, categories, attributes, inventory |
+| Cart | `Mercato.Cart` | Shopping cart, promotions, cart updates, multi-seller support |
+| Orders | `Mercato.Orders` | Order lifecycle, fulfillment, tracking, returns |
+| Payments | `Mercato.Payments` | Payment processing, refunds, settlements, commission calculations |
+| Admin | `Mercato.Admin` | Platform administration, moderation, reporting, audit logging |
+
+## Proposed Solution Structure
+
+```
+Mercato.sln
+├── Mercato.Web             # ASP.NET Core Web App (entry point)
+│   ├── Pages/              # Razor Pages
+│   ├── Program.cs          # DI and startup configuration
+│   └── appsettings.json    # Configuration files
+├── Mercato.Identity/       # Identity module (class library)
+│   ├── Domain/
+│   ├── Application/
+│   └── Infrastructure/
+├── Mercato.Seller/         # Seller module (class library)
+│   ├── Domain/
+│   ├── Application/
+│   └── Infrastructure/
+├── Mercato.Buyer/          # Buyer module (class library)
+│   ├── Domain/
+│   ├── Application/
+│   └── Infrastructure/
+├── Mercato.Product/        # Product module (class library)
+│   ├── Domain/
+│   ├── Application/
+│   └── Infrastructure/
+├── Mercato.Cart/           # Cart module (class library)
+│   ├── Domain/
+│   ├── Application/
+│   └── Infrastructure/
+├── Mercato.Orders/         # Orders module (class library)
+│   ├── Domain/
+│   ├── Application/
+│   └── Infrastructure/
+├── Mercato.Payments/       # Payments module (class library)
+│   ├── Domain/
+│   ├── Application/
+│   └── Infrastructure/
+└── Mercato.Admin/          # Admin module (class library)
+    ├── Domain/
+    ├── Application/
+    └── Infrastructure/
+```
+
+## Module Internal Structure
+
+Each module class library follows a consistent internal layered architecture:
+
+```
+Mercato.<ModuleName>/
+├── Domain/
+│   ├── Entities/           # Core domain entities
+│   └── Interfaces/         # Repository and service interfaces
+├── Application/
+│   └── UseCases/           # Application services and use cases
+└── Infrastructure/
+    ├── Repositories/       # Repository implementations
+    └── Persistence/        # DbContext, migrations, EF Core configurations
+```
+
+## Key Principles
+
+1. **Single Entry Point:** `Mercato.Web` is the sole ASP.NET Core web project that hosts all UI and startup logic.
+2. **Module Isolation:** Each module is a separate class library with its own Domain, Application, and Infrastructure layers.
+3. **Dependency Flow:** `Web → Application (use cases) → Domain (interfaces)`. Infrastructure implements Domain interfaces and is registered in DI at startup.
+4. **Separate DbContexts:** Each module maintains its own `DbContext` for bounded context isolation.
+5. **Best Practices:** Follow .NET modular monolith best practices, including CQRS patterns, DDD guidelines, and async/await patterns.
+
+---
+
 ## Projects
 - `Application/SD.ProjectName.WebApp`: Razor Pages UI, app startup, DI, EF Core Identity.
 - `Modules/SD.ProjectName.Modules.Products`: Feature module containing `Domain`, `Application`, `Infrastructure` for Products.
