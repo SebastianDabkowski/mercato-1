@@ -1,4 +1,12 @@
 using Mercato.Web.Data;
+using Mercato.Admin;
+using Mercato.Buyer;
+using Mercato.Cart;
+using Mercato.Identity;
+using Mercato.Orders;
+using Mercato.Payments;
+using Mercato.Product;
+using Mercato.Seller;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -49,6 +57,16 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.AccessDeniedPath = "/Account/AccessDenied";
     options.SlidingExpiration = true;
 });
+
+// Register module services
+builder.Services.AddSellerModule();
+builder.Services.AddBuyerModule();
+builder.Services.AddProductModule();
+builder.Services.AddOrdersModule();
+builder.Services.AddCartModule();
+builder.Services.AddPaymentsModule();
+builder.Services.AddIdentityModule();
+builder.Services.AddAdminModule();
 
 var app = builder.Build();
 
