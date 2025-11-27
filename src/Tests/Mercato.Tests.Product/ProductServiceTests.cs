@@ -1,4 +1,5 @@
 using Mercato.Product.Application.Commands;
+using Mercato.Product.Domain;
 using Mercato.Product.Domain.Entities;
 using Mercato.Product.Domain.Interfaces;
 using Mercato.Product.Infrastructure;
@@ -117,7 +118,7 @@ public class ProductServiceTests
 
         // Assert
         Assert.False(result.Succeeded);
-        Assert.Contains("Title must be between 2 and 200 characters.", result.Errors);
+        Assert.Contains($"Title must be between {ProductValidationConstants.TitleMinLength} and {ProductValidationConstants.TitleMaxLength} characters.", result.Errors);
     }
 
     [Fact]
@@ -125,14 +126,14 @@ public class ProductServiceTests
     {
         // Arrange
         var command = CreateValidCommand();
-        command.Title = new string('A', 201);
+        command.Title = new string('A', ProductValidationConstants.TitleMaxLength + 1);
 
         // Act
         var result = await _service.CreateProductAsync(command);
 
         // Assert
         Assert.False(result.Succeeded);
-        Assert.Contains("Title must be between 2 and 200 characters.", result.Errors);
+        Assert.Contains($"Title must be between {ProductValidationConstants.TitleMinLength} and {ProductValidationConstants.TitleMaxLength} characters.", result.Errors);
     }
 
     [Theory]
@@ -196,7 +197,7 @@ public class ProductServiceTests
 
         // Assert
         Assert.False(result.Succeeded);
-        Assert.Contains("Category must be between 2 and 100 characters.", result.Errors);
+        Assert.Contains($"Category must be between {ProductValidationConstants.CategoryMinLength} and {ProductValidationConstants.CategoryMaxLength} characters.", result.Errors);
     }
 
     [Fact]
@@ -204,14 +205,14 @@ public class ProductServiceTests
     {
         // Arrange
         var command = CreateValidCommand();
-        command.Category = new string('A', 101);
+        command.Category = new string('A', ProductValidationConstants.CategoryMaxLength + 1);
 
         // Act
         var result = await _service.CreateProductAsync(command);
 
         // Assert
         Assert.False(result.Succeeded);
-        Assert.Contains("Category must be between 2 and 100 characters.", result.Errors);
+        Assert.Contains($"Category must be between {ProductValidationConstants.CategoryMinLength} and {ProductValidationConstants.CategoryMaxLength} characters.", result.Errors);
     }
 
     [Fact]
@@ -219,14 +220,14 @@ public class ProductServiceTests
     {
         // Arrange
         var command = CreateValidCommand();
-        command.Description = new string('A', 2001);
+        command.Description = new string('A', ProductValidationConstants.DescriptionMaxLength + 1);
 
         // Act
         var result = await _service.CreateProductAsync(command);
 
         // Assert
         Assert.False(result.Succeeded);
-        Assert.Contains("Description must be at most 2000 characters.", result.Errors);
+        Assert.Contains($"Description must be at most {ProductValidationConstants.DescriptionMaxLength} characters.", result.Errors);
     }
 
     [Fact]

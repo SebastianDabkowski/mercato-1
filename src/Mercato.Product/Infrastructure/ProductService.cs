@@ -1,5 +1,6 @@
 using Mercato.Product.Application.Commands;
 using Mercato.Product.Application.Services;
+using Mercato.Product.Domain;
 using Mercato.Product.Domain.Entities;
 using Mercato.Product.Domain.Interfaces;
 using Microsoft.Extensions.Logging;
@@ -86,9 +87,10 @@ public class ProductService : IProductService
         {
             errors.Add("Title is required.");
         }
-        else if (command.Title.Length < 2 || command.Title.Length > 200)
+        else if (command.Title.Length < ProductValidationConstants.TitleMinLength || 
+                 command.Title.Length > ProductValidationConstants.TitleMaxLength)
         {
-            errors.Add("Title must be between 2 and 200 characters.");
+            errors.Add($"Title must be between {ProductValidationConstants.TitleMinLength} and {ProductValidationConstants.TitleMaxLength} characters.");
         }
 
         if (command.Price <= 0)
@@ -105,14 +107,15 @@ public class ProductService : IProductService
         {
             errors.Add("Category is required.");
         }
-        else if (command.Category.Length < 2 || command.Category.Length > 100)
+        else if (command.Category.Length < ProductValidationConstants.CategoryMinLength || 
+                 command.Category.Length > ProductValidationConstants.CategoryMaxLength)
         {
-            errors.Add("Category must be between 2 and 100 characters.");
+            errors.Add($"Category must be between {ProductValidationConstants.CategoryMinLength} and {ProductValidationConstants.CategoryMaxLength} characters.");
         }
 
-        if (command.Description != null && command.Description.Length > 2000)
+        if (command.Description != null && command.Description.Length > ProductValidationConstants.DescriptionMaxLength)
         {
-            errors.Add("Description must be at most 2000 characters.");
+            errors.Add($"Description must be at most {ProductValidationConstants.DescriptionMaxLength} characters.");
         }
 
         return errors;
