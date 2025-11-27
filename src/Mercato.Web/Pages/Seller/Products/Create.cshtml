@@ -1,0 +1,100 @@
+@page
+@model Mercato.Web.Pages.Seller.Products.CreateModel
+@{
+    ViewData["Title"] = "Add Product";
+}
+
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0"><i class="bi bi-plus-circle me-2"></i>Add Product</h4>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted mb-4">Add a new product to your catalog. Products are saved as drafts by default and must be activated to appear in the public catalog.</p>
+
+                    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+                    {
+                        <div class="alert alert-danger" role="alert">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>@Model.ErrorMessage
+                        </div>
+                    }
+
+                    @if (!Model.HasStore)
+                    {
+                        <div class="alert alert-warning" role="alert">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                            <strong>Store Required:</strong> You must configure your store profile before adding products.
+                            <a asp-page="/Seller/Settings/StoreProfile" class="alert-link">Configure Store</a>
+                        </div>
+                    }
+                    else
+                    {
+                        <form method="post">
+                            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+                            <div class="mb-3">
+                                <label asp-for="Title" class="form-label">Title <span class="text-danger">*</span></label>
+                                <input asp-for="Title" class="form-control" placeholder="Enter product title" />
+                                <span asp-validation-for="Title" class="text-danger"></span>
+                                <div class="form-text">A descriptive title for your product (2-200 characters).</div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label asp-for="Description" class="form-label">Description</label>
+                                <textarea asp-for="Description" class="form-control" rows="5" placeholder="Describe your product..."></textarea>
+                                <span asp-validation-for="Description" class="text-danger"></span>
+                                <div class="form-text">Provide a detailed description of your product (up to 2000 characters).</div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label asp-for="Price" class="form-label">Price <span class="text-danger">*</span></label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">$</span>
+                                        <input asp-for="Price" class="form-control" type="number" step="0.01" min="0.01" placeholder="0.00" />
+                                    </div>
+                                    <span asp-validation-for="Price" class="text-danger"></span>
+                                    <div class="form-text">The selling price for your product.</div>
+                                </div>
+
+                                <div class="col-md-6 mb-3">
+                                    <label asp-for="Stock" class="form-label">Stock <span class="text-danger">*</span></label>
+                                    <input asp-for="Stock" class="form-control" type="number" min="0" placeholder="0" />
+                                    <span asp-validation-for="Stock" class="text-danger"></span>
+                                    <div class="form-text">Available quantity in stock.</div>
+                                </div>
+                            </div>
+
+                            <div class="mb-4">
+                                <label asp-for="Category" class="form-label">Category <span class="text-danger">*</span></label>
+                                <input asp-for="Category" class="form-control" placeholder="Enter product category" />
+                                <span asp-validation-for="Category" class="text-danger"></span>
+                                <div class="form-text">The category this product belongs to (e.g., Electronics, Clothing).</div>
+                            </div>
+
+                            <div class="alert alert-info" role="alert">
+                                <i class="bi bi-info-circle-fill me-2"></i>
+                                <strong>Note:</strong> New products are saved with <span class="badge bg-secondary">Draft</span> status and will not be visible in the public catalog until activated.
+                            </div>
+
+                            <div class="d-flex justify-content-between">
+                                <a asp-page="Index" class="btn btn-outline-secondary">
+                                    <i class="bi bi-arrow-left me-1"></i>Back to Products
+                                </a>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-check-lg me-1"></i>Create Product
+                                </button>
+                            </div>
+                        </form>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

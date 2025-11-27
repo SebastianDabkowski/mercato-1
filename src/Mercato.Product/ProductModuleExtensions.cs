@@ -1,4 +1,8 @@
+using Mercato.Product.Application.Services;
+using Mercato.Product.Domain.Interfaces;
+using Mercato.Product.Infrastructure;
 using Mercato.Product.Infrastructure.Persistence;
+using Mercato.Product.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -16,7 +20,11 @@ public static class ProductModuleExtensions
         services.AddDbContext<ProductDbContext>(options =>
             options.UseSqlServer(connectionString));
 
-        // TODO: Register Product module services and repositories here
+        // Register repositories
+        services.AddScoped<IProductRepository, ProductRepository>();
+
+        // Register services
+        services.AddScoped<IProductService, ProductService>();
 
         return services;
     }
