@@ -91,6 +91,33 @@ else if (Model.Onboarding?.Status == Mercato.Seller.Domain.Entities.OnboardingSt
     </div>
 }
 
+@if (!Model.NeedsOnboarding && !Model.HasCompletePayoutSettings)
+{
+    <!-- Payout Settings Warning -->
+    <div class="card mb-4 border-warning">
+        <div class="card-header bg-warning">
+            <h5 class="mb-0">
+                <i class="bi bi-exclamation-triangle me-2"></i>Payout Configuration Required
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="alert alert-warning d-flex align-items-start" role="alert">
+                <i class="bi bi-credit-card me-3 fs-4"></i>
+                <div>
+                    <h6 class="alert-heading mb-1">Complete Your Payout Settings</h6>
+                    <p class="mb-2">Your payout configuration is incomplete. You must configure your bank account or payout preferences before you can receive funds from sales.</p>
+                    <p class="mb-0 text-muted small">Please provide your banking details or connect a payment account to start receiving payouts.</p>
+                </div>
+            </div>
+            <div class="mt-3">
+                <a asp-page="Settings/PayoutSettings" class="btn btn-warning">
+                    <i class="bi bi-gear me-1"></i>Configure Payout Settings
+                </a>
+            </div>
+        </div>
+    </div>
+}
+
 <!-- KYC Verification Status Section -->
 <div class="card mb-4">
     <div class="card-header">
@@ -237,6 +264,12 @@ else if (Model.Onboarding?.Status == Mercato.Seller.Domain.Entities.OnboardingSt
 <div class="mt-4">
     <a asp-page="Details" class="btn btn-outline-primary">
         <i class="bi bi-person-badge me-1"></i>View Seller Details
+    </a>
+    <a asp-page="Settings/StoreProfile" class="btn btn-outline-primary">
+        <i class="bi bi-shop me-1"></i>Store Settings
+    </a>
+    <a asp-page="Settings/PayoutSettings" class="btn btn-outline-primary">
+        <i class="bi bi-credit-card me-1"></i>Payout Settings
     </a>
     <a asp-page="/Account/ChangePassword" class="btn btn-outline-secondary">
         <i class="bi bi-key me-1"></i>Change Password

@@ -35,6 +35,11 @@ public class SellerDbContext : DbContext
     /// </summary>
     public DbSet<Store> Stores { get; set; }
 
+    /// <summary>
+    /// Gets or sets the payout settings.
+    /// </summary>
+    public DbSet<PayoutSettings> PayoutSettings { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -112,6 +117,23 @@ public class SellerDbContext : DbContext
             entity.HasIndex(e => e.SellerId).IsUnique();
             entity.HasIndex(e => e.Name).IsUnique();
             entity.HasIndex(e => e.Slug).IsUnique();
+        });
+
+        // Configure PayoutSettings entity
+        modelBuilder.Entity<PayoutSettings>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.SellerId).IsRequired().HasMaxLength(450);
+            entity.Property(e => e.BankName).HasMaxLength(200);
+            entity.Property(e => e.BankAccountNumber).HasMaxLength(50);
+            entity.Property(e => e.BankRoutingNumber).HasMaxLength(20);
+            entity.Property(e => e.AccountHolderName).HasMaxLength(200);
+            entity.Property(e => e.SwiftCode).HasMaxLength(11);
+            entity.Property(e => e.Iban).HasMaxLength(34);
+            entity.Property(e => e.PaymentAccountEmail).HasMaxLength(254);
+            entity.Property(e => e.PaymentAccountId).HasMaxLength(100);
+
+            entity.HasIndex(e => e.SellerId).IsUnique();
         });
     }
 }

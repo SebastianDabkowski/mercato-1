@@ -11,15 +11,18 @@ namespace Mercato.Web.Pages.Seller
     {
         private readonly IKycService _kycService;
         private readonly ISellerOnboardingService _onboardingService;
+        private readonly IPayoutSettingsService _payoutSettingsService;
         private readonly ILogger<IndexModel> _logger;
 
         public IndexModel(
             IKycService kycService,
             ISellerOnboardingService onboardingService,
+            IPayoutSettingsService payoutSettingsService,
             ILogger<IndexModel> logger)
         {
             _kycService = kycService;
             _onboardingService = onboardingService;
+            _payoutSettingsService = payoutSettingsService;
             _logger = logger;
         }
 
@@ -53,6 +56,11 @@ namespace Mercato.Web.Pages.Seller
         /// </summary>
         public bool NeedsOnboarding { get; private set; }
 
+        /// <summary>
+        /// Gets whether the seller has complete payout settings.
+        /// </summary>
+        public bool HasCompletePayoutSettings { get; private set; }
+
         public async Task OnGetAsync()
         {
             var sellerId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -71,6 +79,12 @@ namespace Mercato.Web.Pages.Seller
                 NeedsOnboarding = Onboarding == null ||
                     (Onboarding.Status != OnboardingStatus.PendingVerification &&
                      Onboarding.Status != OnboardingStatus.Verified);
+
+                // Check payout settings status (only for verified sellers)
+                if (!NeedsOnboarding)
+                {
+                    HasCompletePayoutSettings = await _payoutSettingsService.HasCompletePayoutSettingsAsync(sellerId);
+                }
 
                 var submissions = await _kycService.GetSubmissionsBySellerAsync(sellerId);
                 

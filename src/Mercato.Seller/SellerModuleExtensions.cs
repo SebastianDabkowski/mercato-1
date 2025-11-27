@@ -26,11 +26,13 @@ public static class SellerModuleExtensions
         services.AddScoped<IKycRepository, KycRepository>();
         services.AddScoped<ISellerOnboardingRepository, SellerOnboardingRepository>();
         services.AddScoped<IStoreRepository, StoreRepository>();
+        services.AddScoped<IPayoutSettingsRepository, PayoutSettingsRepository>();
 
         // Register services
         services.AddScoped<IKycService, KycService>();
         services.AddScoped<ISellerOnboardingService, SellerOnboardingService>();
         services.AddScoped<IStoreProfileService, StoreProfileService>();
+        services.AddScoped<IPayoutSettingsService, PayoutSettingsService>();
 
         return services;
     }
