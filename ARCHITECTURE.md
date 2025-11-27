@@ -121,7 +121,7 @@ This section outlines the proposed modular boundaries and responsibilities for t
 
 ## Module Overview
 
-Based on the PRD epics and marketplace requirements, the following modules are proposed:
+Based on the Product Requirements Document (PRD, see `prd.md`) epics and marketplace requirements, the following modules are proposed:
 
 | Module | Primary Responsibility | DbContext |
 |--------|----------------------|-----------|
@@ -224,7 +224,7 @@ Based on the PRD epics and marketplace requirements, the following modules are p
 
 ### 4. Product Module
 
-**Path:** `Modules/SD.Mercato.Modules.Products` (existing)
+**Path:** `Modules/SD.Mercato.Modules.Products`
 
 **Responsibility:**
 - Product catalog management (CRUD operations)
@@ -576,7 +576,7 @@ Module A.Infrastructure → Module B.Infrastructure (tight coupling)
 
 ## Implementation Priorities (MVP)
 
-Based on the PRD, recommended implementation order:
+Based on the PRD phases, recommended implementation order:
 
 1. **Phase 1 (MVP Core):**
    - Identity (authentication foundation)
