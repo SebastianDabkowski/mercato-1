@@ -1,0 +1,100 @@
+@page
+@model Mercato.Web.Pages.Account.ManageLinkedAccountsModel
+@{
+    ViewData["Title"] = "Manage Linked Accounts";
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <h1>Manage Linked Accounts</h1>
+        <p>Link or unlink social login methods to your account. You can use any linked method to sign in.</p>
+        
+        @if (!string.IsNullOrEmpty(Model.StatusMessage))
+        {
+            <div class="alert @(Model.IsError ? "alert-danger" : "alert-success")" role="alert">
+                @Model.StatusMessage
+            </div>
+        }
+
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Currently Linked Accounts</h5>
+            </div>
+            <div class="card-body">
+                @if (Model.LinkedAccounts.Count == 0)
+                {
+                    <p class="text-muted">You have no linked social accounts.</p>
+                }
+                else
+                {
+                    <ul class="list-group">
+                        @foreach (var account in Model.LinkedAccounts)
+                        {
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span>
+                                    @if (account.ProviderName == "Google")
+                                    {
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-google me-2" viewBox="0 0 16 16">
+                                            <path d="M15.545 6.558a9.42 9.42 0 0 1 .139 1.626c0 2.434-.87 4.492-2.384 5.885h.002C11.978 15.292 10.158 16 8 16A8 8 0 1 1 8 0a7.689 7.689 0 0 1 5.352 2.082l-2.284 2.284A4.347 4.347 0 0 0 8 3.166c-2.087 0-3.86 1.408-4.492 3.304a4.792 4.792 0 0 0 0 3.063h.003c.635 1.893 2.405 3.301 4.492 3.301 1.078 0 2.004-.276 2.722-.764h-.003a3.702 3.702 0 0 0 1.599-2.431H8v-3.08h7.545z"/>
+                                        </svg>
+                                    }
+                                    else if (account.ProviderName == "Facebook")
+                                    {
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-facebook me-2" viewBox="0 0 16 16">
+                                            <path d="M16 8.049c0-4.446-3.582-8.05-8-8.05C3.58 0-.002 3.603-.002 8.05c0 4.017 2.926 7.347 6.75 7.951v-5.625h-2.03V8.05H6.75V6.275c0-2.017 1.195-3.131 3.022-3.131.876 0 1.791.157 1.791.157v1.98h-1.009c-.993 0-1.303.621-1.303 1.258v1.51h2.218l-.354 2.326H9.25V16c3.824-.604 6.75-3.934 6.75-7.951z"/>
+                                        </svg>
+                                    }
+                                    <strong>@account.ProviderDisplayName</strong>
+                                </span>
+                                <form method="post" asp-page-handler="Unlink" class="d-inline">
+                                    <input type="hidden" name="provider" value="@account.ProviderName" />
+                                    <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('Are you sure you want to unlink your @account.ProviderDisplayName account?');">
+                                        Unlink
+                                    </button>
+                                </form>
+                            </li>
+                        }
+                    </ul>
+                }
+            </div>
+        </div>
+
+        @if (Model.IsGoogleLoginEnabled && !Model.IsGoogleLinked)
+        {
+            <div class="card mb-3">
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <span>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-google me-2" viewBox="0 0 16 16">
+                            <path d="M15.545 6.558a9.42 9.42 0 0 1 .139 1.626c0 2.434-.87 4.492-2.384 5.885h.002C11.978 15.292 10.158 16 8 16A8 8 0 1 1 8 0a7.689 7.689 0 0 1 5.352 2.082l-2.284 2.284A4.347 4.347 0 0 0 8 3.166c-2.087 0-3.86 1.408-4.492 3.304a4.792 4.792 0 0 0 0 3.063h.003c.635 1.893 2.405 3.301 4.492 3.301 1.078 0 2.004-.276 2.722-.764h-.003a3.702 3.702 0 0 0 1.599-2.431H8v-3.08h7.545z"/>
+                        </svg>
+                        <strong>Google</strong> - Not linked
+                    </span>
+                    <a asp-page="/Account/GoogleLogin" asp-route-returnUrl="@Url.Page("ManageLinkedAccounts")" asp-route-linkMode="true" class="btn btn-outline-secondary btn-sm">
+                        Link Google Account
+                    </a>
+                </div>
+            </div>
+        }
+
+        @if (Model.IsFacebookLoginEnabled && !Model.IsFacebookLinked)
+        {
+            <div class="card mb-3">
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <span>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-facebook me-2" viewBox="0 0 16 16">
+                            <path d="M16 8.049c0-4.446-3.582-8.05-8-8.05C3.58 0-.002 3.603-.002 8.05c0 4.017 2.926 7.347 6.75 7.951v-5.625h-2.03V8.05H6.75V6.275c0-2.017 1.195-3.131 3.022-3.131.876 0 1.791.157 1.791.157v1.98h-1.009c-.993 0-1.303.621-1.303 1.258v1.51h2.218l-.354 2.326H9.25V16c3.824-.604 6.75-3.934 6.75-7.951z"/>
+                        </svg>
+                        <strong>Facebook</strong> - Not linked
+                    </span>
+                    <a asp-page="/Account/FacebookLogin" asp-route-returnUrl="@Url.Page("ManageLinkedAccounts")" asp-route-linkMode="true" class="btn btn-outline-primary btn-sm">
+                        Link Facebook Account
+                    </a>
+                </div>
+            </div>
+        }
+
+        <div class="mt-4">
+            <a asp-page="/Buyer/Index" class="btn btn-outline-secondary">Back to Buyer Portal</a>
+        </div>
+    </div>
+</div>

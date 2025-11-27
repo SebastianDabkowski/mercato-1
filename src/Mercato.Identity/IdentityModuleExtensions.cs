@@ -20,6 +20,9 @@ public static class IdentityModuleExtensions
         // Register Facebook login service
         services.AddScoped<IFacebookLoginService, FacebookLoginService>();
         
+        // Register account linking service
+        services.AddScoped<IAccountLinkingService, AccountLinkingService>();
+        
         return services;
     }
 }
