@@ -12,6 +12,7 @@ public class ProductServiceTests
 {
     private static readonly Guid TestStoreId = Guid.NewGuid();
     private static readonly Guid TestProductId = Guid.NewGuid();
+    private static readonly string TestSellerId = "test-seller-id";
 
     private readonly Mock<IProductRepository> _mockRepository;
     private readonly Mock<ILogger<ProductService>> _mockLogger;
@@ -373,6 +374,323 @@ public class ProductServiceTests
 
     #endregion
 
+    #region UpdateProductAsync Tests
+
+    [Fact]
+    public async Task UpdateProductAsync_ValidCommand_ReturnsSuccess()
+    {
+        // Arrange
+        var command = CreateValidUpdateCommand();
+        var product = CreateTestProduct();
+
+        _mockRepository.Setup(r => r.GetByIdAsync(command.ProductId))
+            .ReturnsAsync(product);
+        _mockRepository.Setup(r => r.UpdateAsync(It.IsAny<Mercato.Product.Domain.Entities.Product>()))
+            .Returns(Task.CompletedTask);
+
+        // Act
+        var result = await _service.UpdateProductAsync(command);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.Empty(result.Errors);
+        _mockRepository.Verify(r => r.UpdateAsync(It.Is<Mercato.Product.Domain.Entities.Product>(p =>
+            p.Title == command.Title &&
+            p.Description == command.Description &&
+            p.Price == command.Price &&
+            p.Stock == command.Stock &&
+            p.Category == command.Category &&
+            p.LastUpdatedBy == command.SellerId
+        )), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateProductAsync_ProductNotFound_ReturnsFailure()
+    {
+        // Arrange
+        var command = CreateValidUpdateCommand();
+
+        _mockRepository.Setup(r => r.GetByIdAsync(command.ProductId))
+            .ReturnsAsync((Mercato.Product.Domain.Entities.Product?)null);
+
+        // Act
+        var result = await _service.UpdateProductAsync(command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains("Product not found.", result.Errors);
+        _mockRepository.Verify(r => r.UpdateAsync(It.IsAny<Mercato.Product.Domain.Entities.Product>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task UpdateProductAsync_NotOwner_ReturnsFailure()
+    {
+        // Arrange
+        var command = CreateValidUpdateCommand();
+        var product = CreateTestProduct();
+        product.StoreId = Guid.NewGuid(); // Different store ID
+
+        _mockRepository.Setup(r => r.GetByIdAsync(command.ProductId))
+            .ReturnsAsync(product);
+
+        // Act
+        var result = await _service.UpdateProductAsync(command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains("You are not authorized to update this product.", result.Errors);
+        _mockRepository.Verify(r => r.UpdateAsync(It.IsAny<Mercato.Product.Domain.Entities.Product>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task UpdateProductAsync_ArchivedProduct_ReturnsFailure()
+    {
+        // Arrange
+        var command = CreateValidUpdateCommand();
+        var product = CreateTestProduct();
+        product.Status = ProductStatus.Archived;
+
+        _mockRepository.Setup(r => r.GetByIdAsync(command.ProductId))
+            .ReturnsAsync(product);
+
+        // Act
+        var result = await _service.UpdateProductAsync(command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains("Cannot update an archived product.", result.Errors);
+        _mockRepository.Verify(r => r.UpdateAsync(It.IsAny<Mercato.Product.Domain.Entities.Product>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task UpdateProductAsync_ValidationErrors_ReturnsFailure()
+    {
+        // Arrange
+        var command = new UpdateProductCommand
+        {
+            ProductId = Guid.Empty,
+            SellerId = string.Empty,
+            StoreId = Guid.Empty,
+            Title = string.Empty,
+            Price = -1,
+            Stock = -1,
+            Category = string.Empty
+        };
+
+        // Act
+        var result = await _service.UpdateProductAsync(command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains("Product ID is required.", result.Errors);
+        Assert.Contains("Store ID is required.", result.Errors);
+        Assert.Contains("Seller ID is required.", result.Errors);
+        Assert.Contains("Title is required.", result.Errors);
+        Assert.Contains("Category is required.", result.Errors);
+    }
+
+    [Fact]
+    public async Task UpdateProductAsync_EmptyProductId_ReturnsFailure()
+    {
+        // Arrange
+        var command = CreateValidUpdateCommand();
+        command.ProductId = Guid.Empty;
+
+        // Act
+        var result = await _service.UpdateProductAsync(command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains("Product ID is required.", result.Errors);
+    }
+
+    [Fact]
+    public async Task UpdateProductAsync_EmptySellerId_ReturnsFailure()
+    {
+        // Arrange
+        var command = CreateValidUpdateCommand();
+        command.SellerId = string.Empty;
+
+        // Act
+        var result = await _service.UpdateProductAsync(command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains("Seller ID is required.", result.Errors);
+    }
+
+    #endregion
+
+    #region ArchiveProductAsync Tests
+
+    [Fact]
+    public async Task ArchiveProductAsync_ValidCommand_ReturnsSuccess()
+    {
+        // Arrange
+        var command = CreateValidArchiveCommand();
+        var product = CreateTestProduct();
+
+        _mockRepository.Setup(r => r.GetByIdAsync(command.ProductId))
+            .ReturnsAsync(product);
+        _mockRepository.Setup(r => r.UpdateAsync(It.IsAny<Mercato.Product.Domain.Entities.Product>()))
+            .Returns(Task.CompletedTask);
+
+        // Act
+        var result = await _service.ArchiveProductAsync(command);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.Empty(result.Errors);
+        _mockRepository.Verify(r => r.UpdateAsync(It.Is<Mercato.Product.Domain.Entities.Product>(p =>
+            p.Status == ProductStatus.Archived &&
+            p.ArchivedBy == command.SellerId &&
+            p.ArchivedAt != null
+        )), Times.Once);
+    }
+
+    [Fact]
+    public async Task ArchiveProductAsync_ProductNotFound_ReturnsFailure()
+    {
+        // Arrange
+        var command = CreateValidArchiveCommand();
+
+        _mockRepository.Setup(r => r.GetByIdAsync(command.ProductId))
+            .ReturnsAsync((Mercato.Product.Domain.Entities.Product?)null);
+
+        // Act
+        var result = await _service.ArchiveProductAsync(command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains("Product not found.", result.Errors);
+        _mockRepository.Verify(r => r.UpdateAsync(It.IsAny<Mercato.Product.Domain.Entities.Product>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ArchiveProductAsync_NotOwner_ReturnsFailure()
+    {
+        // Arrange
+        var command = CreateValidArchiveCommand();
+        var product = CreateTestProduct();
+        product.StoreId = Guid.NewGuid(); // Different store ID
+
+        _mockRepository.Setup(r => r.GetByIdAsync(command.ProductId))
+            .ReturnsAsync(product);
+
+        // Act
+        var result = await _service.ArchiveProductAsync(command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains("You are not authorized to archive this product.", result.Errors);
+        _mockRepository.Verify(r => r.UpdateAsync(It.IsAny<Mercato.Product.Domain.Entities.Product>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ArchiveProductAsync_AlreadyArchived_ReturnsFailure()
+    {
+        // Arrange
+        var command = CreateValidArchiveCommand();
+        var product = CreateTestProduct();
+        product.Status = ProductStatus.Archived;
+
+        _mockRepository.Setup(r => r.GetByIdAsync(command.ProductId))
+            .ReturnsAsync(product);
+
+        // Act
+        var result = await _service.ArchiveProductAsync(command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains("Product is already archived.", result.Errors);
+        _mockRepository.Verify(r => r.UpdateAsync(It.IsAny<Mercato.Product.Domain.Entities.Product>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ArchiveProductAsync_ValidationErrors_ReturnsFailure()
+    {
+        // Arrange
+        var command = new ArchiveProductCommand
+        {
+            ProductId = Guid.Empty,
+            SellerId = string.Empty,
+            StoreId = Guid.Empty
+        };
+
+        // Act
+        var result = await _service.ArchiveProductAsync(command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains("Product ID is required.", result.Errors);
+        Assert.Contains("Store ID is required.", result.Errors);
+        Assert.Contains("Seller ID is required.", result.Errors);
+    }
+
+    #endregion
+
+    #region GetActiveProductsByStoreIdAsync Tests
+
+    [Fact]
+    public async Task GetActiveProductsByStoreIdAsync_WhenProductsExist_ReturnsActiveProducts()
+    {
+        // Arrange
+        var products = new List<Mercato.Product.Domain.Entities.Product>
+        {
+            CreateTestProduct(),
+            CreateTestProduct(Guid.NewGuid())
+        };
+
+        _mockRepository.Setup(r => r.GetActiveByStoreIdAsync(TestStoreId))
+            .ReturnsAsync(products);
+
+        // Act
+        var result = await _service.GetActiveProductsByStoreIdAsync(TestStoreId);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(2, result.Count);
+        _mockRepository.Verify(r => r.GetActiveByStoreIdAsync(TestStoreId), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetActiveProductsByStoreIdAsync_WhenNoProducts_ReturnsEmptyList()
+    {
+        // Arrange
+        _mockRepository.Setup(r => r.GetActiveByStoreIdAsync(TestStoreId))
+            .ReturnsAsync(new List<Mercato.Product.Domain.Entities.Product>());
+
+        // Act
+        var result = await _service.GetActiveProductsByStoreIdAsync(TestStoreId);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Empty(result);
+        _mockRepository.Verify(r => r.GetActiveByStoreIdAsync(TestStoreId), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetActiveProductsByStoreIdAsync_ExcludesArchivedProducts()
+    {
+        // Arrange
+        var activeProduct = CreateTestProduct();
+        var products = new List<Mercato.Product.Domain.Entities.Product> { activeProduct };
+
+        _mockRepository.Setup(r => r.GetActiveByStoreIdAsync(TestStoreId))
+            .ReturnsAsync(products);
+
+        // Act
+        var result = await _service.GetActiveProductsByStoreIdAsync(TestStoreId);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Single(result);
+        Assert.All(result, p => Assert.NotEqual(ProductStatus.Archived, p.Status));
+        _mockRepository.Verify(r => r.GetActiveByStoreIdAsync(TestStoreId), Times.Once);
+    }
+
+    #endregion
+
     #region Helper Methods
 
     private static CreateProductCommand CreateValidCommand()
@@ -385,6 +703,31 @@ public class ProductServiceTests
             Price = 99.99m,
             Stock = 100,
             Category = "Electronics"
+        };
+    }
+
+    private static UpdateProductCommand CreateValidUpdateCommand()
+    {
+        return new UpdateProductCommand
+        {
+            ProductId = TestProductId,
+            SellerId = TestSellerId,
+            StoreId = TestStoreId,
+            Title = "Updated Product",
+            Description = "An updated product description",
+            Price = 149.99m,
+            Stock = 50,
+            Category = "Updated Category"
+        };
+    }
+
+    private static ArchiveProductCommand CreateValidArchiveCommand()
+    {
+        return new ArchiveProductCommand
+        {
+            ProductId = TestProductId,
+            SellerId = TestSellerId,
+            StoreId = TestStoreId
         };
     }
 

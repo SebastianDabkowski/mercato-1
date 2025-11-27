@@ -28,4 +28,25 @@ public interface IProductService
     /// <param name="storeId">The store ID.</param>
     /// <returns>A list of products belonging to the store.</returns>
     Task<IReadOnlyList<Domain.Entities.Product>> GetProductsByStoreIdAsync(Guid storeId);
+
+    /// <summary>
+    /// Updates an existing product.
+    /// </summary>
+    /// <param name="command">The update product command.</param>
+    /// <returns>The result of the update operation.</returns>
+    Task<UpdateProductResult> UpdateProductAsync(UpdateProductCommand command);
+
+    /// <summary>
+    /// Archives (soft-deletes) a product.
+    /// </summary>
+    /// <param name="command">The archive product command.</param>
+    /// <returns>The result of the archive operation.</returns>
+    Task<ArchiveProductResult> ArchiveProductAsync(ArchiveProductCommand command);
+
+    /// <summary>
+    /// Gets all active (non-archived) products for a specific store.
+    /// </summary>
+    /// <param name="storeId">The store ID.</param>
+    /// <returns>A list of active products belonging to the store.</returns>
+    Task<IReadOnlyList<Domain.Entities.Product>> GetActiveProductsByStoreIdAsync(Guid storeId);
 }

@@ -57,4 +57,13 @@ public class ProductRepository : IProductRepository
             await _context.SaveChangesAsync();
         }
     }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<Domain.Entities.Product>> GetActiveByStoreIdAsync(Guid storeId)
+    {
+        return await _context.Products
+            .Where(p => p.StoreId == storeId && p.Status != ProductStatus.Archived)
+            .OrderByDescending(p => p.CreatedAt)
+            .ToListAsync();
+    }
 }

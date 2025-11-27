@@ -41,4 +41,11 @@ public interface IProductRepository
     /// <param name="id">The product ID.</param>
     /// <returns>A task representing the asynchronous operation.</returns>
     Task DeleteAsync(Guid id);
+
+    /// <summary>
+    /// Gets all active (non-archived) products for a specific store.
+    /// </summary>
+    /// <param name="storeId">The store ID.</param>
+    /// <returns>A list of active products belonging to the store.</returns>
+    Task<IReadOnlyList<Entities.Product>> GetActiveByStoreIdAsync(Guid storeId);
 }

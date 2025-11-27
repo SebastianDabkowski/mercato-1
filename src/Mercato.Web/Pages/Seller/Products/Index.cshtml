@@ -27,6 +27,22 @@
                         </div>
                     }
 
+                    @if (Model.Updated)
+                    {
+                        <div class="alert alert-success alert-dismissible fade show" role="alert">
+                            <i class="bi bi-check-circle-fill me-2"></i>Product updated successfully.
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    }
+
+                    @if (Model.Archived)
+                    {
+                        <div class="alert alert-success alert-dismissible fade show" role="alert">
+                            <i class="bi bi-check-circle-fill me-2"></i>Product archived successfully.
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    }
+
                     @if (Model.HasError)
                     {
                         <div class="alert alert-danger" role="alert">
@@ -70,6 +86,7 @@
                                         <th class="text-center">Stock</th>
                                         <th class="text-center">Status</th>
                                         <th class="text-center">Created</th>
+                                        <th class="text-center">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -93,6 +110,21 @@
                                                 </span>
                                             </td>
                                             <td class="text-center">@product.CreatedAt.ToString("MMM dd, yyyy")</td>
+                                            <td class="text-center">
+                                                <div class="btn-group btn-group-sm" role="group">
+                                                    <a asp-page="Edit" asp-route-id="@product.Id" class="btn btn-outline-primary" title="Edit">
+                                                        <i class="bi bi-pencil"></i>
+                                                    </a>
+                                                    <button type="button" class="btn btn-outline-danger" 
+                                                            data-bs-toggle="modal" 
+                                                            data-bs-target="#deleteModal" 
+                                                            data-product-id="@product.Id"
+                                                            data-product-title="@product.Title"
+                                                            title="Delete">
+                                                        <i class="bi bi-trash"></i>
+                                                    </button>
+                                                </div>
+                                            </td>
                                         </tr>
                                     }
                                 </tbody>
@@ -110,3 +142,43 @@
         </a>
     </div>
 </div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteModalLabel">
+                    <i class="bi bi-exclamation-triangle-fill text-danger me-2"></i>Confirm Delete
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete the product "<strong id="deleteProductTitle"></strong>"?</p>
+                <p class="text-muted mb-0">This action will archive the product. It will no longer appear in search results or public listings.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form method="post" asp-page-handler="Delete" id="deleteForm" style="display: inline;">
+                    <input type="hidden" name="productId" id="deleteProductId" />
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-trash me-1"></i>Delete
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.getElementById('deleteModal').addEventListener('show.bs.modal', function (event) {
+            var button = event.relatedTarget;
+            var productId = button.getAttribute('data-product-id');
+            var productTitle = button.getAttribute('data-product-title');
+            
+            document.getElementById('deleteProductId').value = productId;
+            document.getElementById('deleteProductTitle').textContent = productTitle;
+        });
+    </script>
+}
