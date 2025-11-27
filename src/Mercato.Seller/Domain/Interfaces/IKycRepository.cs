@@ -46,4 +46,17 @@ public interface IKycRepository
     /// <param name="kycSubmissionId">The KYC submission ID.</param>
     /// <returns>A read-only list of audit log entries.</returns>
     Task<IReadOnlyList<KycAuditLog>> GetAuditLogsAsync(Guid kycSubmissionId);
+
+    /// <summary>
+    /// Gets all KYC submissions.
+    /// </summary>
+    /// <returns>A read-only list of all KYC submissions.</returns>
+    Task<IReadOnlyList<KycSubmission>> GetAllAsync();
+
+    /// <summary>
+    /// Gets all KYC submissions with a specific status.
+    /// </summary>
+    /// <param name="status">The KYC status to filter by.</param>
+    /// <returns>A read-only list of KYC submissions with the specified status.</returns>
+    Task<IReadOnlyList<KycSubmission>> GetByStatusAsync(KycStatus status);
 }

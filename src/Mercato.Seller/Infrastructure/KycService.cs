@@ -200,6 +200,90 @@ public class KycService : IKycService
         return ApproveKycResult.Success();
     }
 
+    /// <inheritdoc />
+    public async Task<RejectKycResult> RejectKycAsync(RejectKycCommand command)
+    {
+        ArgumentNullException.ThrowIfNull(command);
+        ArgumentException.ThrowIfNullOrWhiteSpace(command.AdminUserId);
+
+        _logger.LogInformation("Processing KYC rejection for submission {SubmissionId} by admin {AdminUserId}",
+            command.SubmissionId, command.AdminUserId);
+
+        if (string.IsNullOrWhiteSpace(command.RejectionReason))
+        {
+            return RejectKycResult.Failure("Rejection reason is required.");
+        }
+
+        // Get the KYC submission
+        var submission = await _kycRepository.GetByIdAsync(command.SubmissionId);
+        if (submission == null)
+        {
+            _logger.LogWarning("KYC submission {SubmissionId} not found", command.SubmissionId);
+            return RejectKycResult.Failure("KYC submission not found.");
+        }
+
+        // Validate the submission is in a valid state for rejection
+        if (submission.Status != KycStatus.Pending && submission.Status != KycStatus.UnderReview)
+        {
+            _logger.LogWarning("KYC submission {SubmissionId} is not in a valid state for rejection. Current status: {Status}",
+                command.SubmissionId, submission.Status);
+            return RejectKycResult.Failure($"KYC submission cannot be rejected. Current status: {submission.Status}.");
+        }
+
+        // Update submission status
+        var oldStatus = submission.Status;
+        submission.Status = KycStatus.Rejected;
+        submission.RejectionReason = command.RejectionReason;
+        submission.ReviewedAt = DateTimeOffset.UtcNow;
+        submission.ReviewedBy = command.AdminUserId;
+
+        await _kycRepository.UpdateAsync(submission);
+
+        // Create audit log entry
+        var auditLog = new KycAuditLog
+        {
+            Id = Guid.NewGuid(),
+            KycSubmissionId = submission.Id,
+            Action = "Rejected",
+            OldStatus = oldStatus,
+            NewStatus = KycStatus.Rejected,
+            PerformedBy = command.AdminUserId,
+            PerformedAt = DateTimeOffset.UtcNow,
+            Details = $"KYC submission rejected. Reason: {command.RejectionReason}"
+        };
+
+        await _kycRepository.AddAuditLogAsync(auditLog);
+
+        _logger.LogInformation("KYC submission {SubmissionId} rejected successfully by admin {AdminUserId}. Reason: {Reason}",
+            command.SubmissionId, command.AdminUserId, command.RejectionReason);
+
+        return RejectKycResult.Success();
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<KycSubmission>> GetAllSubmissionsAsync()
+    {
+        return await _kycRepository.GetAllAsync();
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<KycSubmission>> GetSubmissionsByStatusAsync(KycStatus status)
+    {
+        return await _kycRepository.GetByStatusAsync(status);
+    }
+
+    /// <inheritdoc />
+    public async Task<KycSubmission?> GetSubmissionByIdAsync(Guid id)
+    {
+        return await _kycRepository.GetByIdAsync(id);
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<KycAuditLog>> GetAuditLogsAsync(Guid kycSubmissionId)
+    {
+        return await _kycRepository.GetAuditLogsAsync(kycSubmissionId);
+    }
+
     private static List<string> ValidateCommand(SubmitKycCommand command)
     {
         var errors = new List<string>();
