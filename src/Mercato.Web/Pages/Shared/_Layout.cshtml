@@ -9,6 +9,7 @@
 </head>
 <body>
     <header>
+        @* TODO: Implement actual UI for header section - add logo, search bar, user menu *@
         <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
             <div class="container">
                 <a class="navbar-brand" asp-area="" asp-page="/Index">Mercato</a>
@@ -17,25 +18,32 @@
                     <span class="navbar-toggler-icon"></span>
                 </button>
                 <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
+                    @* TODO: Implement actual UI for navigation - add role-based visibility, dropdowns, active state highlighting *@
                     <ul class="navbar-nav flex-grow-1">
                         <li class="nav-item">
                             <a class="nav-link text-dark" asp-area="" asp-page="/Index">Home</a>
                         </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-page="/Product/Index">Products</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-page="/Cart/Index">Cart</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-page="/Orders/Index">Orders</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-page="/Seller/Index">Seller</a>
-                        </li>
+                        @* TODO: Implement actual UI for Buyer section - add authentication check *@
                         <li class="nav-item">
                             <a class="nav-link text-dark" asp-area="" asp-page="/Buyer/Index">Buyer</a>
                         </li>
+                        @* TODO: Implement actual UI for Seller section - add seller role authorization *@
+                        <li class="nav-item">
+                            <a class="nav-link text-dark" asp-area="" asp-page="/Seller/Index">Seller</a>
+                        </li>
+                        @* TODO: Implement actual UI for Product section - add product categories dropdown *@
+                        <li class="nav-item">
+                            <a class="nav-link text-dark" asp-area="" asp-page="/Product/Index">Product</a>
+                        </li>
+                        @* TODO: Implement actual UI for Cart section - add cart item count badge *@
+                        <li class="nav-item">
+                            <a class="nav-link text-dark" asp-area="" asp-page="/Cart/Index">Cart</a>
+                        </li>
+                        @* TODO: Implement actual UI for Orders section - add order status notifications *@
+                        <li class="nav-item">
+                            <a class="nav-link text-dark" asp-area="" asp-page="/Orders/Index">Orders</a>
+                        </li>
+                        @* TODO: Implement actual UI for Admin section - add admin role authorization *@
                         <li class="nav-item">
                             <a class="nav-link text-dark" asp-area="" asp-page="/Admin/Index">Admin</a>
                         </li>
@@ -50,6 +58,7 @@
         </main>
     </div>
 
+    @* TODO: Implement actual UI for footer section - add links, social media, newsletter signup *@
     <footer class="border-top footer text-muted">
         <div class="container">
             &copy; 2025 - Mercato
