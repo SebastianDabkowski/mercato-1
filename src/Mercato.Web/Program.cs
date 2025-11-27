@@ -56,13 +56,13 @@ builder.Services.AddIdentity<IdentityUser, IdentityRole>(options =>
 .AddDefaultTokenProviders();
 
 // Configure cookie authentication
+var sessionTimeoutMinutes = builder.Configuration.GetValue<int>("Session:InactivityTimeoutMinutes", 60);
 builder.Services.ConfigureApplicationCookie(options =>
 {
     options.Cookie.HttpOnly = true;
-    options.ExpireTimeSpan = TimeSpan.FromMinutes(60);
-    // TODO: Implement login page and set the path
+    options.ExpireTimeSpan = TimeSpan.FromMinutes(sessionTimeoutMinutes);
     options.LoginPath = "/Account/Login";
-    // TODO: Implement access denied page and set the path
+    options.LogoutPath = "/Account/Logout";
     options.AccessDeniedPath = "/Account/AccessDenied";
     options.SlidingExpiration = true;
 });
@@ -139,8 +139,5 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapRazorPages();
-
-// TODO: Implement Account/Logout functionality
-// TODO: Implement Account/AccessDenied page
 
 app.Run();
