@@ -26,9 +26,11 @@ public static class AdminModuleExtensions
 
         // Register repositories
         services.AddScoped<IRoleChangeAuditRepository, RoleChangeAuditRepository>();
+        services.AddScoped<IAuthenticationEventRepository, AuthenticationEventRepository>();
 
         // Register services
         services.AddScoped<IUserRoleManagementService, UserRoleManagementService>();
+        services.AddScoped<IAuthenticationEventService, AuthenticationEventService>();
 
         return services;
     }

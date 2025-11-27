@@ -1,3 +1,5 @@
+using Mercato.Admin.Application.Services;
+using Mercato.Admin.Domain.Entities;
 using Mercato.Identity.Application.Commands;
 using Mercato.Identity.Application.Services;
 using Microsoft.AspNetCore.Identity;
@@ -13,17 +15,21 @@ public class LoginModel : PageModel
 {
     private readonly IBuyerLoginService _loginService;
     private readonly SignInManager<IdentityUser> _signInManager;
+    private readonly IAuthenticationEventService _authEventService;
     private readonly ILogger<LoginModel> _logger;
     private readonly IConfiguration _configuration;
+    private const string BuyerRole = "Buyer";
 
     public LoginModel(
         IBuyerLoginService loginService,
         SignInManager<IdentityUser> signInManager,
+        IAuthenticationEventService authEventService,
         ILogger<LoginModel> logger,
         IConfiguration configuration)
     {
         _loginService = loginService;
         _signInManager = signInManager;
+        _authEventService = authEventService;
         _logger = logger;
         _configuration = configuration;
     }
@@ -90,6 +96,9 @@ public class LoginModel : PageModel
             return Page();
         }
 
+        var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+        var userAgent = Request.Headers.UserAgent.ToString();
+
         var result = await _loginService.LoginAsync(Input);
 
         if (result.Succeeded && !string.IsNullOrEmpty(result.UserId))
@@ -101,18 +110,52 @@ public class LoginModel : PageModel
             {
                 await _signInManager.SignInAsync(user, isPersistent: Input.RememberMe);
                 _logger.LogInformation("User {Email} logged in successfully.", Input.Email);
+
+                // Log successful login event
+                await _authEventService.LogEventAsync(
+                    AuthenticationEventType.Login,
+                    Input.Email,
+                    isSuccessful: true,
+                    userId: result.UserId,
+                    userRole: BuyerRole,
+                    ipAddress: ipAddress,
+                    userAgent: userAgent);
+
                 return LocalRedirect(returnUrl);
             }
         }
 
-        // Handle specific error cases
+        // Determine failure reason for logging
+        string? failureReason = null;
         if (result.IsLockedOut)
         {
             _logger.LogWarning("User {Email} account locked out.", Input.Email);
+            failureReason = "Account locked out";
+
+            // Log lockout event
+            await _authEventService.LogEventAsync(
+                AuthenticationEventType.Lockout,
+                Input.Email,
+                isSuccessful: false,
+                userRole: BuyerRole,
+                ipAddress: ipAddress,
+                userAgent: userAgent,
+                failureReason: failureReason);
         }
         else
         {
             _logger.LogWarning("Invalid login attempt for {Email}.", Input.Email);
+            failureReason = result.ErrorMessage ?? "Invalid credentials";
+
+            // Log failed login event
+            await _authEventService.LogEventAsync(
+                AuthenticationEventType.Login,
+                Input.Email,
+                isSuccessful: false,
+                userRole: BuyerRole,
+                ipAddress: ipAddress,
+                userAgent: userAgent,
+                failureReason: failureReason);
         }
 
         // Add error to ModelState
