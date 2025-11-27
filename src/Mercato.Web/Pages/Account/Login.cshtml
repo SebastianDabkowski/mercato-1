@@ -9,6 +9,13 @@
         <h1>Log in</h1>
         <p>Welcome back! Log in to access your profile, orders, and preferences.</p>
         
+        @if (!string.IsNullOrEmpty(Model.StatusMessage))
+        {
+            <div class="alert alert-success" role="alert">
+                @Model.StatusMessage
+            </div>
+        }
+        
         @if (!string.IsNullOrEmpty(Model.ExternalErrorMessage))
         {
             <div class="alert alert-danger" role="alert">

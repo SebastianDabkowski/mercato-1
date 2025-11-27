@@ -45,6 +45,11 @@ public class LoginModel : PageModel
     public string? ExternalErrorMessage { get; set; }
 
     /// <summary>
+    /// Gets or sets a success message (e.g., from password change or password reset).
+    /// </summary>
+    public string? StatusMessage { get; set; }
+
+    /// <summary>
     /// Gets a value indicating whether Google login is available.
     /// </summary>
     public bool IsGoogleLoginEnabled { get; private set; }
@@ -58,6 +63,7 @@ public class LoginModel : PageModel
     {
         ReturnUrl = returnUrl;
         ExternalErrorMessage = errorMessage ?? TempData["ErrorMessage"]?.ToString();
+        StatusMessage = TempData["StatusMessage"]?.ToString();
         
         // Check if Google login is configured
         var googleClientId = _configuration["Authentication:Google:ClientId"];
