@@ -1,0 +1,40 @@
+@page
+@model Mercato.Web.Pages.IndexModel
+@{
+    ViewData["Title"] = "Home";
+}
+
+<div class="text-center">
+    <h1 class="display-4">Welcome to Mercato</h1>
+    <p>Your multi-vendor e-commerce marketplace platform.</p>
+    
+    <div class="row mt-4">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">For Buyers</h5>
+                    <p class="card-text">Browse products from multiple vendors and make purchases.</p>
+                    <a asp-page="/Buyer/Index" class="btn btn-primary">Buyer Portal</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">For Sellers</h5>
+                    <p class="card-text">Manage your store, products, and orders.</p>
+                    <a asp-page="/Seller/Index" class="btn btn-primary">Seller Portal</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Administration</h5>
+                    <p class="card-text">Platform administration and management.</p>
+                    <a asp-page="/Admin/Index" class="btn btn-primary">Admin Portal</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
