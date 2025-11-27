@@ -34,7 +34,7 @@
                     <h4 class="mb-0"><i class="bi bi-shield-check me-2"></i>Verification Data</h4>
                 </div>
                 <div class="card-body">
-                    <p class="text-muted mb-4">Provide your business information for verification purposes. This helps us ensure the security and legitimacy of sellers on our platform.</p>
+                    <p class="text-muted mb-4">Provide your information for verification purposes. This helps us ensure the security and legitimacy of sellers on our platform.</p>
 
                     @if (!string.IsNullOrEmpty(Model.ErrorMessage))
                     {
@@ -43,35 +43,94 @@
                         </div>
                     }
 
-                    <form method="post">
+                    <form method="post" id="verificationForm">
                         <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
 
-                        <div class="mb-3">
-                            <label asp-for="BusinessName" class="form-label">Business Name <span class="text-danger">*</span></label>
-                            <input asp-for="BusinessName" class="form-control" placeholder="Enter your legal business name" />
-                            <span asp-validation-for="BusinessName" class="text-danger"></span>
-                            <div class="form-text">The official registered name of your business.</div>
-                        </div>
-
-                        <div class="mb-3">
-                            <label asp-for="BusinessAddress" class="form-label">Business Address <span class="text-danger">*</span></label>
-                            <textarea asp-for="BusinessAddress" class="form-control" rows="3" placeholder="Enter your full business address"></textarea>
-                            <span asp-validation-for="BusinessAddress" class="text-danger"></span>
-                            <div class="form-text">The registered address of your business.</div>
-                        </div>
-
-                        <div class="mb-3">
-                            <label asp-for="TaxId" class="form-label">Tax Identification Number <span class="text-danger">*</span></label>
-                            <input asp-for="TaxId" class="form-control" placeholder="Enter your tax ID (e.g., EIN, VAT number)" />
-                            <span asp-validation-for="TaxId" class="text-danger"></span>
-                            <div class="form-text">Your tax identification number for tax reporting purposes.</div>
-                        </div>
-
+                        <!-- Seller Type Selection -->
                         <div class="mb-4">
-                            <label asp-for="BusinessRegistrationNumber" class="form-label">Business Registration Number (Optional)</label>
-                            <input asp-for="BusinessRegistrationNumber" class="form-control" placeholder="Enter your business registration number" />
-                            <span asp-validation-for="BusinessRegistrationNumber" class="text-danger"></span>
-                            <div class="form-text">Your official business registration or company number if applicable.</div>
+                            <label asp-for="SellerType" class="form-label">Seller Type <span class="text-danger">*</span></label>
+                            <select asp-for="SellerType" asp-items="Model.SellerTypeOptions" class="form-select" id="sellerTypeSelect">
+                            </select>
+                            <span asp-validation-for="SellerType" class="text-danger"></span>
+                            <div class="form-text">Select whether you are registering as an individual or a company.</div>
+                        </div>
+
+                        <!-- Company Fields -->
+                        <div id="companyFields" style="display: none;">
+                            <h5 class="border-bottom pb-2 mb-3"><i class="bi bi-building me-2"></i>Company Information</h5>
+                            
+                            <div class="mb-3">
+                                <label asp-for="BusinessName" class="form-label">Business Name <span class="text-danger">*</span></label>
+                                <input asp-for="BusinessName" class="form-control" placeholder="Enter your legal business name" />
+                                <span asp-validation-for="BusinessName" class="text-danger"></span>
+                                <div class="form-text">The official registered name of your business.</div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label asp-for="BusinessRegistrationNumber" class="form-label">Business Registration Number <span class="text-danger">*</span></label>
+                                <input asp-for="BusinessRegistrationNumber" class="form-control" placeholder="Enter your business registration number" />
+                                <span asp-validation-for="BusinessRegistrationNumber" class="text-danger"></span>
+                                <div class="form-text">Your official business registration or company number.</div>
+                            </div>
+
+                            <h6 class="mt-4 mb-3"><i class="bi bi-person-badge me-2"></i>Contact Person</h6>
+
+                            <div class="mb-3">
+                                <label asp-for="ContactPersonName" class="form-label">Contact Person Name <span class="text-danger">*</span></label>
+                                <input asp-for="ContactPersonName" class="form-control" placeholder="Enter the contact person's full name" />
+                                <span asp-validation-for="ContactPersonName" class="text-danger"></span>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label asp-for="ContactPersonEmail" class="form-label">Contact Person Email <span class="text-danger">*</span></label>
+                                    <input asp-for="ContactPersonEmail" class="form-control" type="email" placeholder="email@company.com" />
+                                    <span asp-validation-for="ContactPersonEmail" class="text-danger"></span>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label asp-for="ContactPersonPhone" class="form-label">Contact Person Phone <span class="text-danger">*</span></label>
+                                    <input asp-for="ContactPersonPhone" class="form-control" type="tel" placeholder="+1 234 567 8900" />
+                                    <span asp-validation-for="ContactPersonPhone" class="text-danger"></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Individual Fields -->
+                        <div id="individualFields" style="display: none;">
+                            <h5 class="border-bottom pb-2 mb-3"><i class="bi bi-person me-2"></i>Personal Information</h5>
+                            
+                            <div class="mb-3">
+                                <label asp-for="FullName" class="form-label">Full Name <span class="text-danger">*</span></label>
+                                <input asp-for="FullName" class="form-control" placeholder="Enter your full legal name" />
+                                <span asp-validation-for="FullName" class="text-danger"></span>
+                                <div class="form-text">Your full legal name as it appears on official documents.</div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label asp-for="PersonalIdNumber" class="form-label">Personal ID Number <span class="text-danger">*</span></label>
+                                <input asp-for="PersonalIdNumber" class="form-control" placeholder="Enter your personal ID number" />
+                                <span asp-validation-for="PersonalIdNumber" class="text-danger"></span>
+                                <div class="form-text">Your national ID, passport number, or other official identification number.</div>
+                            </div>
+                        </div>
+
+                        <!-- Common Fields -->
+                        <div id="commonFields" style="display: none;">
+                            <h5 class="border-bottom pb-2 mb-3 mt-4"><i class="bi bi-geo-alt me-2"></i>Address & Tax Information</h5>
+
+                            <div class="mb-3">
+                                <label asp-for="Address" class="form-label">Address <span class="text-danger">*</span></label>
+                                <textarea asp-for="Address" class="form-control" rows="3" placeholder="Enter your full address"></textarea>
+                                <span asp-validation-for="Address" class="text-danger"></span>
+                                <div class="form-text">Your registered address for official correspondence.</div>
+                            </div>
+
+                            <div class="mb-4">
+                                <label asp-for="TaxId" class="form-label">Tax Identification Number <span class="text-danger">*</span></label>
+                                <input asp-for="TaxId" class="form-control" placeholder="Enter your tax ID (e.g., EIN, VAT number, SSN)" />
+                                <span asp-validation-for="TaxId" class="text-danger"></span>
+                                <div class="form-text">Your tax identification number for tax reporting purposes.</div>
+                            </div>
                         </div>
 
                         <div class="d-flex justify-content-between">
@@ -97,4 +156,36 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // Seller type enum values matching C# SellerType enum
+            var SELLER_TYPE_INDIVIDUAL = '0';
+            var SELLER_TYPE_COMPANY = '1';
+
+            var sellerTypeSelect = document.getElementById('sellerTypeSelect');
+            var companyFields = document.getElementById('companyFields');
+            var individualFields = document.getElementById('individualFields');
+            var commonFields = document.getElementById('commonFields');
+
+            function toggleFields() {
+                var sellerType = sellerTypeSelect.value;
+                
+                if (sellerType === SELLER_TYPE_COMPANY) {
+                    companyFields.style.display = 'block';
+                    individualFields.style.display = 'none';
+                    commonFields.style.display = 'block';
+                } else {
+                    // Individual (default)
+                    companyFields.style.display = 'none';
+                    individualFields.style.display = 'block';
+                    commonFields.style.display = 'block';
+                }
+            }
+
+            sellerTypeSelect.addEventListener('change', toggleFields);
+            
+            // Initialize on page load
+            toggleFields();
+        });
+    </script>
 }

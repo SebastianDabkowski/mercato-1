@@ -81,6 +81,11 @@ public class SellerDbContext : DbContext
             entity.Property(e => e.BusinessAddress).HasMaxLength(500);
             entity.Property(e => e.TaxId).HasMaxLength(50);
             entity.Property(e => e.BusinessRegistrationNumber).HasMaxLength(50);
+            entity.Property(e => e.FullName).HasMaxLength(200);
+            entity.Property(e => e.PersonalIdNumber).HasMaxLength(50);
+            entity.Property(e => e.ContactPersonName).HasMaxLength(200);
+            entity.Property(e => e.ContactPersonEmail).HasMaxLength(254);
+            entity.Property(e => e.ContactPersonPhone).HasMaxLength(20);
             entity.Property(e => e.BankName).HasMaxLength(200);
             entity.Property(e => e.BankAccountNumber).HasMaxLength(50);
             entity.Property(e => e.BankRoutingNumber).HasMaxLength(20);
