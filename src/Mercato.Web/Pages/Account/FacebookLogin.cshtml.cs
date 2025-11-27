@@ -17,7 +17,7 @@ public class FacebookLoginModel : PageModel
         _configuration = configuration;
     }
 
-    public IActionResult OnGet(string? returnUrl = null)
+    public IActionResult OnGet(string? returnUrl = null, bool linkMode = false)
     {
         // Check if Facebook authentication is configured
         var appId = _configuration["Authentication:Facebook:AppId"];
@@ -27,7 +27,7 @@ public class FacebookLoginModel : PageModel
             return RedirectToPage("/Account/Login");
         }
 
-        var redirectUrl = Url.Page("/Account/FacebookCallback", pageHandler: null, values: new { returnUrl }, protocol: Request.Scheme);
+        var redirectUrl = Url.Page("/Account/FacebookCallback", pageHandler: null, values: new { returnUrl, linkMode }, protocol: Request.Scheme);
         var properties = new AuthenticationProperties { RedirectUri = redirectUrl };
 
         return Challenge(properties, FacebookDefaults.AuthenticationScheme);

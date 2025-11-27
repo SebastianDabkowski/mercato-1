@@ -12,22 +12,25 @@ namespace Mercato.Web.Pages.Account;
 public class FacebookCallbackModel : PageModel
 {
     private readonly IFacebookLoginService _facebookLoginService;
+    private readonly IAccountLinkingService _accountLinkingService;
     private readonly SignInManager<IdentityUser> _signInManager;
     private readonly ILogger<FacebookCallbackModel> _logger;
 
     public FacebookCallbackModel(
         IFacebookLoginService facebookLoginService,
+        IAccountLinkingService accountLinkingService,
         SignInManager<IdentityUser> signInManager,
         ILogger<FacebookCallbackModel> logger)
     {
         _facebookLoginService = facebookLoginService;
+        _accountLinkingService = accountLinkingService;
         _signInManager = signInManager;
         _logger = logger;
     }
 
     public string? ErrorMessage { get; set; }
 
-    public async Task<IActionResult> OnGetAsync(string? returnUrl = null, string? remoteError = null)
+    public async Task<IActionResult> OnGetAsync(string? returnUrl = null, string? remoteError = null, bool linkMode = false)
     {
         returnUrl ??= Url.Content("~/");
 
@@ -56,6 +59,12 @@ public class FacebookCallbackModel : PageModel
             _logger.LogWarning("Facebook authentication did not provide required claims.");
             ErrorMessage = "Facebook did not provide the required information. Please try again.";
             return RedirectToPage("/Account/Login", new { errorMessage = ErrorMessage });
+        }
+
+        // Handle link mode - user is already authenticated and wants to link Facebook account
+        if (linkMode && User.Identity?.IsAuthenticated == true)
+        {
+            return await HandleLinkModeAsync(facebookId, returnUrl);
         }
 
         // Process the Facebook login through our service
@@ -88,5 +97,39 @@ public class FacebookCallbackModel : PageModel
 
         ErrorMessage = "An error occurred during login. Please try again.";
         return RedirectToPage("/Account/Login", new { errorMessage = ErrorMessage });
+    }
+
+    private async Task<IActionResult> HandleLinkModeAsync(string facebookId, string returnUrl)
+    {
+        var userId = _signInManager.UserManager.GetUserId(User);
+        if (string.IsNullOrEmpty(userId))
+        {
+            return RedirectToPage("/Account/Login");
+        }
+
+        var linkResult = await _accountLinkingService.LinkAccountAsync(userId, "Facebook", facebookId);
+
+        if (linkResult.Succeeded)
+        {
+            if (linkResult.WasAlreadyLinked)
+            {
+                _logger.LogInformation("User {UserId} attempted to link Facebook account but it was already linked.", userId);
+                TempData["StatusMessage"] = "Your Facebook account is already linked.";
+            }
+            else
+            {
+                _logger.LogInformation("User {UserId} successfully linked Facebook account.", userId);
+                TempData["StatusMessage"] = "Successfully linked your Facebook account.";
+            }
+            TempData["IsError"] = false;
+        }
+        else
+        {
+            _logger.LogWarning("Failed to link Facebook account for user {UserId}: {Error}", userId, linkResult.ErrorMessage);
+            TempData["StatusMessage"] = linkResult.ErrorMessage ?? "Failed to link Facebook account.";
+            TempData["IsError"] = true;
+        }
+
+        return RedirectToPage("/Account/ManageLinkedAccounts");
     }
 }

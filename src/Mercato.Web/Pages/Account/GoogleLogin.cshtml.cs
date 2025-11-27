@@ -17,7 +17,7 @@ public class GoogleLoginModel : PageModel
         _configuration = configuration;
     }
 
-    public IActionResult OnGet(string? returnUrl = null)
+    public IActionResult OnGet(string? returnUrl = null, bool linkMode = false)
     {
         // Check if Google authentication is configured
         var clientId = _configuration["Authentication:Google:ClientId"];
@@ -27,7 +27,7 @@ public class GoogleLoginModel : PageModel
             return RedirectToPage("/Account/Login");
         }
 
-        var redirectUrl = Url.Page("/Account/GoogleCallback", pageHandler: null, values: new { returnUrl }, protocol: Request.Scheme);
+        var redirectUrl = Url.Page("/Account/GoogleCallback", pageHandler: null, values: new { returnUrl, linkMode }, protocol: Request.Scheme);
         var properties = new AuthenticationProperties { RedirectUri = redirectUrl };
 
         return Challenge(properties, GoogleDefaults.AuthenticationScheme);
