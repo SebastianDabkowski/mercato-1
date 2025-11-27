@@ -175,7 +175,7 @@ else
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var authEvent in Model.RecentEvents.Take(100))
+                        @foreach (var authEvent in Model.RecentEvents)
                         {
                             <tr>
                                 <td>@authEvent.OccurredAt.ToString("yyyy-MM-dd HH:mm:ss")</td>
@@ -202,10 +202,10 @@ else
                     </tbody>
                 </table>
             </div>
-            @if (Model.RecentEvents.Count > 100)
+            @if (Model.RecentEvents.Count == 100)
             {
                 <p class="text-muted mt-2">
-                    Showing 100 of @Model.RecentEvents.Count events. Use filters to narrow results.
+                    Showing most recent 100 events. Use filters to narrow results.
                 </p>
             }
         }

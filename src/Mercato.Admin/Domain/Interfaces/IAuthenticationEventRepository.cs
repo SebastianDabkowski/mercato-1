@@ -35,6 +35,7 @@ public interface IAuthenticationEventRepository
     /// <param name="userRole">Optional user role filter.</param>
     /// <param name="ipAddressHash">Optional IP address hash filter.</param>
     /// <param name="isSuccessful">Optional success status filter.</param>
+    /// <param name="maxResults">Maximum number of results to return.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>A filtered list of authentication events.</returns>
     Task<IReadOnlyList<AuthenticationEvent>> GetFilteredAsync(
@@ -44,6 +45,7 @@ public interface IAuthenticationEventRepository
         string? userRole = null,
         string? ipAddressHash = null,
         bool? isSuccessful = null,
+        int maxResults = 100,
         CancellationToken cancellationToken = default);
 
     /// <summary>

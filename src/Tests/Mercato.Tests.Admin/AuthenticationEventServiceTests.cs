@@ -192,6 +192,7 @@ public class AuthenticationEventServiceTests
                 "Buyer",
                 null,
                 true,
+                100,
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<AuthenticationEvent>());
 
@@ -216,6 +217,7 @@ public class AuthenticationEventServiceTests
                 "Buyer",
                 null,
                 true,
+                100,
                 It.IsAny<CancellationToken>()),
             Times.Once);
     }

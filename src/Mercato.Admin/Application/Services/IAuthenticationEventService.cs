@@ -63,6 +63,7 @@ public interface IAuthenticationEventService
     /// <param name="eventType">Optional event type filter.</param>
     /// <param name="userRole">Optional user role filter.</param>
     /// <param name="isSuccessful">Optional success status filter.</param>
+    /// <param name="maxResults">Maximum number of results to return. Default is 100.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>A filtered list of authentication events.</returns>
     Task<IReadOnlyList<AuthenticationEvent>> GetEventsAsync(
@@ -71,5 +72,6 @@ public interface IAuthenticationEventService
         AuthenticationEventType? eventType = null,
         string? userRole = null,
         bool? isSuccessful = null,
+        int maxResults = 100,
         CancellationToken cancellationToken = default);
 }

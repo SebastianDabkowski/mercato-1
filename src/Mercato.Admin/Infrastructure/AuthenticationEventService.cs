@@ -190,6 +190,7 @@ public class AuthenticationEventService : IAuthenticationEventService
         AuthenticationEventType? eventType = null,
         string? userRole = null,
         bool? isSuccessful = null,
+        int maxResults = 100,
         CancellationToken cancellationToken = default)
     {
         return await _repository.GetFilteredAsync(
@@ -199,6 +200,7 @@ public class AuthenticationEventService : IAuthenticationEventService
             userRole,
             ipAddressHash: null,
             isSuccessful,
+            maxResults,
             cancellationToken);
     }
 
@@ -213,7 +215,7 @@ public class AuthenticationEventService : IAuthenticationEventService
         }
 
         var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(ipAddress));
-        return Convert.ToBase64String(bytes)[..16]; // Use first 16 chars for brevity
+        return Convert.ToBase64String(bytes)[..32]; // Use first 32 chars for better security
     }
 
     /// <summary>
@@ -240,9 +242,15 @@ public class AuthenticationEventService : IAuthenticationEventService
         }
 
         var atIndex = email.IndexOf('@');
+        if (atIndex < 0)
+        {
+            // No @ symbol found - mask the entire string
+            return email.Length > 2 ? email[0] + "***" + email[^1] : "***";
+        }
+
         if (atIndex <= 1)
         {
-            return "***@" + (atIndex >= 0 ? email[(atIndex + 1)..] : "***");
+            return "***@" + email[(atIndex + 1)..];
         }
 
         return email[0] + "***" + email[(atIndex - 1)..];

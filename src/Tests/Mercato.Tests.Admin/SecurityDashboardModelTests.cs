@@ -46,6 +46,7 @@ public class SecurityDashboardModelTests
                 It.IsAny<AuthenticationEventType?>(),
                 It.IsAny<string?>(),
                 It.IsAny<bool?>(),
+                It.IsAny<int>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(recentEvents);
 
@@ -86,6 +87,7 @@ public class SecurityDashboardModelTests
                 It.IsAny<AuthenticationEventType?>(),
                 It.IsAny<string?>(),
                 It.IsAny<bool?>(),
+                It.IsAny<int>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<AuthenticationEvent>());
 
@@ -127,6 +129,7 @@ public class SecurityDashboardModelTests
                 AuthenticationEventType.Login,
                 "Buyer",
                 true,
+                It.IsAny<int>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<AuthenticationEvent>());
 
@@ -147,6 +150,7 @@ public class SecurityDashboardModelTests
             AuthenticationEventType.Login,
             "Buyer",
             true,
+            It.IsAny<int>(),
             It.IsAny<CancellationToken>()),
             Times.Once);
     }

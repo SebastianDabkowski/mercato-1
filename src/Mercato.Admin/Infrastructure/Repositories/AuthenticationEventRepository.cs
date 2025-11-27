@@ -49,6 +49,7 @@ public class AuthenticationEventRepository : IAuthenticationEventRepository
         string? userRole = null,
         string? ipAddressHash = null,
         bool? isSuccessful = null,
+        int maxResults = 100,
         CancellationToken cancellationToken = default)
     {
         var query = _dbContext.AuthenticationEvents.AsQueryable();
@@ -85,6 +86,7 @@ public class AuthenticationEventRepository : IAuthenticationEventRepository
 
         return await query
             .OrderByDescending(e => e.OccurredAt)
+            .Take(maxResults)
             .ToListAsync(cancellationToken);
     }
 
