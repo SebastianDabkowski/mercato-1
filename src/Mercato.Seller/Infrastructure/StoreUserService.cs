@@ -100,7 +100,8 @@ public class StoreUserService : IStoreUserService
         }
 
         // Check if user with this email already exists for the store
-        if (await _repository.EmailExistsForStoreAsync(command.StoreId, command.Email))
+        var normalizedEmail = command.Email.ToLowerInvariant();
+        if (await _repository.EmailExistsForStoreAsync(command.StoreId, normalizedEmail))
         {
             return InviteStoreUserResult.Failure("A user with this email already exists for this store.");
         }
@@ -113,7 +114,7 @@ public class StoreUserService : IStoreUserService
             Id = Guid.NewGuid(),
             StoreId = command.StoreId,
             UserId = null, // Will be set when invitation is accepted
-            Email = command.Email.ToLowerInvariant(),
+            Email = normalizedEmail,
             Role = command.Role,
             Status = StoreUserStatus.Pending,
             InvitationToken = invitationToken,
@@ -125,7 +126,7 @@ public class StoreUserService : IStoreUserService
         await _repository.CreateAsync(storeUser);
         _logger.LogInformation(
             "Invited user {Email} to store {StoreId} with role {Role}",
-            command.Email,
+            normalizedEmail,
             command.StoreId,
             command.Role);
 
