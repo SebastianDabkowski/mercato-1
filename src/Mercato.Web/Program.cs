@@ -110,7 +110,6 @@ app.UseAuthorization();
 
 app.MapRazorPages();
 
-// TODO: Implement Account/Login page for user login
 // TODO: Implement Account/Logout functionality
 // TODO: Implement Account/AccessDenied page
 
