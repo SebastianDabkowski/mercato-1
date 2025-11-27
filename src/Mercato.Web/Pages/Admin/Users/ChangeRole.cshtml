@@ -1,0 +1,118 @@
+@page "{userId?}"
+@model Mercato.Web.Pages.Admin.Users.ChangeRoleModel
+@{
+    ViewData["Title"] = "Change User Role";
+}
+
+<h1>Change User Role</h1>
+
+<p class="text-muted">Change the role for a user. This action is logged for audit purposes.</p>
+
+@if (Model.UserInfo == null)
+{
+    <div class="alert alert-danger">
+        User not found.
+    </div>
+    <a asp-page="Index" class="btn btn-secondary">
+        &laquo; Back to Users
+    </a>
+}
+else
+{
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">User Information</h5>
+                </div>
+                <div class="card-body">
+                    <dl class="row mb-0">
+                        <dt class="col-sm-4">Email</dt>
+                        <dd class="col-sm-8">@Model.UserInfo.Email</dd>
+
+                        <dt class="col-sm-4">Current Role(s)</dt>
+                        <dd class="col-sm-8">
+                            @if (Model.UserInfo.Roles.Count == 0)
+                            {
+                                <span class="badge bg-secondary">No roles</span>
+                            }
+                            else
+                            {
+                                @foreach (var role in Model.UserInfo.Roles)
+                                {
+                                    var badgeClass = role switch
+                                    {
+                                        "Admin" => "bg-danger",
+                                        "Seller" => "bg-primary",
+                                        "Buyer" => "bg-success",
+                                        _ => "bg-secondary"
+                                    };
+                                    <span class="badge @badgeClass me-1">@role</span>
+                                }
+                            }
+                        </dd>
+                    </dl>
+                </div>
+            </div>
+
+            <div class="card mt-4">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0">⚠️ Change Role</h5>
+                </div>
+                <div class="card-body">
+                    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+                    {
+                        <div class="alert alert-danger" role="alert">
+                            @Model.ErrorMessage
+                        </div>
+                    }
+
+                    <form method="post">
+                        <input type="hidden" asp-for="Input.UserId" />
+
+                        <div class="mb-3">
+                            <label asp-for="Input.NewRole" class="form-label">New Role</label>
+                            <select asp-for="Input.NewRole" class="form-select" asp-items="@(new SelectList(ChangeRoleModel.AvailableRoles))">
+                                <option value="">-- Select a role --</option>
+                            </select>
+                            <span asp-validation-for="Input.NewRole" class="text-danger"></span>
+                        </div>
+
+                        <div class="alert alert-warning">
+                            <h6 class="alert-heading">Warning</h6>
+                            <p class="mb-0">
+                                Changing a user's role will immediately affect their access permissions:
+                            </p>
+                            <ul class="mt-2 mb-0">
+                                <li><strong>Buyer:</strong> Can browse and purchase products</li>
+                                <li><strong>Seller:</strong> Can list and manage products for sale</li>
+                                <li><strong>Admin:</strong> Full administrative access to the platform</li>
+                            </ul>
+                        </div>
+
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" asp-for="Input.ConfirmChange" />
+                            <label class="form-check-label" asp-for="Input.ConfirmChange">
+                                I confirm that I want to change this user's role
+                            </label>
+                            <span asp-validation-for="Input.ConfirmChange" class="text-danger d-block"></span>
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-warning">
+                                Change Role
+                            </button>
+                            <a asp-page="Index" class="btn btn-secondary">
+                                Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

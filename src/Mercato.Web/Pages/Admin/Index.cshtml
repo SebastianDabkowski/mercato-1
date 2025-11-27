@@ -4,20 +4,52 @@
     ViewData["Title"] = "Admin Portal";
 }
 
-@* TODO: Implement actual UI for Admin section *@
 <h1>Admin Portal</h1>
 
 <div class="alert alert-info">
-    <strong>Coming Soon!</strong> This page is under development.
+    <strong>Admin Dashboard</strong> - Platform administration tools
 </div>
 
-<p>Platform administration tools:</p>
-<ul>
-    <li>User management</li>
-    <li>Seller approvals</li>
-    <li>Platform settings</li>
-    <li>Reports and analytics</li>
-</ul>
+<div class="row">
+    <div class="col-md-6 col-lg-4 mb-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title">User Management</h5>
+                <p class="card-text">View and manage user accounts and roles.</p>
+                <a asp-page="/Admin/Users/Index" class="btn btn-primary">
+                    Manage Users
+                </a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-4 mb-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title">Seller Approvals</h5>
+                <p class="card-text">Review and approve seller applications.</p>
+                <span class="badge bg-secondary">Coming Soon</span>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-4 mb-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title">Platform Settings</h5>
+                <p class="card-text">Configure platform-wide settings.</p>
+                <span class="badge bg-secondary">Coming Soon</span>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-4 mb-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title">Reports & Analytics</h5>
+                <p class="card-text">View platform reports and analytics.</p>
+                <span class="badge bg-secondary">Coming Soon</span>
+            </div>
+        </div>
+    </div>
+</div>
 
 <div class="mt-4">
     <a asp-page="Details" class="btn btn-outline-primary">View Admin Details</a>

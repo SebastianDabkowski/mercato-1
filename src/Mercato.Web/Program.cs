@@ -105,7 +105,7 @@ builder.Services.AddOrdersModule(builder.Configuration);
 builder.Services.AddCartModule(builder.Configuration);
 builder.Services.AddPaymentsModule(builder.Configuration);
 builder.Services.AddIdentityModule();
-builder.Services.AddAdminModule();
+builder.Services.AddAdminModule(builder.Configuration);
 
 var app = builder.Build();
 
