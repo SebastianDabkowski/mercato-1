@@ -1,3 +1,5 @@
+using Mercato.Admin.Application.Services;
+using Mercato.Admin.Domain.Entities;
 using Mercato.Identity.Application.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Google;
@@ -16,17 +18,21 @@ public class GoogleCallbackModel : PageModel
     private readonly IGoogleLoginService _googleLoginService;
     private readonly IAccountLinkingService _accountLinkingService;
     private readonly SignInManager<IdentityUser> _signInManager;
+    private readonly IAuthenticationEventService _authEventService;
     private readonly ILogger<GoogleCallbackModel> _logger;
+    private const string BuyerRole = "Buyer";
 
     public GoogleCallbackModel(
         IGoogleLoginService googleLoginService,
         IAccountLinkingService accountLinkingService,
         SignInManager<IdentityUser> signInManager,
+        IAuthenticationEventService authEventService,
         ILogger<GoogleCallbackModel> logger)
     {
         _googleLoginService = googleLoginService;
         _accountLinkingService = accountLinkingService;
         _signInManager = signInManager;
+        _authEventService = authEventService;
         _logger = logger;
     }
 
@@ -35,6 +41,8 @@ public class GoogleCallbackModel : PageModel
     public async Task<IActionResult> OnGetAsync(string? returnUrl = null, string? remoteError = null, bool linkMode = false)
     {
         returnUrl ??= Url.Content("~/");
+        var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+        var userAgent = Request.Headers.UserAgent.ToString();
 
         if (remoteError != null)
         {
@@ -76,6 +84,17 @@ public class GoogleCallbackModel : PageModel
         {
             _logger.LogWarning("Google login failed for {Email}: {Error}", email, result.ErrorMessage);
             ErrorMessage = result.ErrorMessage ?? "An error occurred during Google login.";
+
+            // Log failed Google login event
+            await _authEventService.LogEventAsync(
+                AuthenticationEventType.Login,
+                email,
+                isSuccessful: false,
+                userRole: BuyerRole,
+                ipAddress: ipAddress,
+                userAgent: userAgent,
+                failureReason: $"Google OAuth: {result.ErrorMessage}");
+
             return RedirectToPage("/Account/Login", new { errorMessage = ErrorMessage });
         }
 
@@ -93,6 +112,16 @@ public class GoogleCallbackModel : PageModel
             {
                 _logger.LogInformation("Buyer {Email} logged in via Google.", email);
             }
+
+            // Log successful Google login event
+            await _authEventService.LogEventAsync(
+                AuthenticationEventType.Login,
+                email,
+                isSuccessful: true,
+                userId: result.UserId,
+                userRole: BuyerRole,
+                ipAddress: ipAddress,
+                userAgent: userAgent);
 
             return LocalRedirect(returnUrl);
         }

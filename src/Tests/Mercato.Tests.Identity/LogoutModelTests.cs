@@ -1,3 +1,4 @@
+using Mercato.Admin.Application.Services;
 using Mercato.Web.Pages.Account;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
@@ -47,10 +48,29 @@ public class LogoutModelTests
         mockSignInManager.Setup(x => x.SignOutAsync())
             .Returns(Task.CompletedTask);
 
+        var mockUserManager = CreateMockUserManager();
+        mockUserManager.Setup(x => x.GetUserId(It.IsAny<ClaimsPrincipal>()))
+            .Returns((ClaimsPrincipal p) => p.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+
+        var mockAuthEventService = new Mock<IAuthenticationEventService>(MockBehavior.Strict);
+        mockAuthEventService.Setup(x => x.LogEventAsync(
+                It.IsAny<Mercato.Admin.Domain.Entities.AuthenticationEventType>(),
+                It.IsAny<string>(),
+                It.IsAny<bool>(),
+                It.IsAny<string?>(),
+                It.IsAny<string?>(),
+                It.IsAny<string?>(),
+                It.IsAny<string?>(),
+                It.IsAny<string?>(),
+                It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
         var model = CreateModel(
             authenticated: true, 
             email: "user@example.com",
-            signInManager: mockSignInManager.Object);
+            signInManager: mockSignInManager.Object,
+            userManager: mockUserManager.Object,
+            authEventService: mockAuthEventService.Object);
 
         // Act
         var result = await model.OnPostAsync();
@@ -59,6 +79,16 @@ public class LogoutModelTests
         Assert.IsType<PageResult>(result);
         Assert.False(model.ShowConfirmation);
         mockSignInManager.Verify(x => x.SignOutAsync(), Times.Once);
+        mockAuthEventService.Verify(x => x.LogEventAsync(
+            Mercato.Admin.Domain.Entities.AuthenticationEventType.Logout,
+            "user@example.com",
+            true,
+            It.IsAny<string?>(),
+            It.IsAny<string?>(),
+            It.IsAny<string?>(),
+            It.IsAny<string?>(),
+            It.IsAny<string?>(),
+            It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -66,9 +96,13 @@ public class LogoutModelTests
     {
         // Arrange
         var mockSignInManager = CreateMockSignInManager();
+        var mockUserManager = CreateMockUserManager();
+        var mockAuthEventService = new Mock<IAuthenticationEventService>(MockBehavior.Strict);
         var model = CreateModel(
             authenticated: false,
-            signInManager: mockSignInManager.Object);
+            signInManager: mockSignInManager.Object,
+            userManager: mockUserManager.Object,
+            authEventService: mockAuthEventService.Object);
 
         // Act
         var result = await model.OnPostAsync();
@@ -82,12 +116,16 @@ public class LogoutModelTests
     private static LogoutModel CreateModel(
         bool authenticated,
         string? email = null,
-        SignInManager<IdentityUser>? signInManager = null)
+        SignInManager<IdentityUser>? signInManager = null,
+        UserManager<IdentityUser>? userManager = null,
+        IAuthenticationEventService? authEventService = null)
     {
         signInManager ??= CreateMockSignInManager().Object;
+        userManager ??= CreateMockUserManager().Object;
+        authEventService ??= new Mock<IAuthenticationEventService>().Object;
         var mockLogger = new Mock<ILogger<LogoutModel>>();
         
-        var model = new LogoutModel(signInManager, mockLogger.Object);
+        var model = new LogoutModel(signInManager, userManager, authEventService, mockLogger.Object);
 
         // Set up HttpContext with user claims
         var claims = new List<Claim>();
@@ -113,6 +151,13 @@ public class LogoutModelTests
         };
 
         return model;
+    }
+
+    private static Mock<UserManager<IdentityUser>> CreateMockUserManager()
+    {
+        var mockUserStore = new Mock<IUserStore<IdentityUser>>();
+        return new Mock<UserManager<IdentityUser>>(
+            mockUserStore.Object, null!, null!, null!, null!, null!, null!, null!, null!);
     }
 
     private static Mock<SignInManager<IdentityUser>> CreateMockSignInManager()

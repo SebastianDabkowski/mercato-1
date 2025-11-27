@@ -1,3 +1,5 @@
+using Mercato.Admin.Application.Services;
+using Mercato.Admin.Domain.Entities;
 using Mercato.Identity.Application.Commands;
 using Mercato.Identity.Application.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -13,13 +15,16 @@ namespace Mercato.Web.Pages.Account;
 public class ForgotPasswordModel : PageModel
 {
     private readonly IPasswordResetService _passwordResetService;
+    private readonly IAuthenticationEventService _authEventService;
     private readonly ILogger<ForgotPasswordModel> _logger;
 
     public ForgotPasswordModel(
         IPasswordResetService passwordResetService,
+        IAuthenticationEventService authEventService,
         ILogger<ForgotPasswordModel> logger)
     {
         _passwordResetService = passwordResetService;
+        _authEventService = authEventService;
         _logger = logger;
     }
 
@@ -40,7 +45,19 @@ public class ForgotPasswordModel : PageModel
             return Page();
         }
 
+        var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+        var userAgent = Request.Headers.UserAgent.ToString();
+
         var result = await _passwordResetService.RequestPasswordResetAsync(Input);
+
+        // Log all password reset requests for security monitoring
+        // (regardless of whether user exists, to help detect account enumeration attempts)
+        await _authEventService.LogEventAsync(
+            AuthenticationEventType.PasswordReset,
+            Input.Email,
+            isSuccessful: result.Succeeded,
+            ipAddress: ipAddress,
+            userAgent: userAgent);
 
         if (result.Succeeded)
         {

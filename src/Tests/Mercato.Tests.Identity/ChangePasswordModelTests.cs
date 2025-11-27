@@ -1,3 +1,4 @@
+using Mercato.Admin.Application.Services;
 using Mercato.Identity.Application.Commands;
 using Mercato.Identity.Application.Services;
 using Mercato.Web.Pages.Account;
@@ -21,6 +22,7 @@ public class ChangePasswordModelTests
         var userId = Guid.NewGuid().ToString();
         var mockPasswordChangeService = new Mock<IPasswordChangeService>(MockBehavior.Strict);
         var mockSignInManager = CreateMockSignInManager();
+        var mockAuthEventService = new Mock<IAuthenticationEventService>(MockBehavior.Strict);
 
         mockPasswordChangeService.Setup(x => x.HasPasswordAsync(userId))
             .ReturnsAsync(true);
@@ -28,8 +30,19 @@ public class ChangePasswordModelTests
             .ReturnsAsync(ChangePasswordResult.Success());
         mockSignInManager.Setup(x => x.SignOutAsync())
             .Returns(Task.CompletedTask);
+        mockAuthEventService.Setup(x => x.LogEventAsync(
+                It.IsAny<Mercato.Admin.Domain.Entities.AuthenticationEventType>(),
+                It.IsAny<string>(),
+                It.IsAny<bool>(),
+                It.IsAny<string?>(),
+                It.IsAny<string?>(),
+                It.IsAny<string?>(),
+                It.IsAny<string?>(),
+                It.IsAny<string?>(),
+                It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
 
-        var model = CreateModel(userId, mockPasswordChangeService.Object, mockSignInManager.Object);
+        var model = CreateModel(userId, mockPasswordChangeService.Object, mockSignInManager.Object, mockAuthEventService.Object);
         model.Input = new ChangePasswordModel.InputModel
         {
             CurrentPassword = "OldP@ssw0rd!",
@@ -55,6 +68,7 @@ public class ChangePasswordModelTests
         var userId = Guid.NewGuid().ToString();
         var mockPasswordChangeService = new Mock<IPasswordChangeService>(MockBehavior.Strict);
         var mockSignInManager = CreateMockSignInManager();
+        var mockAuthEventService = new Mock<IAuthenticationEventService>(MockBehavior.Strict);
 
         mockPasswordChangeService.Setup(x => x.HasPasswordAsync(userId))
             .ReturnsAsync(true);
@@ -62,8 +76,19 @@ public class ChangePasswordModelTests
             .ReturnsAsync(ChangePasswordResult.Success());
         mockSignInManager.Setup(x => x.SignOutAsync())
             .Returns(Task.CompletedTask);
+        mockAuthEventService.Setup(x => x.LogEventAsync(
+                It.IsAny<Mercato.Admin.Domain.Entities.AuthenticationEventType>(),
+                It.IsAny<string>(),
+                It.IsAny<bool>(),
+                It.IsAny<string?>(),
+                It.IsAny<string?>(),
+                It.IsAny<string?>(),
+                It.IsAny<string?>(),
+                It.IsAny<string?>(),
+                It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
 
-        var model = CreateModel(userId, mockPasswordChangeService.Object, mockSignInManager.Object);
+        var model = CreateModel(userId, mockPasswordChangeService.Object, mockSignInManager.Object, mockAuthEventService.Object);
         model.Input = new ChangePasswordModel.InputModel
         {
             CurrentPassword = "OldP@ssw0rd!",
@@ -86,13 +111,25 @@ public class ChangePasswordModelTests
         var userId = Guid.NewGuid().ToString();
         var mockPasswordChangeService = new Mock<IPasswordChangeService>(MockBehavior.Strict);
         var mockSignInManager = CreateMockSignInManager();
+        var mockAuthEventService = new Mock<IAuthenticationEventService>(MockBehavior.Strict);
 
         mockPasswordChangeService.Setup(x => x.HasPasswordAsync(userId))
             .ReturnsAsync(true);
         mockPasswordChangeService.Setup(x => x.ChangePasswordAsync(It.IsAny<ChangePasswordCommand>()))
             .ReturnsAsync(ChangePasswordResult.IncorrectCurrentPassword());
+        mockAuthEventService.Setup(x => x.LogEventAsync(
+                It.IsAny<Mercato.Admin.Domain.Entities.AuthenticationEventType>(),
+                It.IsAny<string>(),
+                It.IsAny<bool>(),
+                It.IsAny<string?>(),
+                It.IsAny<string?>(),
+                It.IsAny<string?>(),
+                It.IsAny<string?>(),
+                It.IsAny<string?>(),
+                It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
 
-        var model = CreateModel(userId, mockPasswordChangeService.Object, mockSignInManager.Object);
+        var model = CreateModel(userId, mockPasswordChangeService.Object, mockSignInManager.Object, mockAuthEventService.Object);
         model.Input = new ChangePasswordModel.InputModel
         {
             CurrentPassword = "WrongP@ssw0rd!",
@@ -117,13 +154,25 @@ public class ChangePasswordModelTests
         var userId = Guid.NewGuid().ToString();
         var mockPasswordChangeService = new Mock<IPasswordChangeService>(MockBehavior.Strict);
         var mockSignInManager = CreateMockSignInManager();
+        var mockAuthEventService = new Mock<IAuthenticationEventService>(MockBehavior.Strict);
 
         mockPasswordChangeService.Setup(x => x.HasPasswordAsync(userId))
             .ReturnsAsync(true);
         mockPasswordChangeService.Setup(x => x.ChangePasswordAsync(It.IsAny<ChangePasswordCommand>()))
             .ReturnsAsync(ChangePasswordResult.IncorrectCurrentPassword());
+        mockAuthEventService.Setup(x => x.LogEventAsync(
+                It.IsAny<Mercato.Admin.Domain.Entities.AuthenticationEventType>(),
+                It.IsAny<string>(),
+                It.IsAny<bool>(),
+                It.IsAny<string?>(),
+                It.IsAny<string?>(),
+                It.IsAny<string?>(),
+                It.IsAny<string?>(),
+                It.IsAny<string?>(),
+                It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
 
-        var model = CreateModel(userId, mockPasswordChangeService.Object, mockSignInManager.Object);
+        var model = CreateModel(userId, mockPasswordChangeService.Object, mockSignInManager.Object, mockAuthEventService.Object);
         model.Input = new ChangePasswordModel.InputModel
         {
             CurrentPassword = "WrongP@ssw0rd!",
@@ -145,8 +194,9 @@ public class ChangePasswordModelTests
         // Arrange
         var mockPasswordChangeService = new Mock<IPasswordChangeService>(MockBehavior.Strict);
         var mockSignInManager = CreateMockSignInManager();
+        var mockAuthEventService = new Mock<IAuthenticationEventService>(MockBehavior.Strict);
 
-        var model = CreateModel(null, mockPasswordChangeService.Object, mockSignInManager.Object);
+        var model = CreateModel(null, mockPasswordChangeService.Object, mockSignInManager.Object, mockAuthEventService.Object);
         model.Input = new ChangePasswordModel.InputModel
         {
             CurrentPassword = "OldP@ssw0rd!",
@@ -169,11 +219,12 @@ public class ChangePasswordModelTests
         var userId = Guid.NewGuid().ToString();
         var mockPasswordChangeService = new Mock<IPasswordChangeService>(MockBehavior.Strict);
         var mockSignInManager = CreateMockSignInManager();
+        var mockAuthEventService = new Mock<IAuthenticationEventService>(MockBehavior.Strict);
 
         mockPasswordChangeService.Setup(x => x.HasPasswordAsync(userId))
             .ReturnsAsync(false);
 
-        var model = CreateModel(userId, mockPasswordChangeService.Object, mockSignInManager.Object);
+        var model = CreateModel(userId, mockPasswordChangeService.Object, mockSignInManager.Object, mockAuthEventService.Object);
         model.Input = new ChangePasswordModel.InputModel
         {
             CurrentPassword = "OldP@ssw0rd!",
@@ -196,7 +247,8 @@ public class ChangePasswordModelTests
     private static ChangePasswordModel CreateModel(
         string? userId,
         IPasswordChangeService passwordChangeService,
-        SignInManager<IdentityUser> signInManager)
+        SignInManager<IdentityUser> signInManager,
+        IAuthenticationEventService authEventService)
     {
         var mockUserManager = CreateMockUserManager();
         mockUserManager.Setup(x => x.GetUserId(It.IsAny<ClaimsPrincipal>()))
@@ -208,6 +260,7 @@ public class ChangePasswordModelTests
             passwordChangeService,
             mockUserManager.Object,
             signInManager,
+            authEventService,
             mockLogger.Object);
 
         // Set up HttpContext with user claims

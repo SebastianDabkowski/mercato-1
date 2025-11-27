@@ -1,3 +1,5 @@
+using Mercato.Admin.Application.Services;
+using Mercato.Admin.Domain.Entities;
 using Mercato.Identity.Application.Commands;
 using Mercato.Identity.Application.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -17,17 +19,20 @@ public class ChangePasswordModel : PageModel
     private readonly IPasswordChangeService _passwordChangeService;
     private readonly UserManager<IdentityUser> _userManager;
     private readonly SignInManager<IdentityUser> _signInManager;
+    private readonly IAuthenticationEventService _authEventService;
     private readonly ILogger<ChangePasswordModel> _logger;
 
     public ChangePasswordModel(
         IPasswordChangeService passwordChangeService,
         UserManager<IdentityUser> userManager,
         SignInManager<IdentityUser> signInManager,
+        IAuthenticationEventService authEventService,
         ILogger<ChangePasswordModel> logger)
     {
         _passwordChangeService = passwordChangeService;
         _userManager = userManager;
         _signInManager = signInManager;
+        _authEventService = authEventService;
         _logger = logger;
     }
 
@@ -112,6 +117,25 @@ public class ChangePasswordModel : PageModel
             return RedirectToPage("/Account/Login");
         }
 
+        var userEmail = User.Identity?.Name ?? string.Empty;
+        var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+        var userAgent = Request.Headers.UserAgent.ToString();
+
+        // Determine user role for logging
+        string? userRole = null;
+        if (User.IsInRole("Admin"))
+        {
+            userRole = "Admin";
+        }
+        else if (User.IsInRole("Seller"))
+        {
+            userRole = "Seller";
+        }
+        else if (User.IsInRole("Buyer"))
+        {
+            userRole = "Buyer";
+        }
+
         HasPassword = await _passwordChangeService.HasPasswordAsync(userId);
 
         if (!HasPassword)
@@ -141,6 +165,16 @@ public class ChangePasswordModel : PageModel
         {
             _logger.LogInformation("User {UserId} changed their password successfully.", userId);
 
+            // Log successful password change event
+            await _authEventService.LogEventAsync(
+                AuthenticationEventType.PasswordChange,
+                userEmail,
+                isSuccessful: true,
+                userId: userId,
+                userRole: userRole,
+                ipAddress: ipAddress,
+                userAgent: userAgent);
+
             // Sign out the current user to revoke the current session
             // All other sessions are already invalidated by UpdateSecurityStampAsync in PasswordChangeService
             await _signInManager.SignOutAsync();
@@ -151,26 +185,43 @@ public class ChangePasswordModel : PageModel
             return RedirectToPage("/Account/Login");
         }
 
+        // Log failed password change attempt
+        string? failureReason = null;
+
         // Handle specific error cases
         if (result.IsIncorrectCurrentPassword)
         {
             _logger.LogWarning("User {UserId} entered incorrect current password.", userId);
+            failureReason = "Incorrect current password";
             ModelState.AddModelError(nameof(Input.CurrentPassword), "The current password is incorrect.");
         }
         else if (result.IsUserNotFound)
         {
             // This shouldn't happen for authenticated users, but handle it anyway
             _logger.LogWarning("Password change attempted for non-existent user: {UserId}", userId);
+            failureReason = "User not found";
             ModelState.AddModelError(string.Empty, "An error occurred. Please try again.");
         }
         else
         {
+            failureReason = "Password requirements not met";
             // Add all errors to ModelState
             foreach (var error in result.Errors)
             {
                 ModelState.AddModelError(string.Empty, error);
             }
         }
+
+        // Log failed password change event
+        await _authEventService.LogEventAsync(
+            AuthenticationEventType.PasswordChange,
+            userEmail,
+            isSuccessful: false,
+            userId: userId,
+            userRole: userRole,
+            ipAddress: ipAddress,
+            userAgent: userAgent,
+            failureReason: failureReason);
 
         IsError = true;
         return Page();
