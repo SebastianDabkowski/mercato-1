@@ -106,6 +106,36 @@ Mercato.<ModuleName>/
 
 ---
 
+## Data Access Strategy
+
+The Mercato platform uses a **shared database instance** with **separate DbContext classes** per module (bounded context). This approach provides:
+
+### Single Shared Database
+All modules connect to the same SQL Server database instance using the `DefaultConnection` connection string. This simplifies infrastructure management, enables cross-module queries when needed, and allows for transactional consistency across modules.
+
+### Separate DbContext Per Module
+Each module maintains its own `DbContext` class for bounded context isolation:
+
+| Module | DbContext | Location |
+|--------|-----------|----------|
+| Identity | ApplicationDbContext | Mercato.Web/Data |
+| Product | ProductDbContext | Mercato.Product/Infrastructure/Persistence |
+| Cart | CartDbContext | Mercato.Cart/Infrastructure/Persistence |
+| Orders | OrderDbContext | Mercato.Orders/Infrastructure/Persistence |
+| Payments | PaymentDbContext | Mercato.Payments/Infrastructure/Persistence |
+
+### Benefits
+- **Module Isolation:** Each module manages its own entity configurations and migrations.
+- **Simplified Development:** No cross-module EF Core dependencies at the DbContext level.
+- **Clear Boundaries:** Each DbContext only exposes entities relevant to its bounded context.
+- **Shared Infrastructure:** Single database reduces operational complexity.
+
+### Future Considerations
+- Table prefixes or schemas may be added per module to avoid naming collisions.
+- Separate databases per module can be introduced if horizontal scaling is required.
+
+---
+
 # Current Codebase Structure (Legacy)
 
 > **Note:** The following sections document the **current codebase structure** which uses the `SD.ProjectName` naming convention. This is the existing scaffold/template structure. When implementing the Mercato modular monolith, follow the naming convention defined in the "Mercato Naming Convention and Project Layout" section above.

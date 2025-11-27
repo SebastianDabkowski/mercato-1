@@ -61,10 +61,10 @@ builder.Services.ConfigureApplicationCookie(options =>
 // Register module services
 builder.Services.AddSellerModule();
 builder.Services.AddBuyerModule();
-builder.Services.AddProductModule();
-builder.Services.AddOrdersModule();
-builder.Services.AddCartModule();
-builder.Services.AddPaymentsModule();
+builder.Services.AddProductModule(builder.Configuration);
+builder.Services.AddOrdersModule(builder.Configuration);
+builder.Services.AddCartModule(builder.Configuration);
+builder.Services.AddPaymentsModule(builder.Configuration);
 builder.Services.AddIdentityModule();
 builder.Services.AddAdminModule();
 
