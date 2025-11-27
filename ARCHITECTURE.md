@@ -100,11 +100,15 @@ Mercato.<ModuleName>/
 
 1. **Single Entry Point:** `Mercato.Web` is the sole ASP.NET Core web project that hosts all UI and startup logic.
 2. **Module Isolation:** Each module is a separate class library with its own Domain, Application, and Infrastructure layers.
-3. **Dependency Flow:** `Web → Application (use cases) → Domain (interfaces)`. Infrastructure implements Domain interfaces and is registered in DI at startup.
+3. **Dependency Flow:** `Web → Application → Domain ← Infrastructure`. The Web project calls Application use cases, which depend on Domain interfaces. Infrastructure implements Domain interfaces and is registered in DI at startup.
 4. **Separate DbContexts:** Each module maintains its own `DbContext` for bounded context isolation.
 5. **Best Practices:** Follow .NET modular monolith best practices, including CQRS patterns, DDD guidelines, and async/await patterns.
 
 ---
+
+# Current Codebase Structure (Legacy)
+
+> **Note:** The following sections document the **current codebase structure** which uses the `SD.ProjectName` naming convention. This is the existing scaffold/template structure. When implementing the Mercato modular monolith, follow the naming convention defined in the "Mercato Naming Convention and Project Layout" section above.
 
 ## Projects
 - `Application/SD.ProjectName.WebApp`: Razor Pages UI, app startup, DI, EF Core Identity.
@@ -220,6 +224,8 @@ Mercato.<ModuleName>/
 ---
 
 # Proposed Mercato Marketplace Module Structure
+
+> **Note:** This section provides detailed module descriptions and boundaries. For the official naming convention and project layout, refer to the "Mercato Naming Convention and Project Layout" section at the beginning of this document. The paths shown below (`SD.Mercato.Modules.*`) represent an alternative internal naming convention; the approved project names follow the `Mercato.*` pattern.
 
 This section outlines the proposed modular boundaries and responsibilities for the Mercato multi-vendor e-commerce marketplace. Each module follows the established layered architecture pattern (Domain → Application → Infrastructure) and maintains clear separation of concerns.
 
