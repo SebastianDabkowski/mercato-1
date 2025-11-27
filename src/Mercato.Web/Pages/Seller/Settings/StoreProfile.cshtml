@@ -1,0 +1,93 @@
+@page
+@model Mercato.Web.Pages.Seller.Settings.StoreProfileModel
+@{
+    ViewData["Title"] = "Store Settings";
+}
+
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0"><i class="bi bi-shop me-2"></i>Store Settings</h4>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted mb-4">Update your store profile information. This information will be displayed to buyers on your storefront.</p>
+
+                    @if (!string.IsNullOrEmpty(Model.SuccessMessage))
+                    {
+                        <div class="alert alert-success" role="alert">
+                            <i class="bi bi-check-circle-fill me-2"></i>@Model.SuccessMessage
+                        </div>
+                    }
+
+                    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+                    {
+                        <div class="alert alert-danger" role="alert">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>@Model.ErrorMessage
+                        </div>
+                    }
+
+                    <form method="post">
+                        <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+                        <div class="mb-3">
+                            <label asp-for="Name" class="form-label">Store Name <span class="text-danger">*</span></label>
+                            <input asp-for="Name" class="form-control" placeholder="Enter your store name" />
+                            <span asp-validation-for="Name" class="text-danger"></span>
+                            <div class="form-text">This is how your store will appear to buyers.</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="Description" class="form-label">Description</label>
+                            <textarea asp-for="Description" class="form-control" rows="5" placeholder="Describe your store and what you sell..."></textarea>
+                            <span asp-validation-for="Description" class="text-danger"></span>
+                            <div class="form-text">Provide a description of your store (up to 2000 characters).</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="LogoUrl" class="form-label">Logo URL</label>
+                            <input asp-for="LogoUrl" class="form-control" placeholder="https://example.com/logo.png" />
+                            <span asp-validation-for="LogoUrl" class="text-danger"></span>
+                            <div class="form-text">Provide a URL to your store logo image.</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="ContactEmail" class="form-label">Contact Email</label>
+                            <input asp-for="ContactEmail" class="form-control" type="email" placeholder="contact@example.com" />
+                            <span asp-validation-for="ContactEmail" class="text-danger"></span>
+                            <div class="form-text">Email address for customer inquiries.</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="ContactPhone" class="form-label">Phone Number</label>
+                            <input asp-for="ContactPhone" class="form-control" placeholder="+1 (555) 123-4567" />
+                            <span asp-validation-for="ContactPhone" class="text-danger"></span>
+                            <div class="form-text">Phone number for customer support.</div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label asp-for="WebsiteUrl" class="form-label">Website URL</label>
+                            <input asp-for="WebsiteUrl" class="form-control" placeholder="https://www.example.com" />
+                            <span asp-validation-for="WebsiteUrl" class="text-danger"></span>
+                            <div class="form-text">Your store's external website (if any).</div>
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <a asp-page="/Seller/Index" class="btn btn-outline-secondary">
+                                <i class="bi bi-arrow-left me-1"></i>Back to Dashboard
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-lg me-1"></i>Save Changes
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
