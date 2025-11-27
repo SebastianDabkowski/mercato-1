@@ -254,6 +254,7 @@ public class SellerDashboardIndexModelTests
     {
         var mockLogger = new Mock<ILogger<IndexModel>>();
         var mockOnboardingService = new Mock<ISellerOnboardingService>(MockBehavior.Strict);
+        var mockPayoutSettingsService = new Mock<IPayoutSettingsService>(MockBehavior.Strict);
         
         // Setup mock to return null (no onboarding) by default for existing tests
         if (!string.IsNullOrEmpty(sellerId))
@@ -262,7 +263,7 @@ public class SellerDashboardIndexModelTests
                 .ReturnsAsync(null as SellerOnboarding);
         }
         
-        var model = new IndexModel(kycService, mockOnboardingService.Object, mockLogger.Object);
+        var model = new IndexModel(kycService, mockOnboardingService.Object, mockPayoutSettingsService.Object, mockLogger.Object);
 
         // Set up HttpContext with user claims
         var claims = new List<Claim>();
