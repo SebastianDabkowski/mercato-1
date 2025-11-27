@@ -93,7 +93,7 @@ public class ProductService : IProductService
 
             if (product.StoreId != command.StoreId)
             {
-                return UpdateProductResult.Failure("You are not authorized to update this product.");
+                return UpdateProductResult.NotAuthorized("You are not authorized to update this product.");
             }
 
             if (product.Status == ProductStatus.Archived)
@@ -144,7 +144,7 @@ public class ProductService : IProductService
 
             if (product.StoreId != command.StoreId)
             {
-                return ArchiveProductResult.Failure("You are not authorized to archive this product.");
+                return ArchiveProductResult.NotAuthorized("You are not authorized to archive this product.");
             }
 
             if (product.Status == ProductStatus.Archived)

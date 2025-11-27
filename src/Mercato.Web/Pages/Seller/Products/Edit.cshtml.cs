@@ -187,12 +187,13 @@ public class EditModel : PageModel
                 return RedirectToPage("Index", new { updated = true });
             }
 
+            if (result.IsNotAuthorized)
+            {
+                return Forbid();
+            }
+
             foreach (var error in result.Errors)
             {
-                if (error.Contains("not authorized", StringComparison.OrdinalIgnoreCase))
-                {
-                    return Forbid();
-                }
                 ModelState.AddModelError(string.Empty, error);
             }
 

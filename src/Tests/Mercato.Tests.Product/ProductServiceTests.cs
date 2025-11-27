@@ -438,6 +438,7 @@ public class ProductServiceTests
 
         // Assert
         Assert.False(result.Succeeded);
+        Assert.True(result.IsNotAuthorized);
         Assert.Contains("You are not authorized to update this product.", result.Errors);
         _mockRepository.Verify(r => r.UpdateAsync(It.IsAny<Mercato.Product.Domain.Entities.Product>()), Times.Never);
     }
@@ -582,6 +583,7 @@ public class ProductServiceTests
 
         // Assert
         Assert.False(result.Succeeded);
+        Assert.True(result.IsNotAuthorized);
         Assert.Contains("You are not authorized to archive this product.", result.Errors);
         _mockRepository.Verify(r => r.UpdateAsync(It.IsAny<Mercato.Product.Domain.Entities.Product>()), Times.Never);
     }

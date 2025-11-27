@@ -16,6 +16,11 @@ public class UpdateProductResult
     public IReadOnlyList<string> Errors { get; private init; } = [];
 
     /// <summary>
+    /// Gets a value indicating whether the failure was due to authorization.
+    /// </summary>
+    public bool IsNotAuthorized { get; private init; }
+
+    /// <summary>
     /// Creates a successful result.
     /// </summary>
     /// <returns>A successful result.</returns>
@@ -42,4 +47,16 @@ public class UpdateProductResult
     /// <param name="error">The error message.</param>
     /// <returns>A failed result.</returns>
     public static UpdateProductResult Failure(string error) => Failure([error]);
+
+    /// <summary>
+    /// Creates a failed result for an authorization error.
+    /// </summary>
+    /// <param name="error">The error message.</param>
+    /// <returns>A failed result with IsNotAuthorized set to true.</returns>
+    public static UpdateProductResult NotAuthorized(string error) => new()
+    {
+        Succeeded = false,
+        Errors = [error],
+        IsNotAuthorized = true
+    };
 }
