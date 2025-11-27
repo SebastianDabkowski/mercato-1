@@ -14,15 +14,18 @@ public class LoginModel : PageModel
     private readonly IBuyerLoginService _loginService;
     private readonly SignInManager<IdentityUser> _signInManager;
     private readonly ILogger<LoginModel> _logger;
+    private readonly IConfiguration _configuration;
 
     public LoginModel(
         IBuyerLoginService loginService,
         SignInManager<IdentityUser> signInManager,
-        ILogger<LoginModel> logger)
+        ILogger<LoginModel> logger,
+        IConfiguration configuration)
     {
         _loginService = loginService;
         _signInManager = signInManager;
         _logger = logger;
+        _configuration = configuration;
     }
 
     /// <summary>
@@ -36,14 +39,33 @@ public class LoginModel : PageModel
     /// </summary>
     public string? ReturnUrl { get; set; }
 
-    public void OnGet(string? returnUrl = null)
+    /// <summary>
+    /// Gets or sets an external error message (e.g., from Google callback).
+    /// </summary>
+    public string? ExternalErrorMessage { get; set; }
+
+    /// <summary>
+    /// Gets a value indicating whether Google login is available.
+    /// </summary>
+    public bool IsGoogleLoginEnabled { get; private set; }
+
+    public void OnGet(string? returnUrl = null, string? errorMessage = null)
     {
         ReturnUrl = returnUrl;
+        ExternalErrorMessage = errorMessage ?? TempData["ErrorMessage"]?.ToString();
+        
+        // Check if Google login is configured
+        var clientId = _configuration["Authentication:Google:ClientId"];
+        IsGoogleLoginEnabled = !string.IsNullOrEmpty(clientId);
     }
 
     public async Task<IActionResult> OnPostAsync(string? returnUrl = null)
     {
         returnUrl ??= Url.Content("~/");
+        
+        // Re-check Google configuration for page render
+        var clientId = _configuration["Authentication:Google:ClientId"];
+        IsGoogleLoginEnabled = !string.IsNullOrEmpty(clientId);
 
         if (!ModelState.IsValid)
         {
