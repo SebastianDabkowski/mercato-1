@@ -50,6 +50,15 @@ public class ForgotPasswordModel : PageModel
 
         var result = await _passwordResetService.RequestPasswordResetAsync(Input);
 
+        // Log all password reset requests for security monitoring
+        // (regardless of whether user exists, to help detect account enumeration attempts)
+        await _authEventService.LogEventAsync(
+            AuthenticationEventType.PasswordReset,
+            Input.Email,
+            isSuccessful: result.Succeeded,
+            ipAddress: ipAddress,
+            userAgent: userAgent);
+
         if (result.Succeeded)
         {
             // Always redirect to confirmation page to prevent email enumeration
@@ -74,14 +83,6 @@ public class ForgotPasswordModel : PageModel
                 
                 // Log that a link was generated (without exposing the actual token for security)
                 _logger.LogInformation("Password reset link generated for user with email: {Email}", Input.Email);
-
-                // Log password reset request event
-                await _authEventService.LogEventAsync(
-                    AuthenticationEventType.PasswordReset,
-                    Input.Email,
-                    isSuccessful: true,
-                    ipAddress: ipAddress,
-                    userAgent: userAgent);
             }
 
             return RedirectToPage("/Account/ForgotPasswordConfirmation");
