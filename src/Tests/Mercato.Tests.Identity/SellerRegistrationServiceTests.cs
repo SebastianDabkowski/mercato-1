@@ -19,7 +19,7 @@ public class SellerRegistrationServiceTests
             .ReturnsAsync((IdentityUser?)null);
         mockUserManager.Setup(x => x.CreateAsync(It.IsAny<IdentityUser>(), command.Password))
             .ReturnsAsync(IdentityResult.Success);
-        mockUserManager.Setup(x => x.AddToRoleAsync(It.IsAny<IdentityUser>(), "Seller"))
+        mockUserManager.Setup(x => x.AddToRoleAsync(It.IsAny<IdentityUser>(), "Buyer"))
             .ReturnsAsync(IdentityResult.Success);
         mockUserManager.Setup(x => x.AddClaimsAsync(It.IsAny<IdentityUser>(), It.IsAny<IEnumerable<System.Security.Claims.Claim>>()))
             .ReturnsAsync(IdentityResult.Success);
@@ -34,7 +34,7 @@ public class SellerRegistrationServiceTests
         Assert.True(result.Succeeded);
         Assert.Empty(result.Errors);
         mockUserManager.Verify(x => x.CreateAsync(It.IsAny<IdentityUser>(), command.Password), Times.Once);
-        mockUserManager.Verify(x => x.AddToRoleAsync(It.IsAny<IdentityUser>(), "Seller"), Times.Once);
+        mockUserManager.Verify(x => x.AddToRoleAsync(It.IsAny<IdentityUser>(), "Buyer"), Times.Once);
     }
 
     [Fact]
@@ -105,7 +105,7 @@ public class SellerRegistrationServiceTests
             .ReturnsAsync((IdentityUser?)null);
         mockUserManager.Setup(x => x.CreateAsync(It.IsAny<IdentityUser>(), command.Password))
             .ReturnsAsync(IdentityResult.Success);
-        mockUserManager.Setup(x => x.AddToRoleAsync(It.IsAny<IdentityUser>(), "Seller"))
+        mockUserManager.Setup(x => x.AddToRoleAsync(It.IsAny<IdentityUser>(), "Buyer"))
             .ReturnsAsync(IdentityResult.Failed(new IdentityError { Description = "Role not found." }));
         mockUserManager.Setup(x => x.DeleteAsync(It.IsAny<IdentityUser>()))
             .ReturnsAsync(IdentityResult.Success);
@@ -119,7 +119,7 @@ public class SellerRegistrationServiceTests
         // Assert
         Assert.False(result.Succeeded);
         Assert.Single(result.Errors);
-        Assert.Contains("assign seller role", result.Errors[0]);
+        Assert.Contains("assign buyer role", result.Errors[0]);
         mockUserManager.Verify(x => x.DeleteAsync(It.IsAny<IdentityUser>()), Times.Once);
     }
 
@@ -134,7 +134,7 @@ public class SellerRegistrationServiceTests
             .ReturnsAsync((IdentityUser?)null);
         mockUserManager.Setup(x => x.CreateAsync(It.IsAny<IdentityUser>(), command.Password))
             .ReturnsAsync(IdentityResult.Success);
-        mockUserManager.Setup(x => x.AddToRoleAsync(It.IsAny<IdentityUser>(), "Seller"))
+        mockUserManager.Setup(x => x.AddToRoleAsync(It.IsAny<IdentityUser>(), "Buyer"))
             .ReturnsAsync(IdentityResult.Success);
         mockUserManager.Setup(x => x.AddClaimsAsync(It.IsAny<IdentityUser>(), It.IsAny<IEnumerable<System.Security.Claims.Claim>>()))
             .ReturnsAsync(IdentityResult.Failed(new IdentityError { Description = "Claims failed." }));
@@ -196,7 +196,7 @@ public class SellerRegistrationServiceTests
         mockUserManager.Setup(x => x.CreateAsync(It.IsAny<IdentityUser>(), command.Password))
             .Callback<IdentityUser, string>((user, _) => capturedUser = user)
             .ReturnsAsync(IdentityResult.Success);
-        mockUserManager.Setup(x => x.AddToRoleAsync(It.IsAny<IdentityUser>(), "Seller"))
+        mockUserManager.Setup(x => x.AddToRoleAsync(It.IsAny<IdentityUser>(), "Buyer"))
             .ReturnsAsync(IdentityResult.Success);
         mockUserManager.Setup(x => x.AddClaimsAsync(It.IsAny<IdentityUser>(), It.IsAny<IEnumerable<System.Security.Claims.Claim>>()))
             .ReturnsAsync(IdentityResult.Success);
@@ -224,7 +224,7 @@ public class SellerRegistrationServiceTests
             .ReturnsAsync((IdentityUser?)null);
         mockUserManager.Setup(x => x.CreateAsync(It.IsAny<IdentityUser>(), command.Password))
             .ReturnsAsync(IdentityResult.Success);
-        mockUserManager.Setup(x => x.AddToRoleAsync(It.IsAny<IdentityUser>(), "Seller"))
+        mockUserManager.Setup(x => x.AddToRoleAsync(It.IsAny<IdentityUser>(), "Buyer"))
             .ReturnsAsync(IdentityResult.Success);
         mockUserManager.Setup(x => x.AddClaimsAsync(It.IsAny<IdentityUser>(), It.IsAny<IEnumerable<System.Security.Claims.Claim>>()))
             .Callback<IdentityUser, IEnumerable<System.Security.Claims.Claim>>((_, claims) => capturedClaims = claims)

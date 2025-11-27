@@ -28,4 +28,11 @@ public interface IKycService
     /// <param name="sellerId">The seller's user ID.</param>
     /// <returns>True if the seller has at least one approved KYC submission; otherwise, false.</returns>
     Task<bool> IsSellerKycApprovedAsync(string sellerId);
+
+    /// <summary>
+    /// Approves a KYC submission and assigns the Seller role to the user.
+    /// </summary>
+    /// <param name="command">The approval command containing submission ID and admin user ID.</param>
+    /// <returns>The result of the approval operation.</returns>
+    Task<ApproveKycResult> ApproveKycAsync(ApproveKycCommand command);
 }
