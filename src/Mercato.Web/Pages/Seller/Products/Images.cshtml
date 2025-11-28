@@ -128,6 +128,7 @@
 @section Scripts {
     <script>
         const productId = '@Model.ProductId';
+        const uploadEndpoint = '@Url.Page("Images", "Upload", new { id = Model.ProductId })';
         const uploadZone = document.getElementById('uploadZone');
         const fileInput = document.getElementById('fileInput');
         const uploadProgress = document.getElementById('uploadProgress');
@@ -194,7 +195,7 @@
                 formData.append('setAsMain', 'false');
 
                 try {
-                    const response = await fetch(`/Seller/Products/Images/${productId}?handler=Upload`, {
+                    const response = await fetch(uploadEndpoint, {
                         method: 'POST',
                         body: formData,
                         headers: {

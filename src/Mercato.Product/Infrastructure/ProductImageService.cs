@@ -93,6 +93,7 @@ public class ProductImageService : IProductImageService
             }
 
             // Generate thumbnail and optimized versions
+            // If generation fails, paths remain null and original image will be used
             string? thumbnailPath = null;
             string? optimizedPath = null;
 
@@ -103,8 +104,8 @@ public class ProductImageService : IProductImageService
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to generate optimized versions for image {ImageId}. Using original.", imageId);
-                // Continue without optimized versions - original will be used
+                _logger.LogWarning(ex, "Failed to generate optimized versions for image {ImageId}. Original will be used as fallback.", imageId);
+                // Paths remain null - original image will be served for both thumbnail and optimized contexts
             }
 
             // Determine if this should be the main image
@@ -541,11 +542,11 @@ public class ProductImageService : IProductImageService
         }
         catch (IOException)
         {
-            // Ignore file deletion errors - file may be in use
+            // Ignore file deletion errors - file may be in use or locked
         }
         catch (UnauthorizedAccessException)
         {
-            // Ignore permission errors - logging already happened at higher level
+            // Ignore permission errors - this is a best-effort cleanup
         }
     }
 }
