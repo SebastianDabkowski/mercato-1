@@ -42,6 +42,7 @@ public static class ProductModuleExtensions
         services.AddScoped<ICategoryService, CategoryService>();
         services.AddScoped<IProductImportService, ProductImportService>();
         services.AddScoped<IProductVariantService, ProductVariantService>();
+        services.AddScoped<ISearchSuggestionService, SearchSuggestionService>();
 
         // Register ProductImageService with wwwroot path
         services.AddScoped<IProductImageService>(sp =>
