@@ -8,17 +8,17 @@ public enum SellerSubOrderStatus
     /// <summary>
     /// The sub-order has been created but payment is pending.
     /// </summary>
-    Pending = 0,
+    New = 0,
 
     /// <summary>
-    /// Payment has been confirmed and the sub-order is ready for fulfillment.
+    /// Payment has been authorized and the sub-order is ready for fulfillment.
     /// </summary>
-    Confirmed = 1,
+    Paid = 1,
 
     /// <summary>
     /// The sub-order is being prepared for shipment.
     /// </summary>
-    Processing = 2,
+    Preparing = 2,
 
     /// <summary>
     /// The sub-order has been shipped.

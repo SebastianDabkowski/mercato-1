@@ -58,7 +58,7 @@ public class OrderService : IOrderService
                 Id = orderId,
                 BuyerId = command.BuyerId,
                 OrderNumber = orderNumber,
-                Status = OrderStatus.Pending,
+                Status = OrderStatus.New,
                 PaymentTransactionId = command.PaymentTransactionId,
                 ItemsSubtotal = itemsSubtotal,
                 ShippingTotal = command.ShippingTotal,
@@ -108,7 +108,7 @@ public class OrderService : IOrderService
                     StoreId = storeGroup.Key.StoreId,
                     StoreName = storeGroup.Key.StoreName,
                     SubOrderNumber = subOrderNumber,
-                    Status = SellerSubOrderStatus.Pending,
+                    Status = SellerSubOrderStatus.New,
                     ItemsSubtotal = storeItemsSubtotal,
                     ShippingCost = shippingPerSeller,
                     TotalAmount = storeItemsSubtotal + shippingPerSeller,
@@ -216,23 +216,29 @@ public class OrderService : IOrderService
                 return UpdateOrderStatusResult.Failure("Order not found.");
             }
 
+            // Validate that the order is in the correct state for payment processing
+            if (order.Status != OrderStatus.New)
+            {
+                return UpdateOrderStatusResult.Failure($"Cannot process payment for order in status '{order.Status}'. Order must be in 'New' status.");
+            }
+
             var now = DateTimeOffset.UtcNow;
             order.LastUpdatedAt = now;
 
             if (isPaymentSuccessful)
             {
-                order.Status = OrderStatus.Confirmed;
+                order.Status = OrderStatus.Paid;
                 order.ConfirmedAt = now;
 
-                // Update all seller sub-orders to Confirmed status
+                // Update all seller sub-orders to Paid status
                 foreach (var subOrder in order.SellerSubOrders)
                 {
-                    subOrder.Status = SellerSubOrderStatus.Confirmed;
+                    subOrder.Status = SellerSubOrderStatus.Paid;
                     subOrder.ConfirmedAt = now;
                     subOrder.LastUpdatedAt = now;
                 }
 
-                _logger.LogInformation("Order {OrderNumber} confirmed with {SubOrderCount} sub-orders", order.OrderNumber, order.SellerSubOrders.Count);
+                _logger.LogInformation("Order {OrderNumber} paid with {SubOrderCount} sub-orders", order.OrderNumber, order.SellerSubOrders.Count);
             }
             else
             {
@@ -393,7 +399,7 @@ public class OrderService : IOrderService
             // Set status-specific timestamps and properties
             switch (command.NewStatus)
             {
-                case SellerSubOrderStatus.Processing:
+                case SellerSubOrderStatus.Preparing:
                     break;
                 case SellerSubOrderStatus.Shipped:
                     subOrder.ShippedAt = now;
@@ -405,6 +411,11 @@ public class OrderService : IOrderService
                     break;
                 case SellerSubOrderStatus.Cancelled:
                     subOrder.CancelledAt = now;
+                    break;
+                case SellerSubOrderStatus.Refunded:
+                    subOrder.RefundedAt = now;
+                    // Update parent order if sub-order is refunded
+                    await UpdateParentOrderForRefundAsync(subOrder, now);
                     break;
             }
 
@@ -420,6 +431,34 @@ public class OrderService : IOrderService
         {
             _logger.LogError(ex, "Error updating seller sub-order status for {SubOrderId}", subOrderId);
             return UpdateSellerSubOrderStatusResult.Failure("An error occurred while updating the sub-order status.");
+        }
+    }
+
+    /// <summary>
+    /// Updates the parent order when a sub-order is refunded.
+    /// Sets the order's RefundedAt timestamp and updates status to Refunded if all sub-orders are refunded.
+    /// </summary>
+    private async Task UpdateParentOrderForRefundAsync(SellerSubOrder refundedSubOrder, DateTimeOffset now)
+    {
+        var order = await _orderRepository.GetByIdAsync(refundedSubOrder.OrderId);
+        if (order == null)
+        {
+            return;
+        }
+
+        // Check if all sub-orders are now refunded (including the current one being updated)
+        var allSubOrdersRefunded = order.SellerSubOrders
+            .Where(s => s.Id != refundedSubOrder.Id)
+            .All(s => s.Status == SellerSubOrderStatus.Refunded);
+
+        if (allSubOrdersRefunded)
+        {
+            order.Status = OrderStatus.Refunded;
+            order.RefundedAt = now;
+            order.LastUpdatedAt = now;
+            await _orderRepository.UpdateAsync(order);
+
+            _logger.LogInformation("Order {OrderNumber} fully refunded", order.OrderNumber);
         }
     }
 
@@ -488,16 +527,16 @@ public class OrderService : IOrderService
         var errors = new List<string>();
 
         // Define valid status transitions for seller-initiated actions.
-        // Note: Refunded status has no transitions because refunds are handled by
-        // a separate admin/support workflow, not by sellers directly.
+        // Note: Refunded status can only be reached from Paid, Delivered, or Cancelled states
+        // and is handled by admin/support workflow, but sellers can initiate the transition.
         var validTransitions = new Dictionary<SellerSubOrderStatus, SellerSubOrderStatus[]>
         {
-            { SellerSubOrderStatus.Pending, [SellerSubOrderStatus.Confirmed, SellerSubOrderStatus.Cancelled] },
-            { SellerSubOrderStatus.Confirmed, [SellerSubOrderStatus.Processing, SellerSubOrderStatus.Cancelled] },
-            { SellerSubOrderStatus.Processing, [SellerSubOrderStatus.Shipped, SellerSubOrderStatus.Cancelled] },
+            { SellerSubOrderStatus.New, [SellerSubOrderStatus.Paid, SellerSubOrderStatus.Cancelled] },
+            { SellerSubOrderStatus.Paid, [SellerSubOrderStatus.Preparing, SellerSubOrderStatus.Cancelled, SellerSubOrderStatus.Refunded] },
+            { SellerSubOrderStatus.Preparing, [SellerSubOrderStatus.Shipped, SellerSubOrderStatus.Cancelled] },
             { SellerSubOrderStatus.Shipped, [SellerSubOrderStatus.Delivered] },
-            { SellerSubOrderStatus.Delivered, [] },
-            { SellerSubOrderStatus.Cancelled, [] },
+            { SellerSubOrderStatus.Delivered, [SellerSubOrderStatus.Refunded] },
+            { SellerSubOrderStatus.Cancelled, [SellerSubOrderStatus.Refunded] },
             { SellerSubOrderStatus.Refunded, [] }
         };
 

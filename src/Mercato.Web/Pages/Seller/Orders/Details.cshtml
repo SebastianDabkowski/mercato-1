@@ -95,15 +95,15 @@
                         </div>
                         <div class="card-body">
                             <form method="post">
-                                @if (subOrder.Status == Mercato.Orders.Domain.Entities.SellerSubOrderStatus.Confirmed)
+                                @if (subOrder.Status == Mercato.Orders.Domain.Entities.SellerSubOrderStatus.Paid)
                                 {
-                                    <p class="text-muted mb-3">Mark this order as processing when you start preparing it for shipment.</p>
-                                    <input type="hidden" name="NewStatus" value="Processing" />
+                                    <p class="text-muted mb-3">Mark this order as preparing when you start preparing it for shipment.</p>
+                                    <input type="hidden" name="NewStatus" value="Preparing" />
                                     <button type="submit" class="btn btn-primary">
-                                        <i class="bi bi-gear me-1"></i>Mark as Processing
+                                        <i class="bi bi-gear me-1"></i>Mark as Preparing
                                     </button>
                                 }
-                                else if (subOrder.Status == Mercato.Orders.Domain.Entities.SellerSubOrderStatus.Processing)
+                                else if (subOrder.Status == Mercato.Orders.Domain.Entities.SellerSubOrderStatus.Preparing)
                                 {
                                     <p class="text-muted mb-3">Enter shipping details and mark this order as shipped.</p>
                                     <input type="hidden" name="NewStatus" value="Shipped" />

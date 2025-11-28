@@ -70,9 +70,9 @@ public class IndexModel : PageModel
     /// <returns>The CSS class name.</returns>
     public static string GetStatusBadgeClass(OrderStatus status) => status switch
     {
-        OrderStatus.Pending => "bg-warning text-dark",
-        OrderStatus.Confirmed => "bg-info",
-        OrderStatus.Processing => "bg-primary",
+        OrderStatus.New => "bg-warning text-dark",
+        OrderStatus.Paid => "bg-info",
+        OrderStatus.Preparing => "bg-primary",
         OrderStatus.Shipped => "bg-secondary",
         OrderStatus.Delivered => "bg-success",
         OrderStatus.Cancelled => "bg-danger",
@@ -87,9 +87,9 @@ public class IndexModel : PageModel
     /// <returns>The display text.</returns>
     public static string GetStatusDisplayText(OrderStatus status) => status switch
     {
-        OrderStatus.Pending => "Pending",
-        OrderStatus.Confirmed => "Confirmed",
-        OrderStatus.Processing => "Processing",
+        OrderStatus.New => "New",
+        OrderStatus.Paid => "Paid",
+        OrderStatus.Preparing => "Preparing",
         OrderStatus.Shipped => "Shipped",
         OrderStatus.Delivered => "Delivered",
         OrderStatus.Cancelled => "Cancelled",

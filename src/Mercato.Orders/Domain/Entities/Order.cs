@@ -24,7 +24,7 @@ public class Order
     /// <summary>
     /// Gets or sets the current status of the order.
     /// </summary>
-    public OrderStatus Status { get; set; } = OrderStatus.Pending;
+    public OrderStatus Status { get; set; } = OrderStatus.New;
 
     /// <summary>
     /// Gets or sets the payment transaction ID.
@@ -115,6 +115,11 @@ public class Order
     /// Gets or sets the date and time when the order was cancelled.
     /// </summary>
     public DateTimeOffset? CancelledAt { get; set; }
+
+    /// <summary>
+    /// Gets or sets the date and time when the order was refunded.
+    /// </summary>
+    public DateTimeOffset? RefundedAt { get; set; }
 
     /// <summary>
     /// Navigation property to the order items.

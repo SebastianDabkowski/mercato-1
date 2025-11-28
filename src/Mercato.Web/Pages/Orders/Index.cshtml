@@ -84,12 +84,12 @@
                                 </div>
                             </div>
                         </div>
-                        @if (order.Status == Mercato.Orders.Domain.Entities.OrderStatus.Confirmed && order.ConfirmedAt.HasValue)
+                        @if (order.Status == Mercato.Orders.Domain.Entities.OrderStatus.Paid && order.ConfirmedAt.HasValue)
                         {
                             <div class="card-footer bg-light">
                                 <small class="text-muted">
                                     <i class="bi bi-check-circle me-1"></i>
-                                    Confirmed on @order.ConfirmedAt.Value.ToString("MMMM dd, yyyy 'at' h:mm tt")
+                                    Paid on @order.ConfirmedAt.Value.ToString("MMMM dd, yyyy 'at' h:mm tt")
                                 </small>
                             </div>
                         }
