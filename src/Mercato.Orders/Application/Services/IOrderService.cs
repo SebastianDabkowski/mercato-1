@@ -1,0 +1,40 @@
+using Mercato.Orders.Application.Commands;
+
+namespace Mercato.Orders.Application.Services;
+
+/// <summary>
+/// Service interface for order management operations.
+/// </summary>
+public interface IOrderService
+{
+    /// <summary>
+    /// Creates a new order from the buyer's cart with validated items.
+    /// </summary>
+    /// <param name="command">The create order command.</param>
+    /// <returns>The result of the create operation.</returns>
+    Task<CreateOrderResult> CreateOrderAsync(CreateOrderCommand command);
+
+    /// <summary>
+    /// Gets an order by its unique identifier.
+    /// </summary>
+    /// <param name="orderId">The order ID.</param>
+    /// <param name="buyerId">The buyer ID for authorization.</param>
+    /// <returns>The order if found and authorized; otherwise, null.</returns>
+    Task<GetOrderResult> GetOrderAsync(Guid orderId, string buyerId);
+
+    /// <summary>
+    /// Gets an order by payment transaction ID.
+    /// </summary>
+    /// <param name="transactionId">The payment transaction ID.</param>
+    /// <param name="buyerId">The buyer ID for authorization.</param>
+    /// <returns>The order if found and authorized; otherwise, null.</returns>
+    Task<GetOrderResult> GetOrderByTransactionAsync(Guid transactionId, string buyerId);
+
+    /// <summary>
+    /// Updates the order status after payment completion.
+    /// </summary>
+    /// <param name="orderId">The order ID.</param>
+    /// <param name="isPaymentSuccessful">Whether the payment was successful.</param>
+    /// <returns>The result of the update operation.</returns>
+    Task<UpdateOrderStatusResult> UpdateOrderStatusAsync(Guid orderId, bool isPaymentSuccessful);
+}

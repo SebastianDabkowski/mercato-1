@@ -1,3 +1,8 @@
+using Mercato.Cart.Application.Queries;
+using Mercato.Cart.Application.Services;
+using Mercato.Cart.Domain.Interfaces;
+using Mercato.Orders.Application.Commands;
+using Mercato.Orders.Application.Services;
 using Mercato.Payments.Application.Services;
 using Mercato.Payments.Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
@@ -15,18 +20,26 @@ namespace Mercato.Web.Pages.Orders;
 public class PaymentCallbackModel : PageModel
 {
     private readonly IPaymentService _paymentService;
+    private readonly IOrderService _orderService;
+    private readonly ICartRepository _cartRepository;
     private readonly ILogger<PaymentCallbackModel> _logger;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="PaymentCallbackModel"/> class.
     /// </summary>
     /// <param name="paymentService">The payment service.</param>
+    /// <param name="orderService">The order service.</param>
+    /// <param name="cartRepository">The cart repository.</param>
     /// <param name="logger">The logger.</param>
     public PaymentCallbackModel(
         IPaymentService paymentService,
+        IOrderService orderService,
+        ICartRepository cartRepository,
         ILogger<PaymentCallbackModel> logger)
     {
         _paymentService = paymentService;
+        _orderService = orderService;
+        _cartRepository = cartRepository;
         _logger = logger;
     }
 
@@ -116,13 +129,30 @@ public class PaymentCallbackModel : PageModel
                 "Payment completed successfully for buyer {BuyerId}, transaction {TransactionId}",
                 buyerId, transactionId);
 
+            // Create the order with validated items
+            var orderResult = await CreateOrderAsync(buyerId, transactionId.Value);
+
+            if (!orderResult.Succeeded)
+            {
+                _logger.LogError(
+                    "Failed to create order for buyer {BuyerId}, transaction {TransactionId}: {Errors}",
+                    buyerId, transactionId, string.Join(", ", orderResult.Errors));
+
+                ErrorMessage = "Payment was successful but order creation failed. Please contact support.";
+                return Page();
+            }
+
+            // Clear the buyer's cart after successful order creation
+            await ClearCartAsync(buyerId);
+
             // Store order confirmation data
-            StoreOrderConfirmationData();
+            StoreOrderConfirmationData(orderResult.OrderNumber ?? "", orderResult.OrderId ?? Guid.Empty);
 
             // Clear checkout data
             TempData.Remove("CheckoutAddress");
             TempData.Remove("CheckoutShipping");
             TempData.Remove("PaymentTransactionId");
+            TempData.Remove("ValidatedItems");
 
             return RedirectToPage("Confirmation", new { transactionId = Transaction?.Id });
         }
@@ -137,14 +167,99 @@ public class PaymentCallbackModel : PageModel
         }
     }
 
-    private void StoreOrderConfirmationData()
+    private async Task<CreateOrderResult> CreateOrderAsync(string buyerId, Guid transactionId)
+    {
+        // Load validated items from TempData
+        var items = LoadValidatedItems();
+        if (items == null || items.Count == 0)
+        {
+            return CreateOrderResult.Failure("No validated items found. Please try again.");
+        }
+
+        var deliveryAddress = new DeliveryAddressInfo();
+        if (DeliveryAddress != null)
+        {
+            deliveryAddress.FullName = DeliveryAddress.FullName;
+            deliveryAddress.AddressLine1 = DeliveryAddress.AddressLine1;
+            deliveryAddress.AddressLine2 = DeliveryAddress.AddressLine2;
+            deliveryAddress.City = DeliveryAddress.City;
+            deliveryAddress.State = DeliveryAddress.State;
+            deliveryAddress.PostalCode = DeliveryAddress.PostalCode;
+            deliveryAddress.Country = DeliveryAddress.Country;
+            deliveryAddress.PhoneNumber = DeliveryAddress.PhoneNumber;
+        }
+
+        var command = new CreateOrderCommand
+        {
+            BuyerId = buyerId,
+            PaymentTransactionId = transactionId,
+            Items = items,
+            ShippingTotal = ShippingData?.TotalShippingCost ?? 0,
+            DeliveryAddress = deliveryAddress
+        };
+
+        return await _orderService.CreateOrderAsync(command);
+    }
+
+    private List<CreateOrderItem>? LoadValidatedItems()
+    {
+        if (TempData.Peek("ValidatedItems") is not string itemsJson)
+        {
+            // Fallback: get items from cart (this path should not normally happen)
+            return null;
+        }
+
+        try
+        {
+            var items = JsonSerializer.Deserialize<List<ValidatedItemData>>(itemsJson);
+            if (items == null)
+            {
+                return null;
+            }
+
+            return items.Select(i => new CreateOrderItem
+            {
+                ProductId = i.ProductId,
+                StoreId = i.StoreId,
+                ProductTitle = i.ProductTitle,
+                UnitPrice = i.UnitPrice,
+                Quantity = i.Quantity,
+                StoreName = i.StoreName,
+                ProductImageUrl = null
+            }).ToList();
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogWarning(ex, "Failed to deserialize validated items");
+            return null;
+        }
+    }
+
+    private async Task ClearCartAsync(string buyerId)
+    {
+        try
+        {
+            var cart = await _cartRepository.GetByBuyerIdAsync(buyerId);
+            if (cart != null)
+            {
+                await _cartRepository.DeleteAsync(cart);
+                _logger.LogInformation("Cleared cart for buyer {BuyerId} after order creation", buyerId);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to clear cart for buyer {BuyerId}", buyerId);
+        }
+    }
+
+    private void StoreOrderConfirmationData(string orderNumber, Guid orderId)
     {
         if (Transaction == null) return;
 
         var confirmationData = new OrderConfirmationData
         {
             TransactionId = Transaction.Id,
-            OrderNumber = $"ORD-{Transaction.Id.ToString("N")[..8].ToUpper()}",
+            OrderNumber = orderNumber,
             Amount = Transaction.Amount,
             PaymentMethod = Transaction.PaymentMethodId,
             CompletedAt = Transaction.CompletedAt ?? Transaction.CreatedAt,
@@ -189,6 +304,47 @@ public class PaymentCallbackModel : PageModel
     {
         return User.FindFirstValue(ClaimTypes.NameIdentifier);
     }
+}
+
+/// <summary>
+/// Data class for validated cart item stored in TempData.
+/// </summary>
+public class ValidatedItemData
+{
+    /// <summary>
+    /// Gets or sets the cart item ID.
+    /// </summary>
+    public Guid CartItemId { get; set; }
+
+    /// <summary>
+    /// Gets or sets the product ID.
+    /// </summary>
+    public Guid ProductId { get; set; }
+
+    /// <summary>
+    /// Gets or sets the store ID.
+    /// </summary>
+    public Guid StoreId { get; set; }
+
+    /// <summary>
+    /// Gets or sets the product title.
+    /// </summary>
+    public string ProductTitle { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the unit price.
+    /// </summary>
+    public decimal UnitPrice { get; set; }
+
+    /// <summary>
+    /// Gets or sets the quantity.
+    /// </summary>
+    public int Quantity { get; set; }
+
+    /// <summary>
+    /// Gets or sets the store name.
+    /// </summary>
+    public string StoreName { get; set; } = string.Empty;
 }
 
 /// <summary>
