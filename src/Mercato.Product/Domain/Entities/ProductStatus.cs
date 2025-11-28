@@ -28,5 +28,11 @@ public enum ProductStatus
     /// <summary>
     /// Product has been archived (soft-deleted) and is not visible anywhere.
     /// </summary>
-    Archived = 4
+    Archived = 4,
+
+    /// <summary>
+    /// Product has been suspended and is not available for new orders.
+    /// Remains visible in order history and for reporting.
+    /// </summary>
+    Suspended = 5
 }

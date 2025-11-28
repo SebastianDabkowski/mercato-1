@@ -43,6 +43,22 @@
                         </div>
                     }
 
+                    @if (Model.StatusChanged)
+                    {
+                        <div class="alert alert-success alert-dismissible fade show" role="alert">
+                            <i class="bi bi-check-circle-fill me-2"></i>Product status changed successfully.
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    }
+
+                    @if (TempData["StatusChangeError"] != null)
+                    {
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>@TempData["StatusChangeError"]
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    }
+
                     @if (Model.HasError)
                     {
                         <div class="alert alert-danger" role="alert">
@@ -115,6 +131,74 @@
                                                     <a asp-page="Edit" asp-route-id="@product.Id" class="btn btn-outline-primary" title="Edit">
                                                         <i class="bi bi-pencil"></i>
                                                     </a>
+                                                    @if (product.Status != ProductStatus.Archived)
+                                                    {
+                                                        <div class="btn-group btn-group-sm" role="group">
+                                                            <button type="button" class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" title="Change Status">
+                                                                <i class="bi bi-arrow-repeat"></i>
+                                                            </button>
+                                                            <ul class="dropdown-menu dropdown-menu-end">
+                                                                @if (product.Status == ProductStatus.Draft)
+                                                                {
+                                                                    <li>
+                                                                        <form method="post" asp-page-handler="ChangeStatus">
+                                                                            <input type="hidden" name="productId" value="@product.Id" />
+                                                                            <input type="hidden" name="newStatus" value="@((int)ProductStatus.Active)" />
+                                                                            <button type="submit" class="dropdown-item">
+                                                                                <i class="bi bi-check-circle text-success me-2"></i>Activate
+                                                                            </button>
+                                                                        </form>
+                                                                    </li>
+                                                                }
+                                                                @if (product.Status == ProductStatus.Active)
+                                                                {
+                                                                    <li>
+                                                                        <form method="post" asp-page-handler="ChangeStatus">
+                                                                            <input type="hidden" name="productId" value="@product.Id" />
+                                                                            <input type="hidden" name="newStatus" value="@((int)ProductStatus.Suspended)" />
+                                                                            <button type="submit" class="dropdown-item">
+                                                                                <i class="bi bi-pause-circle text-warning me-2"></i>Suspend
+                                                                            </button>
+                                                                        </form>
+                                                                    </li>
+                                                                }
+                                                                @if (product.Status == ProductStatus.Suspended)
+                                                                {
+                                                                    <li>
+                                                                        <form method="post" asp-page-handler="ChangeStatus">
+                                                                            <input type="hidden" name="productId" value="@product.Id" />
+                                                                            <input type="hidden" name="newStatus" value="@((int)ProductStatus.Active)" />
+                                                                            <button type="submit" class="dropdown-item">
+                                                                                <i class="bi bi-check-circle text-success me-2"></i>Reactivate
+                                                                            </button>
+                                                                        </form>
+                                                                    </li>
+                                                                }
+                                                                @if (product.Status == ProductStatus.Inactive || product.Status == ProductStatus.OutOfStock)
+                                                                {
+                                                                    <li>
+                                                                        <form method="post" asp-page-handler="ChangeStatus">
+                                                                            <input type="hidden" name="productId" value="@product.Id" />
+                                                                            <input type="hidden" name="newStatus" value="@((int)ProductStatus.Active)" />
+                                                                            <button type="submit" class="dropdown-item">
+                                                                                <i class="bi bi-check-circle text-success me-2"></i>Activate
+                                                                            </button>
+                                                                        </form>
+                                                                    </li>
+                                                                }
+                                                                <li><hr class="dropdown-divider"></li>
+                                                                <li>
+                                                                    <form method="post" asp-page-handler="ChangeStatus">
+                                                                        <input type="hidden" name="productId" value="@product.Id" />
+                                                                        <input type="hidden" name="newStatus" value="@((int)ProductStatus.Archived)" />
+                                                                        <button type="submit" class="dropdown-item text-danger">
+                                                                            <i class="bi bi-archive text-danger me-2"></i>Archive
+                                                                        </button>
+                                                                    </form>
+                                                                </li>
+                                                            </ul>
+                                                        </div>
+                                                    }
                                                     <button type="button" class="btn btn-outline-danger" 
                                                             data-bs-toggle="modal" 
                                                             data-bs-target="#deleteModal" 

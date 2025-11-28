@@ -192,6 +192,67 @@ public class ProductService : IProductService
         return await _repository.GetActiveByStoreIdAsync(storeId);
     }
 
+    /// <inheritdoc />
+    public async Task<ChangeProductStatusResult> ChangeProductStatusAsync(ChangeProductStatusCommand command)
+    {
+        var validationErrors = ValidateChangeStatusCommand(command);
+        if (validationErrors.Count > 0)
+        {
+            return ChangeProductStatusResult.Failure(validationErrors);
+        }
+
+        try
+        {
+            var product = await _repository.GetByIdAsync(command.ProductId);
+            if (product == null)
+            {
+                return ChangeProductStatusResult.Failure("Product not found.");
+            }
+
+            // Admin override skips store authorization check
+            if (!command.IsAdminOverride && product.StoreId != command.StoreId)
+            {
+                return ChangeProductStatusResult.NotAuthorized("You are not authorized to change this product's status.");
+            }
+
+            // Validate the transition
+            var transitionErrors = ValidateStatusTransition(product, command.NewStatus, command.IsAdminOverride);
+            if (transitionErrors.Count > 0)
+            {
+                return ChangeProductStatusResult.Failure(transitionErrors);
+            }
+
+            var previousStatus = product.Status;
+            product.Status = command.NewStatus;
+            product.LastUpdatedAt = DateTimeOffset.UtcNow;
+            product.LastUpdatedBy = command.SellerId;
+
+            // Set archived fields if transitioning to Archived
+            if (command.NewStatus == ProductStatus.Archived)
+            {
+                product.ArchivedAt = DateTimeOffset.UtcNow;
+                product.ArchivedBy = command.SellerId;
+            }
+
+            await _repository.UpdateAsync(product);
+
+            _logger.LogInformation(
+                "Product {ProductId} status changed from {PreviousStatus} to {NewStatus} by {SellerId}{AdminOverride}",
+                command.ProductId,
+                previousStatus,
+                command.NewStatus,
+                command.SellerId,
+                command.IsAdminOverride ? " (admin override)" : "");
+
+            return ChangeProductStatusResult.Success();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error changing status of product {ProductId}", command.ProductId);
+            return ChangeProductStatusResult.Failure("An error occurred while changing the product status.");
+        }
+    }
+
     private static List<string> ValidateCreateCommand(CreateProductCommand command)
     {
         var errors = new List<string>();
@@ -355,6 +416,149 @@ public class ProductService : IProductService
         if (images != null && images.Length > ProductValidationConstants.ImagesMaxLength)
         {
             errors.Add($"Images must be at most {ProductValidationConstants.ImagesMaxLength} characters.");
+        }
+    }
+
+    private static List<string> ValidateChangeStatusCommand(ChangeProductStatusCommand command)
+    {
+        var errors = new List<string>();
+
+        if (command.ProductId == Guid.Empty)
+        {
+            errors.Add("Product ID is required.");
+        }
+
+        // StoreId can be empty for admin overrides
+        if (!command.IsAdminOverride && command.StoreId == Guid.Empty)
+        {
+            errors.Add("Store ID is required.");
+        }
+
+        if (string.IsNullOrWhiteSpace(command.SellerId))
+        {
+            errors.Add("Seller ID is required.");
+        }
+
+        return errors;
+    }
+
+    private static List<string> ValidateStatusTransition(Domain.Entities.Product product, ProductStatus newStatus, bool isAdminOverride)
+    {
+        var errors = new List<string>();
+        var currentStatus = product.Status;
+
+        // Cannot change status of an archived product
+        if (currentStatus == ProductStatus.Archived)
+        {
+            errors.Add("Cannot change the status of an archived product.");
+            return errors;
+        }
+
+        // Same status is allowed (no-op)
+        if (currentStatus == newStatus)
+        {
+            return errors;
+        }
+
+        // Validate allowed transitions based on current status
+        switch (currentStatus)
+        {
+            case ProductStatus.Draft:
+                // From Draft: can go to Active (with validation) or Archived
+                if (newStatus == ProductStatus.Active)
+                {
+                    ValidateActiveTransitionRequirements(product, errors);
+                }
+                else if (newStatus != ProductStatus.Archived && !isAdminOverride)
+                {
+                    // Admin can override to Suspended directly
+                    errors.Add($"Cannot transition from Draft to {newStatus}. Only Active or Archived transitions are allowed.");
+                }
+                break;
+
+            case ProductStatus.Active:
+                // From Active: can go to Suspended, Archived, or back to Draft with admin override
+                // Cannot go back to Draft without admin
+                if (newStatus == ProductStatus.Draft && !isAdminOverride)
+                {
+                    errors.Add("Cannot transition from Active to Draft. This transition requires admin approval.");
+                }
+                break;
+
+            case ProductStatus.Suspended:
+                // From Suspended: can go to Active (with re-validation) or Archived
+                // Cannot go back to Draft without admin
+                if (newStatus == ProductStatus.Active)
+                {
+                    ValidateActiveTransitionRequirements(product, errors);
+                }
+                else if (newStatus == ProductStatus.Draft && !isAdminOverride)
+                {
+                    errors.Add("Cannot transition from Suspended to Draft. This transition requires admin approval.");
+                }
+                break;
+
+            case ProductStatus.Inactive:
+                // From Inactive: can go to Active (with re-validation), Suspended, or Archived
+                if (newStatus == ProductStatus.Active)
+                {
+                    ValidateActiveTransitionRequirements(product, errors);
+                }
+                else if (newStatus == ProductStatus.Draft && !isAdminOverride)
+                {
+                    errors.Add("Cannot transition from Inactive to Draft. This transition requires admin approval.");
+                }
+                break;
+
+            case ProductStatus.OutOfStock:
+                // From OutOfStock: can go to Active (with re-validation), Suspended, or Archived
+                if (newStatus == ProductStatus.Active)
+                {
+                    ValidateActiveTransitionRequirements(product, errors);
+                }
+                else if (newStatus == ProductStatus.Draft && !isAdminOverride)
+                {
+                    errors.Add("Cannot transition from OutOfStock to Draft. This transition requires admin approval.");
+                }
+                break;
+        }
+
+        return errors;
+    }
+
+    private static void ValidateActiveTransitionRequirements(Domain.Entities.Product product, List<string> errors)
+    {
+        // Check for minimum data quality rules required for Active status:
+        // images, description, category, price, stock
+
+        // Description is required for Active products
+        if (string.IsNullOrWhiteSpace(product.Description))
+        {
+            errors.Add("Description is required to set product to Active.");
+        }
+
+        // Category is required (already validated during create/update but double-check)
+        if (string.IsNullOrWhiteSpace(product.Category))
+        {
+            errors.Add("Category is required to set product to Active.");
+        }
+
+        // Price must be greater than 0
+        if (product.Price <= 0)
+        {
+            errors.Add("Price must be greater than 0 to set product to Active.");
+        }
+
+        // Stock must be at least 0 (but typically we want positive stock)
+        if (product.Stock < 0)
+        {
+            errors.Add("Stock cannot be negative to set product to Active.");
+        }
+
+        // At least one image is required
+        if (string.IsNullOrWhiteSpace(product.Images) || product.Images == "[]")
+        {
+            errors.Add("At least one image is required to set product to Active.");
         }
     }
 }

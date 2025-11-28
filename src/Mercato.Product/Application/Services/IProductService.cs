@@ -49,4 +49,11 @@ public interface IProductService
     /// <param name="storeId">The store ID.</param>
     /// <returns>A list of active products belonging to the store.</returns>
     Task<IReadOnlyList<Domain.Entities.Product>> GetActiveProductsByStoreIdAsync(Guid storeId);
+
+    /// <summary>
+    /// Changes the workflow status of a product.
+    /// </summary>
+    /// <param name="command">The change status command.</param>
+    /// <returns>The result of the status change operation.</returns>
+    Task<ChangeProductStatusResult> ChangeProductStatusAsync(ChangeProductStatusCommand command);
 }

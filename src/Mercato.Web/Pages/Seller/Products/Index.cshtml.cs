@@ -63,6 +63,12 @@ public class IndexModel : PageModel
     public bool Archived { get; set; }
 
     /// <summary>
+    /// Gets whether a product status was successfully changed.
+    /// </summary>
+    [BindProperty(SupportsGet = true)]
+    public bool StatusChanged { get; set; }
+
+    /// <summary>
     /// Gets whether the seller has a store configured.
     /// </summary>
     public bool HasStore { get; private set; }
@@ -142,6 +148,57 @@ public class IndexModel : PageModel
     }
 
     /// <summary>
+    /// Changes the status of a product.
+    /// </summary>
+    /// <param name="productId">The product ID to change status.</param>
+    /// <param name="newStatus">The new status to set.</param>
+    /// <returns>A redirect result.</returns>
+    public async Task<IActionResult> OnPostChangeStatusAsync(Guid productId, ProductStatus newStatus)
+    {
+        var sellerId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(sellerId))
+        {
+            _logger.LogWarning("User ID not found in claims");
+            return RedirectToPage("/Seller/Login");
+        }
+
+        try
+        {
+            var store = await _storeProfileService.GetStoreBySellerIdAsync(sellerId);
+            if (store == null)
+            {
+                return RedirectToPage("Index");
+            }
+
+            var command = new ChangeProductStatusCommand
+            {
+                ProductId = productId,
+                SellerId = sellerId,
+                StoreId = store.Id,
+                NewStatus = newStatus,
+                IsAdminOverride = false
+            };
+
+            var result = await _productService.ChangeProductStatusAsync(command);
+
+            if (result.Succeeded)
+            {
+                _logger.LogInformation("Product {ProductId} status changed to {NewStatus} by seller {SellerId}", productId, newStatus, sellerId);
+                return RedirectToPage("Index", new { statusChanged = true });
+            }
+
+            _logger.LogWarning("Failed to change status of product {ProductId}: {Errors}", productId, string.Join(", ", result.Errors));
+            TempData["StatusChangeError"] = string.Join(" ", result.Errors);
+            return RedirectToPage("Index");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error changing status of product {ProductId}", productId);
+            return RedirectToPage("Index");
+        }
+    }
+
+    /// <summary>
     /// Gets the CSS class for a product status badge.
     /// </summary>
     /// <param name="status">The product status.</param>
@@ -155,6 +212,7 @@ public class IndexModel : PageModel
             ProductStatus.Inactive => "bg-warning",
             ProductStatus.OutOfStock => "bg-danger",
             ProductStatus.Archived => "bg-dark",
+            ProductStatus.Suspended => "bg-warning text-dark",
             _ => "bg-secondary"
         };
     }
@@ -173,6 +231,7 @@ public class IndexModel : PageModel
             ProductStatus.Inactive => "Inactive",
             ProductStatus.OutOfStock => "Out of Stock",
             ProductStatus.Archived => "Archived",
+            ProductStatus.Suspended => "Suspended",
             _ => "Unknown"
         };
     }
