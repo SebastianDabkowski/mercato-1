@@ -1,4 +1,8 @@
+using Mercato.Orders.Application.Services;
+using Mercato.Orders.Domain.Interfaces;
+using Mercato.Orders.Infrastructure;
 using Mercato.Orders.Infrastructure.Persistence;
+using Mercato.Orders.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -16,7 +20,11 @@ public static class OrdersModuleExtensions
         services.AddDbContext<OrderDbContext>(options =>
             options.UseSqlServer(connectionString));
 
-        // TODO: Register Orders module services and repositories here
+        // Register repositories
+        services.AddScoped<IOrderRepository, OrderRepository>();
+
+        // Register services
+        services.AddScoped<IOrderService, OrderService>();
 
         return services;
     }

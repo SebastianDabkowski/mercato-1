@@ -50,6 +50,52 @@
         <div class="alert alert-danger">@Model.ErrorMessage</div>
     }
 
+    <!-- Stock Validation Issues -->
+    @if (Model.StockIssues.Count > 0)
+    {
+        <div class="alert alert-danger">
+            <h5 class="alert-heading"><i class="bi bi-exclamation-triangle-fill me-2"></i>Stock Availability Issues</h5>
+            <p>The following items in your cart have stock availability issues:</p>
+            <ul class="mb-2">
+                @foreach (var issue in Model.StockIssues)
+                {
+                    <li>@issue.Message</li>
+                }
+            </ul>
+            <hr>
+            <p class="mb-0">Please <a asp-page="/Cart/Index" class="alert-link">update your cart</a> to adjust quantities or remove unavailable items before proceeding.</p>
+        </div>
+    }
+
+    <!-- Price Change Issues -->
+    @if (Model.PriceChanges.Count > 0)
+    {
+        <div class="alert alert-warning">
+            <h5 class="alert-heading"><i class="bi bi-info-circle-fill me-2"></i>Price Changes Detected</h5>
+            <p>Some product prices have changed since you added them to your cart:</p>
+            <ul class="mb-2">
+                @foreach (var change in Model.PriceChanges)
+                {
+                    <li>
+                        @change.ProductTitle:
+                        <span class="text-decoration-line-through">@change.OriginalPrice.ToString("C")</span>
+                        <i class="bi @(change.PriceIncreased ? "bi-arrow-up text-danger" : "bi-arrow-down text-success")"></i>
+                        <strong>@change.CurrentPrice.ToString("C")</strong>
+                    </li>
+                }
+            </ul>
+            <hr>
+            <div class="d-flex gap-2">
+                <form method="post" asp-page-handler="AcceptPriceChanges">
+                    <button type="submit" class="btn btn-warning">
+                        <i class="bi bi-check-circle me-1"></i>Accept New Prices
+                    </button>
+                </form>
+                <a asp-page="/Cart/Index" class="btn btn-outline-secondary">Review Cart</a>
+            </div>
+        </div>
+    }
+
     <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
 
     @if (Model.IsCartEmpty)
@@ -155,9 +201,18 @@
                                 <a asp-page="Shipping" class="btn btn-outline-secondary">
                                     <i class="bi bi-arrow-left me-1"></i>Back to Shipping
                                 </a>
-                                <button type="submit" class="btn btn-success btn-lg">
-                                    <i class="bi bi-lock me-1"></i>Pay @Model.TotalAmount.ToString("C")
-                                </button>
+                                @if (Model.HasValidationIssues)
+                                {
+                                    <button type="submit" class="btn btn-success btn-lg" disabled>
+                                        <i class="bi bi-lock me-1"></i>Pay @Model.TotalAmount.ToString("C")
+                                    </button>
+                                }
+                                else
+                                {
+                                    <button type="submit" class="btn btn-success btn-lg">
+                                        <i class="bi bi-lock me-1"></i>Pay @Model.TotalAmount.ToString("C")
+                                    </button>
+                                }
                             </div>
                         </div>
                     </div>

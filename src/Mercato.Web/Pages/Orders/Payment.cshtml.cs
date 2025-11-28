@@ -1,3 +1,4 @@
+using Mercato.Cart.Application.Commands;
 using Mercato.Cart.Application.Queries;
 using Mercato.Cart.Application.Services;
 using Mercato.Payments.Application.Services;
@@ -17,6 +18,7 @@ namespace Mercato.Web.Pages.Orders;
 public class PaymentModel : PageModel
 {
     private readonly ICartService _cartService;
+    private readonly ICheckoutValidationService _checkoutValidationService;
     private readonly IPaymentService _paymentService;
     private readonly ILogger<PaymentModel> _logger;
 
@@ -24,14 +26,17 @@ public class PaymentModel : PageModel
     /// Initializes a new instance of the <see cref="PaymentModel"/> class.
     /// </summary>
     /// <param name="cartService">The cart service.</param>
+    /// <param name="checkoutValidationService">The checkout validation service.</param>
     /// <param name="paymentService">The payment service.</param>
     /// <param name="logger">The logger.</param>
     public PaymentModel(
         ICartService cartService,
+        ICheckoutValidationService checkoutValidationService,
         IPaymentService paymentService,
         ILogger<PaymentModel> logger)
     {
         _cartService = cartService;
+        _checkoutValidationService = checkoutValidationService;
         _paymentService = paymentService;
         _logger = logger;
     }
@@ -76,6 +81,21 @@ public class PaymentModel : PageModel
     /// Gets the total order amount.
     /// </summary>
     public decimal TotalAmount { get; private set; }
+
+    /// <summary>
+    /// Gets the stock validation issues if any.
+    /// </summary>
+    public IReadOnlyList<StockValidationIssue> StockIssues { get; private set; } = [];
+
+    /// <summary>
+    /// Gets the price change issues if any.
+    /// </summary>
+    public IReadOnlyList<PriceChangeIssue> PriceChanges { get; private set; } = [];
+
+    /// <summary>
+    /// Gets a value indicating whether there are validation issues.
+    /// </summary>
+    public bool HasValidationIssues => StockIssues.Count > 0 || PriceChanges.Count > 0;
 
     /// <summary>
     /// Handles GET requests for the payment page.
@@ -192,6 +212,37 @@ public class PaymentModel : PageModel
             return Page();
         }
 
+        // Validate stock and prices before placing order
+        var validationResult = await _checkoutValidationService.ValidateCheckoutAsync(
+            new ValidateCheckoutCommand { BuyerId = buyerId });
+
+        if (!validationResult.Succeeded)
+        {
+            if (validationResult.HasStockIssues || validationResult.HasPriceChanges)
+            {
+                StockIssues = validationResult.StockIssues;
+                PriceChanges = validationResult.PriceChanges;
+
+                _logger.LogInformation(
+                    "Checkout validation failed for buyer {BuyerId}: {StockIssueCount} stock issues, {PriceChangeCount} price changes",
+                    buyerId, StockIssues.Count, PriceChanges.Count);
+
+                // Keep checkout data for redisplay
+                TempData.Keep("CheckoutAddress");
+                TempData.Keep("CheckoutShipping");
+
+                return Page();
+            }
+
+            ErrorMessage = string.Join(", ", validationResult.Errors);
+            TempData.Keep("CheckoutAddress");
+            TempData.Keep("CheckoutShipping");
+            return Page();
+        }
+
+        // Store validated items in TempData for order creation after payment
+        StoreValidatedItemsInTempData(validationResult.ValidatedItems);
+
         // Get the callback URL
         var callbackUrl = Url.Page(
             "PaymentCallback",
@@ -226,6 +277,7 @@ public class PaymentModel : PageModel
         // Keep checkout data
         TempData.Keep("CheckoutAddress");
         TempData.Keep("CheckoutShipping");
+        TempData.Keep("ValidatedItems");
 
         _logger.LogInformation(
             "Payment initiated for buyer {BuyerId}, transaction {TransactionId}",
@@ -239,6 +291,44 @@ public class PaymentModel : PageModel
 
         // If no redirect needed, go directly to callback (the callback handler determines success)
         return RedirectToPage("PaymentCallback", new { transactionId = initiateResult.TransactionId });
+    }
+
+    /// <summary>
+    /// Handles POST requests to accept price changes and update cart.
+    /// </summary>
+    /// <returns>The page result.</returns>
+    public async Task<IActionResult> OnPostAcceptPriceChangesAsync()
+    {
+        var buyerId = GetBuyerId();
+        if (string.IsNullOrEmpty(buyerId))
+        {
+            return Forbid();
+        }
+
+        // Update cart prices to current
+        await _checkoutValidationService.UpdateCartPricesToCurrentAsync(buyerId);
+
+        TempData["Success"] = "Cart prices have been updated. Please review and continue.";
+        TempData.Keep("CheckoutAddress");
+        TempData.Keep("CheckoutShipping");
+
+        return RedirectToPage();
+    }
+
+    private void StoreValidatedItemsInTempData(IReadOnlyList<ValidatedCartItem> items)
+    {
+        var itemsData = items.Select(i => new
+        {
+            i.CartItemId,
+            i.ProductId,
+            i.StoreId,
+            i.ProductTitle,
+            i.UnitPrice,
+            i.Quantity,
+            i.StoreName
+        }).ToList();
+
+        TempData["ValidatedItems"] = JsonSerializer.Serialize(itemsData);
     }
 
     private bool TryLoadDeliveryAddress()
