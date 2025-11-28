@@ -239,13 +239,29 @@ public class ProductRepository : IProductRepository
             return [];
         }
 
-        var likePattern = $"%{searchTerm}%";
+        // Escape LIKE wildcards to prevent unintended pattern matching
+        var escapedSearchTerm = EscapeLikePattern(searchTerm);
+        var likePattern = $"%{escapedSearchTerm}%";
 
         return await _context.Products
             .Where(p => p.Status == ProductStatus.Active &&
-                       EF.Functions.Like(p.Title, likePattern))
+                       EF.Functions.Like(p.Title, likePattern, "\\"))
             .OrderBy(p => p.Title)
             .Take(maxResults)
             .ToListAsync();
+    }
+
+    /// <summary>
+    /// Escapes LIKE pattern special characters to prevent SQL injection via wildcards.
+    /// </summary>
+    /// <param name="input">The input string to escape.</param>
+    /// <returns>The escaped string safe for use in LIKE patterns.</returns>
+    private static string EscapeLikePattern(string input)
+    {
+        return input
+            .Replace("\\", "\\\\")
+            .Replace("%", "\\%")
+            .Replace("_", "\\_")
+            .Replace("[", "\\[");
     }
 }

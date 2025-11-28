@@ -61,8 +61,9 @@ public class SearchSuggestionService : ISearchSuggestionService
 
             await Task.WhenAll(productTask, categoryTask);
 
-            var products = await productTask;
-            var categories = await categoryTask;
+            // Access results directly after WhenAll completes
+            var products = productTask.Result;
+            var categories = categoryTask.Result;
 
             var productSuggestions = products.Select(p => new ProductSuggestion
             {

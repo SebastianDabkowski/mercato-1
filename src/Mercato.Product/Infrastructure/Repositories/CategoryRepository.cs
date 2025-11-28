@@ -129,12 +129,28 @@ public class CategoryRepository : ICategoryRepository
             return [];
         }
 
-        var likePattern = $"%{searchTerm}%";
+        // Escape LIKE wildcards to prevent unintended pattern matching
+        var escapedSearchTerm = EscapeLikePattern(searchTerm);
+        var likePattern = $"%{escapedSearchTerm}%";
 
         return await _context.Categories
-            .Where(c => c.IsActive && EF.Functions.Like(c.Name, likePattern))
+            .Where(c => c.IsActive && EF.Functions.Like(c.Name, likePattern, "\\"))
             .OrderBy(c => c.Name)
             .Take(maxResults)
             .ToListAsync();
+    }
+
+    /// <summary>
+    /// Escapes LIKE pattern special characters to prevent SQL injection via wildcards.
+    /// </summary>
+    /// <param name="input">The input string to escape.</param>
+    /// <returns>The escaped string safe for use in LIKE patterns.</returns>
+    private static string EscapeLikePattern(string input)
+    {
+        return input
+            .Replace("\\", "\\\\")
+            .Replace("%", "\\%")
+            .Replace("_", "\\_")
+            .Replace("[", "\\[");
     }
 }

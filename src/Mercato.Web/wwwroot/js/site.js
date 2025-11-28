@@ -100,7 +100,7 @@
             if (hasCategories) {
                 categoriesList.innerHTML = data.categories.map(cat =>
                     `<a class="dropdown-item" href="/Product/Category/${encodeURIComponent(cat.id)}">
-                        <i class="bi bi-folder me-2"></i>${encodeHtml(cat.name)}
+                        ${encodeHtml(cat.name)}
                     </a>`
                 ).join('');
                 categoriesSection.style.display = 'block';
