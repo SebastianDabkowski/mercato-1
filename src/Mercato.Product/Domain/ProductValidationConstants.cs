@@ -54,4 +54,14 @@ public static class ProductValidationConstants
     /// Maximum number of images allowed per product.
     /// </summary>
     public const int MaxImagesCount = 10;
+
+    /// <summary>
+    /// Minimum length for category name.
+    /// </summary>
+    public const int CategoryNameMinLength = 2;
+
+    /// <summary>
+    /// Maximum length for category name.
+    /// </summary>
+    public const int CategoryNameMaxLength = 100;
 }
