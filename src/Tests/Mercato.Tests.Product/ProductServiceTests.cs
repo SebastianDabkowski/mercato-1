@@ -1010,4 +1010,450 @@ public class ProductServiceTests
     }
 
     #endregion
+
+    #region ChangeProductStatusAsync Tests
+
+    [Fact]
+    public async Task ChangeProductStatusAsync_DraftToActive_WithValidData_ReturnsSuccess()
+    {
+        // Arrange
+        var command = CreateValidChangeStatusCommand(ProductStatus.Active);
+        var product = CreateTestProduct();
+        product.Status = ProductStatus.Draft;
+        product.Description = "Valid description";
+        product.Images = "[\"https://example.com/image1.jpg\"]";
+
+        _mockRepository.Setup(r => r.GetByIdAsync(command.ProductId))
+            .ReturnsAsync(product);
+        _mockRepository.Setup(r => r.UpdateAsync(It.IsAny<Mercato.Product.Domain.Entities.Product>()))
+            .Returns(Task.CompletedTask);
+
+        // Act
+        var result = await _service.ChangeProductStatusAsync(command);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.Empty(result.Errors);
+        _mockRepository.Verify(r => r.UpdateAsync(It.Is<Mercato.Product.Domain.Entities.Product>(p =>
+            p.Status == ProductStatus.Active
+        )), Times.Once);
+    }
+
+    [Fact]
+    public async Task ChangeProductStatusAsync_DraftToActive_MissingDescription_ReturnsFailure()
+    {
+        // Arrange
+        var command = CreateValidChangeStatusCommand(ProductStatus.Active);
+        var product = CreateTestProduct();
+        product.Status = ProductStatus.Draft;
+        product.Description = null;
+        product.Images = "[\"https://example.com/image1.jpg\"]";
+
+        _mockRepository.Setup(r => r.GetByIdAsync(command.ProductId))
+            .ReturnsAsync(product);
+
+        // Act
+        var result = await _service.ChangeProductStatusAsync(command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains("Description is required to set product to Active.", result.Errors);
+        _mockRepository.Verify(r => r.UpdateAsync(It.IsAny<Mercato.Product.Domain.Entities.Product>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ChangeProductStatusAsync_DraftToActive_MissingImages_ReturnsFailure()
+    {
+        // Arrange
+        var command = CreateValidChangeStatusCommand(ProductStatus.Active);
+        var product = CreateTestProduct();
+        product.Status = ProductStatus.Draft;
+        product.Description = "Valid description";
+        product.Images = null;
+
+        _mockRepository.Setup(r => r.GetByIdAsync(command.ProductId))
+            .ReturnsAsync(product);
+
+        // Act
+        var result = await _service.ChangeProductStatusAsync(command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains("At least one image is required to set product to Active.", result.Errors);
+        _mockRepository.Verify(r => r.UpdateAsync(It.IsAny<Mercato.Product.Domain.Entities.Product>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ChangeProductStatusAsync_DraftToActive_EmptyImages_ReturnsFailure()
+    {
+        // Arrange
+        var command = CreateValidChangeStatusCommand(ProductStatus.Active);
+        var product = CreateTestProduct();
+        product.Status = ProductStatus.Draft;
+        product.Description = "Valid description";
+        product.Images = "[]";
+
+        _mockRepository.Setup(r => r.GetByIdAsync(command.ProductId))
+            .ReturnsAsync(product);
+
+        // Act
+        var result = await _service.ChangeProductStatusAsync(command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains("At least one image is required to set product to Active.", result.Errors);
+        _mockRepository.Verify(r => r.UpdateAsync(It.IsAny<Mercato.Product.Domain.Entities.Product>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ChangeProductStatusAsync_ActiveToSuspended_ReturnsSuccess()
+    {
+        // Arrange
+        var command = CreateValidChangeStatusCommand(ProductStatus.Suspended);
+        var product = CreateTestProduct();
+        product.Status = ProductStatus.Active;
+
+        _mockRepository.Setup(r => r.GetByIdAsync(command.ProductId))
+            .ReturnsAsync(product);
+        _mockRepository.Setup(r => r.UpdateAsync(It.IsAny<Mercato.Product.Domain.Entities.Product>()))
+            .Returns(Task.CompletedTask);
+
+        // Act
+        var result = await _service.ChangeProductStatusAsync(command);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.Empty(result.Errors);
+        _mockRepository.Verify(r => r.UpdateAsync(It.Is<Mercato.Product.Domain.Entities.Product>(p =>
+            p.Status == ProductStatus.Suspended
+        )), Times.Once);
+    }
+
+    [Fact]
+    public async Task ChangeProductStatusAsync_ActiveToDraft_WithoutAdmin_ReturnsFailure()
+    {
+        // Arrange
+        var command = CreateValidChangeStatusCommand(ProductStatus.Draft);
+        var product = CreateTestProduct();
+        product.Status = ProductStatus.Active;
+
+        _mockRepository.Setup(r => r.GetByIdAsync(command.ProductId))
+            .ReturnsAsync(product);
+
+        // Act
+        var result = await _service.ChangeProductStatusAsync(command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains("Cannot transition from Active to Draft. This transition requires admin approval.", result.Errors);
+        _mockRepository.Verify(r => r.UpdateAsync(It.IsAny<Mercato.Product.Domain.Entities.Product>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ChangeProductStatusAsync_ActiveToDraft_WithAdminOverride_ReturnsSuccess()
+    {
+        // Arrange
+        var command = CreateValidChangeStatusCommand(ProductStatus.Draft);
+        command.IsAdminOverride = true;
+        var product = CreateTestProduct();
+        product.Status = ProductStatus.Active;
+
+        _mockRepository.Setup(r => r.GetByIdAsync(command.ProductId))
+            .ReturnsAsync(product);
+        _mockRepository.Setup(r => r.UpdateAsync(It.IsAny<Mercato.Product.Domain.Entities.Product>()))
+            .Returns(Task.CompletedTask);
+
+        // Act
+        var result = await _service.ChangeProductStatusAsync(command);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        _mockRepository.Verify(r => r.UpdateAsync(It.Is<Mercato.Product.Domain.Entities.Product>(p =>
+            p.Status == ProductStatus.Draft
+        )), Times.Once);
+    }
+
+    [Fact]
+    public async Task ChangeProductStatusAsync_ArchivedProduct_ReturnsFailure()
+    {
+        // Arrange
+        var command = CreateValidChangeStatusCommand(ProductStatus.Active);
+        var product = CreateTestProduct();
+        product.Status = ProductStatus.Archived;
+
+        _mockRepository.Setup(r => r.GetByIdAsync(command.ProductId))
+            .ReturnsAsync(product);
+
+        // Act
+        var result = await _service.ChangeProductStatusAsync(command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains("Cannot change the status of an archived product.", result.Errors);
+        _mockRepository.Verify(r => r.UpdateAsync(It.IsAny<Mercato.Product.Domain.Entities.Product>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ChangeProductStatusAsync_ToArchived_SetsArchivedFields()
+    {
+        // Arrange
+        var command = CreateValidChangeStatusCommand(ProductStatus.Archived);
+        var product = CreateTestProduct();
+        product.Status = ProductStatus.Draft;
+
+        _mockRepository.Setup(r => r.GetByIdAsync(command.ProductId))
+            .ReturnsAsync(product);
+        _mockRepository.Setup(r => r.UpdateAsync(It.IsAny<Mercato.Product.Domain.Entities.Product>()))
+            .Returns(Task.CompletedTask);
+
+        // Act
+        var result = await _service.ChangeProductStatusAsync(command);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        _mockRepository.Verify(r => r.UpdateAsync(It.Is<Mercato.Product.Domain.Entities.Product>(p =>
+            p.Status == ProductStatus.Archived &&
+            p.ArchivedAt != null &&
+            p.ArchivedBy == command.SellerId
+        )), Times.Once);
+    }
+
+    [Fact]
+    public async Task ChangeProductStatusAsync_ProductNotFound_ReturnsFailure()
+    {
+        // Arrange
+        var command = CreateValidChangeStatusCommand(ProductStatus.Active);
+
+        _mockRepository.Setup(r => r.GetByIdAsync(command.ProductId))
+            .ReturnsAsync((Mercato.Product.Domain.Entities.Product?)null);
+
+        // Act
+        var result = await _service.ChangeProductStatusAsync(command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains("Product not found.", result.Errors);
+    }
+
+    [Fact]
+    public async Task ChangeProductStatusAsync_NotOwner_ReturnsNotAuthorized()
+    {
+        // Arrange
+        var command = CreateValidChangeStatusCommand(ProductStatus.Active);
+        var product = CreateTestProduct();
+        product.StoreId = Guid.NewGuid(); // Different store
+
+        _mockRepository.Setup(r => r.GetByIdAsync(command.ProductId))
+            .ReturnsAsync(product);
+
+        // Act
+        var result = await _service.ChangeProductStatusAsync(command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.True(result.IsNotAuthorized);
+        Assert.Contains("You are not authorized to change this product's status.", result.Errors);
+    }
+
+    [Fact]
+    public async Task ChangeProductStatusAsync_AdminOverride_BypassesStoreCheck()
+    {
+        // Arrange
+        var command = CreateValidChangeStatusCommand(ProductStatus.Suspended);
+        command.IsAdminOverride = true;
+        var product = CreateTestProduct();
+        product.StoreId = Guid.NewGuid(); // Different store, but admin override should allow
+
+        _mockRepository.Setup(r => r.GetByIdAsync(command.ProductId))
+            .ReturnsAsync(product);
+        _mockRepository.Setup(r => r.UpdateAsync(It.IsAny<Mercato.Product.Domain.Entities.Product>()))
+            .Returns(Task.CompletedTask);
+
+        // Act
+        var result = await _service.ChangeProductStatusAsync(command);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        _mockRepository.Verify(r => r.UpdateAsync(It.Is<Mercato.Product.Domain.Entities.Product>(p =>
+            p.Status == ProductStatus.Suspended
+        )), Times.Once);
+    }
+
+    [Fact]
+    public async Task ChangeProductStatusAsync_SameStatus_ReturnsSuccess()
+    {
+        // Arrange
+        var command = CreateValidChangeStatusCommand(ProductStatus.Draft);
+        var product = CreateTestProduct();
+        product.Status = ProductStatus.Draft;
+
+        _mockRepository.Setup(r => r.GetByIdAsync(command.ProductId))
+            .ReturnsAsync(product);
+        _mockRepository.Setup(r => r.UpdateAsync(It.IsAny<Mercato.Product.Domain.Entities.Product>()))
+            .Returns(Task.CompletedTask);
+
+        // Act
+        var result = await _service.ChangeProductStatusAsync(command);
+
+        // Assert
+        Assert.True(result.Succeeded);
+    }
+
+    [Fact]
+    public async Task ChangeProductStatusAsync_SuspendedToActive_WithValidData_ReturnsSuccess()
+    {
+        // Arrange
+        var command = CreateValidChangeStatusCommand(ProductStatus.Active);
+        var product = CreateTestProduct();
+        product.Status = ProductStatus.Suspended;
+        product.Description = "Valid description";
+        product.Images = "[\"https://example.com/image1.jpg\"]";
+
+        _mockRepository.Setup(r => r.GetByIdAsync(command.ProductId))
+            .ReturnsAsync(product);
+        _mockRepository.Setup(r => r.UpdateAsync(It.IsAny<Mercato.Product.Domain.Entities.Product>()))
+            .Returns(Task.CompletedTask);
+
+        // Act
+        var result = await _service.ChangeProductStatusAsync(command);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        _mockRepository.Verify(r => r.UpdateAsync(It.Is<Mercato.Product.Domain.Entities.Product>(p =>
+            p.Status == ProductStatus.Active
+        )), Times.Once);
+    }
+
+    [Fact]
+    public async Task ChangeProductStatusAsync_DraftToSuspended_WithoutAdmin_ReturnsFailure()
+    {
+        // Arrange
+        var command = CreateValidChangeStatusCommand(ProductStatus.Suspended);
+        var product = CreateTestProduct();
+        product.Status = ProductStatus.Draft;
+
+        _mockRepository.Setup(r => r.GetByIdAsync(command.ProductId))
+            .ReturnsAsync(product);
+
+        // Act
+        var result = await _service.ChangeProductStatusAsync(command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains("Cannot transition from Draft to Suspended. Only Active or Archived transitions are allowed.", result.Errors);
+    }
+
+    [Fact]
+    public async Task ChangeProductStatusAsync_DraftToSuspended_WithAdminOverride_ReturnsSuccess()
+    {
+        // Arrange
+        var command = CreateValidChangeStatusCommand(ProductStatus.Suspended);
+        command.IsAdminOverride = true;
+        var product = CreateTestProduct();
+        product.Status = ProductStatus.Draft;
+
+        _mockRepository.Setup(r => r.GetByIdAsync(command.ProductId))
+            .ReturnsAsync(product);
+        _mockRepository.Setup(r => r.UpdateAsync(It.IsAny<Mercato.Product.Domain.Entities.Product>()))
+            .Returns(Task.CompletedTask);
+
+        // Act
+        var result = await _service.ChangeProductStatusAsync(command);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        _mockRepository.Verify(r => r.UpdateAsync(It.Is<Mercato.Product.Domain.Entities.Product>(p =>
+            p.Status == ProductStatus.Suspended
+        )), Times.Once);
+    }
+
+    [Fact]
+    public async Task ChangeProductStatusAsync_ValidationErrors_ReturnsFailure()
+    {
+        // Arrange
+        var command = new ChangeProductStatusCommand
+        {
+            ProductId = Guid.Empty,
+            SellerId = string.Empty,
+            StoreId = Guid.Empty,
+            NewStatus = ProductStatus.Active
+        };
+
+        // Act
+        var result = await _service.ChangeProductStatusAsync(command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains("Product ID is required.", result.Errors);
+        Assert.Contains("Store ID is required.", result.Errors);
+        Assert.Contains("Seller ID is required.", result.Errors);
+    }
+
+    [Fact]
+    public async Task ChangeProductStatusAsync_AdminOverride_EmptyStoreIdAllowed()
+    {
+        // Arrange
+        var command = new ChangeProductStatusCommand
+        {
+            ProductId = TestProductId,
+            SellerId = "admin-user",
+            StoreId = Guid.Empty,
+            NewStatus = ProductStatus.Suspended,
+            IsAdminOverride = true
+        };
+        var product = CreateTestProduct();
+        product.Status = ProductStatus.Active;
+
+        _mockRepository.Setup(r => r.GetByIdAsync(command.ProductId))
+            .ReturnsAsync(product);
+        _mockRepository.Setup(r => r.UpdateAsync(It.IsAny<Mercato.Product.Domain.Entities.Product>()))
+            .Returns(Task.CompletedTask);
+
+        // Act
+        var result = await _service.ChangeProductStatusAsync(command);
+
+        // Assert
+        Assert.True(result.Succeeded);
+    }
+
+    [Fact]
+    public async Task ChangeProductStatusAsync_DraftToActive_MultipleValidationErrors_ReturnsAllErrors()
+    {
+        // Arrange
+        var command = CreateValidChangeStatusCommand(ProductStatus.Active);
+        var product = CreateTestProduct();
+        product.Status = ProductStatus.Draft;
+        product.Description = null;
+        product.Category = string.Empty;
+        product.Price = 0;
+        product.Images = null;
+
+        _mockRepository.Setup(r => r.GetByIdAsync(command.ProductId))
+            .ReturnsAsync(product);
+
+        // Act
+        var result = await _service.ChangeProductStatusAsync(command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.True(result.Errors.Count >= 4);
+        Assert.Contains("Description is required to set product to Active.", result.Errors);
+        Assert.Contains("Category is required to set product to Active.", result.Errors);
+        Assert.Contains("Price must be greater than 0 to set product to Active.", result.Errors);
+        Assert.Contains("At least one image is required to set product to Active.", result.Errors);
+    }
+
+    private static ChangeProductStatusCommand CreateValidChangeStatusCommand(ProductStatus newStatus)
+    {
+        return new ChangeProductStatusCommand
+        {
+            ProductId = TestProductId,
+            SellerId = TestSellerId,
+            StoreId = TestStoreId,
+            NewStatus = newStatus,
+            IsAdminOverride = false
+        };
+    }
+
+    #endregion
 }
