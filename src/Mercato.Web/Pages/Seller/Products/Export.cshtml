@@ -1,0 +1,186 @@
+@page
+@model Mercato.Web.Pages.Seller.Products.ExportModel
+@using Mercato.Product.Application.Commands
+@using Mercato.Product.Domain.Entities
+@{
+    ViewData["Title"] = "Export Products";
+}
+
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="bi bi-download me-2"></i>Export Products</h2>
+                <a asp-page="Index" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left me-1"></i>Back to Products
+                </a>
+            </div>
+
+            @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+            {
+                <div class="alert alert-danger" role="alert">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>@Model.ErrorMessage
+                </div>
+            }
+
+            @if (!Model.HasStore)
+            {
+                <div class="alert alert-warning" role="alert">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    <strong>Store Required:</strong> You must configure your store profile before exporting products.
+                    <a asp-page="/Seller/Settings/StoreProfile" class="alert-link">Configure Store</a>
+                </div>
+            }
+            else
+            {
+                <div class="card shadow-sm">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0"><i class="bi bi-file-earmark-arrow-down me-2"></i>Export Product Catalog</h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted mb-4">
+                            Export your product catalog to CSV or Excel format. The exported file will include all product attributes
+                            and can be used for analysis, reporting, or re-importing after modifications.
+                        </p>
+
+                        <form method="post">
+                            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+                            <!-- Export Format Selection -->
+                            <div class="mb-4">
+                                <label class="form-label fw-bold">Export Format <span class="text-danger">*</span></label>
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <div class="form-check card p-3 h-100">
+                                            <input class="form-check-input" type="radio" name="ExportFormat" id="formatCsv" 
+                                                   value="@((int)ExportFormat.Csv)" checked="@(Model.ExportFormat == ExportFormat.Csv)">
+                                            <label class="form-check-label w-100" for="formatCsv">
+                                                <div class="d-flex align-items-center">
+                                                    <i class="bi bi-file-earmark-text fs-3 me-3 text-success"></i>
+                                                    <div>
+                                                        <strong>CSV Format</strong>
+                                                        <p class="mb-0 small text-muted">
+                                                            Comma-separated values file. Compatible with most spreadsheet applications.
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-check card p-3 h-100">
+                                            <input class="form-check-input" type="radio" name="ExportFormat" id="formatExcel" 
+                                                   value="@((int)ExportFormat.Excel)" checked="@(Model.ExportFormat == ExportFormat.Excel)">
+                                            <label class="form-check-label w-100" for="formatExcel">
+                                                <div class="d-flex align-items-center">
+                                                    <i class="bi bi-file-earmark-excel fs-3 me-3 text-success"></i>
+                                                    <div>
+                                                        <strong>Excel Format</strong>
+                                                        <p class="mb-0 small text-muted">
+                                                            Microsoft Excel (.xlsx) file with formatted columns.
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Filter Options -->
+                            <div class="mb-4">
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="applyFilters" name="ApplyFilters" 
+                                           value="true" checked="@Model.ApplyFilters" onchange="toggleFilters()">
+                                    <label class="form-check-label fw-bold" for="applyFilters">
+                                        Apply Filters
+                                    </label>
+                                    <p class="small text-muted mb-0">
+                                        When enabled, only products matching the filter criteria will be exported.
+                                    </p>
+                                </div>
+
+                                <div id="filterOptions" class="card bg-light p-3" style="display: @(Model.ApplyFilters ? "block" : "none");">
+                                    <div class="row g-3">
+                                        <div class="col-md-12">
+                                            <label asp-for="SearchQuery" class="form-label">Search Query</label>
+                                            <input asp-for="SearchQuery" class="form-control" placeholder="Search in title or description..." />
+                                            <div class="form-text">Filter products by title or description text.</div>
+                                        </div>
+
+                                        <div class="col-md-6">
+                                            <label asp-for="CategoryFilter" class="form-label">Category</label>
+                                            <select asp-for="CategoryFilter" class="form-select">
+                                                <option value="">All Categories</option>
+                                                @foreach (var category in Model.Categories)
+                                                {
+                                                    <option value="@category" selected="@(Model.CategoryFilter == category)">@category</option>
+                                                }
+                                            </select>
+                                        </div>
+
+                                        <div class="col-md-6">
+                                            <label asp-for="StatusFilter" class="form-label">Status</label>
+                                            <select asp-for="StatusFilter" class="form-select">
+                                                <option value="">All Statuses</option>
+                                                <option value="@((int)ProductStatus.Draft)" selected="@(Model.StatusFilter == ProductStatus.Draft)">Draft</option>
+                                                <option value="@((int)ProductStatus.Active)" selected="@(Model.StatusFilter == ProductStatus.Active)">Active</option>
+                                                <option value="@((int)ProductStatus.Inactive)" selected="@(Model.StatusFilter == ProductStatus.Inactive)">Inactive</option>
+                                                <option value="@((int)ProductStatus.OutOfStock)" selected="@(Model.StatusFilter == ProductStatus.OutOfStock)">Out of Stock</option>
+                                                <option value="@((int)ProductStatus.Suspended)" selected="@(Model.StatusFilter == ProductStatus.Suspended)">Suspended</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Export Columns Info -->
+                            <div class="mb-4">
+                                <label class="form-label fw-bold">Exported Columns</label>
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-bordered mb-0">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Column</th>
+                                                <th>Description</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr><td><code>SKU</code></td><td>Stock Keeping Unit (unique product identifier)</td></tr>
+                                            <tr><td><code>Title</code></td><td>Product title</td></tr>
+                                            <tr><td><code>Description</code></td><td>Product description</td></tr>
+                                            <tr><td><code>Price</code></td><td>Product price</td></tr>
+                                            <tr><td><code>Stock</code></td><td>Available stock quantity</td></tr>
+                                            <tr><td><code>Category</code></td><td>Product category</td></tr>
+                                            <tr><td><code>Status</code></td><td>Product status (Draft, Active, etc.)</td></tr>
+                                            <tr><td><code>Weight</code></td><td>Weight in kilograms</td></tr>
+                                            <tr><td><code>Length, Width, Height</code></td><td>Dimensions in centimeters</td></tr>
+                                            <tr><td><code>ShippingMethods</code></td><td>Available shipping methods</td></tr>
+                                            <tr><td><code>Images</code></td><td>Product image URLs (JSON array)</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <div class="d-flex justify-content-end">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-download me-2"></i>Export Products
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function toggleFilters() {
+            var checkbox = document.getElementById('applyFilters');
+            var filterOptions = document.getElementById('filterOptions');
+            filterOptions.style.display = checkbox.checked ? 'block' : 'none';
+        }
+    </script>
+}

@@ -2215,4 +2215,339 @@ public class ProductServiceTests
     }
 
     #endregion
+
+    #region ExportProductCatalogAsync Tests
+
+    [Fact]
+    public async Task ExportProductCatalogAsync_ValidCommand_ReturnsSuccess()
+    {
+        // Arrange
+        var command = CreateValidExportCommand();
+        var products = new List<Mercato.Product.Domain.Entities.Product>
+        {
+            CreateTestProduct(Guid.NewGuid()),
+            CreateTestProduct(Guid.NewGuid())
+        };
+
+        _mockRepository.Setup(r => r.GetActiveByStoreIdAsync(command.StoreId))
+            .ReturnsAsync(products);
+
+        // Act
+        var result = await _service.ExportProductCatalogAsync(command);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.NotNull(result.FileContent);
+        Assert.NotNull(result.FileName);
+        Assert.NotNull(result.ContentType);
+        Assert.Equal(2, result.ExportedCount);
+    }
+
+    [Fact]
+    public async Task ExportProductCatalogAsync_CsvFormat_ReturnsCorrectContentType()
+    {
+        // Arrange
+        var command = CreateValidExportCommand();
+        command.Format = ExportFormat.Csv;
+        var products = new List<Mercato.Product.Domain.Entities.Product>
+        {
+            CreateTestProduct(Guid.NewGuid())
+        };
+
+        _mockRepository.Setup(r => r.GetActiveByStoreIdAsync(command.StoreId))
+            .ReturnsAsync(products);
+
+        // Act
+        var result = await _service.ExportProductCatalogAsync(command);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.Equal("text/csv", result.ContentType);
+        Assert.EndsWith(".csv", result.FileName);
+    }
+
+    [Fact]
+    public async Task ExportProductCatalogAsync_ExcelFormat_ReturnsCorrectContentType()
+    {
+        // Arrange
+        var command = CreateValidExportCommand();
+        command.Format = ExportFormat.Excel;
+        var products = new List<Mercato.Product.Domain.Entities.Product>
+        {
+            CreateTestProduct(Guid.NewGuid())
+        };
+
+        _mockRepository.Setup(r => r.GetActiveByStoreIdAsync(command.StoreId))
+            .ReturnsAsync(products);
+
+        // Act
+        var result = await _service.ExportProductCatalogAsync(command);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.Equal("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", result.ContentType);
+        Assert.EndsWith(".xlsx", result.FileName);
+    }
+
+    [Fact]
+    public async Task ExportProductCatalogAsync_EmptyStoreId_ReturnsFailure()
+    {
+        // Arrange
+        var command = CreateValidExportCommand();
+        command.StoreId = Guid.Empty;
+
+        // Act
+        var result = await _service.ExportProductCatalogAsync(command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains("Store ID is required.", result.Errors);
+    }
+
+    [Fact]
+    public async Task ExportProductCatalogAsync_EmptySellerId_ReturnsFailure()
+    {
+        // Arrange
+        var command = CreateValidExportCommand();
+        command.SellerId = string.Empty;
+
+        // Act
+        var result = await _service.ExportProductCatalogAsync(command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains("Seller ID is required.", result.Errors);
+    }
+
+    [Fact]
+    public async Task ExportProductCatalogAsync_NoProducts_ReturnsSuccessWithZeroCount()
+    {
+        // Arrange
+        var command = CreateValidExportCommand();
+
+        _mockRepository.Setup(r => r.GetActiveByStoreIdAsync(command.StoreId))
+            .ReturnsAsync(new List<Mercato.Product.Domain.Entities.Product>());
+
+        // Act
+        var result = await _service.ExportProductCatalogAsync(command);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.Equal(0, result.ExportedCount);
+        Assert.NotNull(result.FileContent);
+    }
+
+    [Fact]
+    public async Task ExportProductCatalogAsync_WithSearchFilter_AppliesFilter()
+    {
+        // Arrange
+        var command = CreateValidExportCommand();
+        command.ApplyFilters = true;
+        command.SearchQuery = "Test Product";
+
+        var products = new List<Mercato.Product.Domain.Entities.Product>
+        {
+            CreateTestProduct(Guid.NewGuid()), // Title: "Test Product"
+            new Mercato.Product.Domain.Entities.Product
+            {
+                Id = Guid.NewGuid(),
+                StoreId = TestStoreId,
+                Title = "Other Item",
+                Description = "Description",
+                Price = 10.00m,
+                Stock = 10,
+                Category = "Category"
+            }
+        };
+
+        _mockRepository.Setup(r => r.GetActiveByStoreIdAsync(command.StoreId))
+            .ReturnsAsync(products);
+
+        // Act
+        var result = await _service.ExportProductCatalogAsync(command);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.Equal(1, result.ExportedCount); // Only "Test Product" matches
+    }
+
+    [Fact]
+    public async Task ExportProductCatalogAsync_WithCategoryFilter_AppliesFilter()
+    {
+        // Arrange
+        var command = CreateValidExportCommand();
+        command.ApplyFilters = true;
+        command.CategoryFilter = "Electronics";
+
+        var products = new List<Mercato.Product.Domain.Entities.Product>
+        {
+            new Mercato.Product.Domain.Entities.Product
+            {
+                Id = Guid.NewGuid(),
+                StoreId = TestStoreId,
+                Title = "Product 1",
+                Category = "Electronics",
+                Price = 10.00m,
+                Stock = 10
+            },
+            new Mercato.Product.Domain.Entities.Product
+            {
+                Id = Guid.NewGuid(),
+                StoreId = TestStoreId,
+                Title = "Product 2",
+                Category = "Clothing",
+                Price = 10.00m,
+                Stock = 10
+            }
+        };
+
+        _mockRepository.Setup(r => r.GetActiveByStoreIdAsync(command.StoreId))
+            .ReturnsAsync(products);
+
+        // Act
+        var result = await _service.ExportProductCatalogAsync(command);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.Equal(1, result.ExportedCount);
+    }
+
+    [Fact]
+    public async Task ExportProductCatalogAsync_WithStatusFilter_AppliesFilter()
+    {
+        // Arrange
+        var command = CreateValidExportCommand();
+        command.ApplyFilters = true;
+        command.StatusFilter = ProductStatus.Active;
+
+        var products = new List<Mercato.Product.Domain.Entities.Product>
+        {
+            new Mercato.Product.Domain.Entities.Product
+            {
+                Id = Guid.NewGuid(),
+                StoreId = TestStoreId,
+                Title = "Active Product",
+                Category = "Category",
+                Price = 10.00m,
+                Stock = 10,
+                Status = ProductStatus.Active
+            },
+            new Mercato.Product.Domain.Entities.Product
+            {
+                Id = Guid.NewGuid(),
+                StoreId = TestStoreId,
+                Title = "Draft Product",
+                Category = "Category",
+                Price = 10.00m,
+                Stock = 10,
+                Status = ProductStatus.Draft
+            }
+        };
+
+        _mockRepository.Setup(r => r.GetActiveByStoreIdAsync(command.StoreId))
+            .ReturnsAsync(products);
+
+        // Act
+        var result = await _service.ExportProductCatalogAsync(command);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.Equal(1, result.ExportedCount);
+    }
+
+    [Fact]
+    public async Task ExportProductCatalogAsync_FiltersNotApplied_ExportsAllProducts()
+    {
+        // Arrange
+        var command = CreateValidExportCommand();
+        command.ApplyFilters = false;
+        command.SearchQuery = "ShouldBeIgnored";
+        command.CategoryFilter = "ShouldBeIgnored";
+
+        var products = new List<Mercato.Product.Domain.Entities.Product>
+        {
+            CreateTestProduct(Guid.NewGuid()),
+            CreateTestProduct(Guid.NewGuid()),
+            CreateTestProduct(Guid.NewGuid())
+        };
+
+        _mockRepository.Setup(r => r.GetActiveByStoreIdAsync(command.StoreId))
+            .ReturnsAsync(products);
+
+        // Act
+        var result = await _service.ExportProductCatalogAsync(command);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.Equal(3, result.ExportedCount);
+    }
+
+    [Fact]
+    public async Task ExportProductCatalogAsync_CsvContainsCorrectHeaders()
+    {
+        // Arrange
+        var command = CreateValidExportCommand();
+        command.Format = ExportFormat.Csv;
+
+        var products = new List<Mercato.Product.Domain.Entities.Product>
+        {
+            CreateTestProduct(Guid.NewGuid())
+        };
+
+        _mockRepository.Setup(r => r.GetActiveByStoreIdAsync(command.StoreId))
+            .ReturnsAsync(products);
+
+        // Act
+        var result = await _service.ExportProductCatalogAsync(command);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        var csvContent = System.Text.Encoding.UTF8.GetString(result.FileContent!);
+        Assert.Contains("SKU", csvContent);
+        Assert.Contains("Title", csvContent);
+        Assert.Contains("Description", csvContent);
+        Assert.Contains("Price", csvContent);
+        Assert.Contains("Stock", csvContent);
+        Assert.Contains("Category", csvContent);
+        Assert.Contains("Status", csvContent);
+    }
+
+    [Fact]
+    public async Task ExportProductCatalogAsync_CsvContainsProductData()
+    {
+        // Arrange
+        var command = CreateValidExportCommand();
+        command.Format = ExportFormat.Csv;
+
+        var product = CreateTestProduct(Guid.NewGuid());
+        product.Sku = "SKU123";
+        product.Title = "Test Product Title";
+        product.Category = "Test Category";
+
+        _mockRepository.Setup(r => r.GetActiveByStoreIdAsync(command.StoreId))
+            .ReturnsAsync(new List<Mercato.Product.Domain.Entities.Product> { product });
+
+        // Act
+        var result = await _service.ExportProductCatalogAsync(command);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        var csvContent = System.Text.Encoding.UTF8.GetString(result.FileContent!);
+        Assert.Contains("SKU123", csvContent);
+        Assert.Contains("Test Product Title", csvContent);
+        Assert.Contains("Test Category", csvContent);
+    }
+
+    private static ExportProductCatalogCommand CreateValidExportCommand()
+    {
+        return new ExportProductCatalogCommand
+        {
+            StoreId = TestStoreId,
+            SellerId = TestSellerId,
+            Format = ExportFormat.Csv,
+            ApplyFilters = false
+        };
+    }
+
+    #endregion
 }
