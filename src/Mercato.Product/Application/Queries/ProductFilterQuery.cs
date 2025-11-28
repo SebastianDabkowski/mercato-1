@@ -46,6 +46,12 @@ public class ProductFilterQuery
     public int PageSize { get; set; } = 12;
 
     /// <summary>
+    /// Gets or sets the sort option for ordering results.
+    /// Default is Relevance for search, Newest for category browsing.
+    /// </summary>
+    public ProductSortOption SortBy { get; set; } = ProductSortOption.Relevance;
+
+    /// <summary>
     /// Creates a copy of this filter query with modified search query.
     /// </summary>
     /// <param name="searchQuery">The new search query value.</param>
@@ -61,7 +67,8 @@ public class ProductFilterQuery
             Condition = Condition,
             StoreId = StoreId,
             Page = Page,
-            PageSize = PageSize
+            PageSize = PageSize,
+            SortBy = SortBy
         };
     }
 
@@ -81,7 +88,8 @@ public class ProductFilterQuery
             Condition = Condition,
             StoreId = StoreId,
             Page = Page,
-            PageSize = PageSize
+            PageSize = PageSize,
+            SortBy = SortBy
         };
     }
 
@@ -113,7 +121,8 @@ public class ProductFilterQuery
             Condition = null,
             StoreId = null,
             Page = 1,
-            PageSize = PageSize
+            PageSize = PageSize,
+            SortBy = SortBy
         };
     }
 }

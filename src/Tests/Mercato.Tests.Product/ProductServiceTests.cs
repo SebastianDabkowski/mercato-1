@@ -2729,7 +2729,7 @@ public class ProductServiceTests
 
         _mockRepository.Setup(r => r.SearchActiveProductsWithFiltersAsync(
                 filter.SearchQuery, filter.Category, filter.MinPrice, filter.MaxPrice,
-                filter.Condition, filter.StoreId, filter.Page, filter.PageSize))
+                filter.Condition, filter.StoreId, filter.Page, filter.PageSize, filter.SortBy))
             .ReturnsAsync((products.AsReadOnly(), 2));
 
         // Act
@@ -2756,7 +2756,7 @@ public class ProductServiceTests
 
         _mockRepository.Setup(r => r.SearchActiveProductsWithFiltersAsync(
                 filter.SearchQuery, filter.Category, filter.MinPrice, filter.MaxPrice,
-                filter.Condition, filter.StoreId, filter.Page, filter.PageSize))
+                filter.Condition, filter.StoreId, filter.Page, filter.PageSize, filter.SortBy))
             .ReturnsAsync((new List<Mercato.Product.Domain.Entities.Product>().AsReadOnly(), 0));
 
         // Act
@@ -2785,7 +2785,7 @@ public class ProductServiceTests
 
         _mockRepository.Setup(r => r.SearchActiveProductsWithFiltersAsync(
                 filter.SearchQuery, filter.Category, filter.MinPrice, filter.MaxPrice,
-                filter.Condition, filter.StoreId, filter.Page, filter.PageSize))
+                filter.Condition, filter.StoreId, filter.Page, filter.PageSize, filter.SortBy))
             .ReturnsAsync((products.AsReadOnly(), 25)); // 25 total products, 10 per page = 3 pages
 
         // Act

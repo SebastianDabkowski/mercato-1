@@ -1,3 +1,4 @@
+using Mercato.Product.Application.Queries;
 using Mercato.Product.Domain.Entities;
 
 namespace Mercato.Product.Domain.Interfaces;
@@ -95,6 +96,7 @@ public interface IProductRepository
     /// <param name="storeId">Optional store ID to filter by seller.</param>
     /// <param name="page">The page number (1-based).</param>
     /// <param name="pageSize">The number of items per page.</param>
+    /// <param name="sortBy">The sort option for ordering results.</param>
     /// <returns>A tuple containing the list of matching products and total count.</returns>
     Task<(IReadOnlyList<Entities.Product> Products, int TotalCount)> SearchActiveProductsWithFiltersAsync(
         string? searchQuery,
@@ -104,7 +106,8 @@ public interface IProductRepository
         string? condition,
         Guid? storeId,
         int page,
-        int pageSize);
+        int pageSize,
+        ProductSortOption sortBy = ProductSortOption.Relevance);
 
     /// <summary>
     /// Gets the price range (min and max) of all active products.
