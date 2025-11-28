@@ -2702,4 +2702,175 @@ public class ProductServiceTests
     }
 
     #endregion
+
+    #region SearchProductsWithFiltersAsync Tests
+
+    [Fact]
+    public async Task SearchProductsWithFiltersAsync_WithValidFilter_ReturnsSuccess()
+    {
+        // Arrange
+        var filter = new Mercato.Product.Application.Queries.ProductFilterQuery
+        {
+            SearchQuery = "test",
+            Category = "Electronics",
+            MinPrice = 10m,
+            MaxPrice = 100m,
+            Condition = "InStock",
+            StoreId = TestStoreId,
+            Page = 1,
+            PageSize = 12
+        };
+
+        var products = new List<Mercato.Product.Domain.Entities.Product>
+        {
+            CreateTestProduct(),
+            CreateTestProduct()
+        };
+
+        _mockRepository.Setup(r => r.SearchActiveProductsWithFiltersAsync(
+                filter.SearchQuery, filter.Category, filter.MinPrice, filter.MaxPrice,
+                filter.Condition, filter.StoreId, filter.Page, filter.PageSize))
+            .ReturnsAsync((products.AsReadOnly(), 2));
+
+        // Act
+        var result = await _service.SearchProductsWithFiltersAsync(filter);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(2, result.TotalCount);
+        Assert.Equal(2, result.Products.Count);
+        Assert.Equal(1, result.CurrentPage);
+        Assert.Equal(12, result.PageSize);
+    }
+
+    [Fact]
+    public async Task SearchProductsWithFiltersAsync_WithNoResults_ReturnsEmptyList()
+    {
+        // Arrange
+        var filter = new Mercato.Product.Application.Queries.ProductFilterQuery
+        {
+            SearchQuery = "nonexistent",
+            Page = 1,
+            PageSize = 12
+        };
+
+        _mockRepository.Setup(r => r.SearchActiveProductsWithFiltersAsync(
+                filter.SearchQuery, filter.Category, filter.MinPrice, filter.MaxPrice,
+                filter.Condition, filter.StoreId, filter.Page, filter.PageSize))
+            .ReturnsAsync((Array.Empty<Mercato.Product.Domain.Entities.Product>().ToList().AsReadOnly(), 0));
+
+        // Act
+        var result = await _service.SearchProductsWithFiltersAsync(filter);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(0, result.TotalCount);
+        Assert.Empty(result.Products);
+        Assert.Equal(0, result.TotalPages);
+    }
+
+    [Fact]
+    public async Task SearchProductsWithFiltersAsync_WithPagination_CalculatesTotalPages()
+    {
+        // Arrange
+        var filter = new Mercato.Product.Application.Queries.ProductFilterQuery
+        {
+            Page = 1,
+            PageSize = 10
+        };
+
+        var products = Enumerable.Range(1, 10)
+            .Select(_ => CreateTestProduct())
+            .ToList();
+
+        _mockRepository.Setup(r => r.SearchActiveProductsWithFiltersAsync(
+                filter.SearchQuery, filter.Category, filter.MinPrice, filter.MaxPrice,
+                filter.Condition, filter.StoreId, filter.Page, filter.PageSize))
+            .ReturnsAsync((products.AsReadOnly(), 25)); // 25 total products, 10 per page = 3 pages
+
+        // Act
+        var result = await _service.SearchProductsWithFiltersAsync(filter);
+
+        // Assert
+        Assert.Equal(3, result.TotalPages);
+        Assert.Equal(25, result.TotalCount);
+    }
+
+    [Fact]
+    public async Task SearchProductsWithFiltersAsync_NullFilter_ThrowsArgumentNullException()
+    {
+        // Act & Assert
+        await Assert.ThrowsAsync<ArgumentNullException>(() =>
+            _service.SearchProductsWithFiltersAsync(null!));
+    }
+
+    #endregion
+
+    #region GetActivePriceRangeAsync Tests
+
+    [Fact]
+    public async Task GetActivePriceRangeAsync_WithProducts_ReturnsPriceRange()
+    {
+        // Arrange
+        _mockRepository.Setup(r => r.GetActivePriceRangeAsync())
+            .ReturnsAsync((10.00m, 500.00m));
+
+        // Act
+        var (minPrice, maxPrice) = await _service.GetActivePriceRangeAsync();
+
+        // Assert
+        Assert.Equal(10.00m, minPrice);
+        Assert.Equal(500.00m, maxPrice);
+    }
+
+    [Fact]
+    public async Task GetActivePriceRangeAsync_WithNoProducts_ReturnsNulls()
+    {
+        // Arrange
+        _mockRepository.Setup(r => r.GetActivePriceRangeAsync())
+            .ReturnsAsync(((decimal?)null, (decimal?)null));
+
+        // Act
+        var (minPrice, maxPrice) = await _service.GetActivePriceRangeAsync();
+
+        // Assert
+        Assert.Null(minPrice);
+        Assert.Null(maxPrice);
+    }
+
+    #endregion
+
+    #region GetActiveProductStoreIdsAsync Tests
+
+    [Fact]
+    public async Task GetActiveProductStoreIdsAsync_WithProducts_ReturnsStoreIds()
+    {
+        // Arrange
+        var storeIds = new List<Guid> { Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid() };
+        _mockRepository.Setup(r => r.GetActiveProductStoreIdsAsync())
+            .ReturnsAsync(storeIds.AsReadOnly());
+
+        // Act
+        var result = await _service.GetActiveProductStoreIdsAsync();
+
+        // Assert
+        Assert.Equal(3, result.Count);
+        Assert.Equal(storeIds, result);
+    }
+
+    [Fact]
+    public async Task GetActiveProductStoreIdsAsync_WithNoProducts_ReturnsEmptyList()
+    {
+        // Arrange
+        _mockRepository.Setup(r => r.GetActiveProductStoreIdsAsync())
+            .ReturnsAsync(Array.Empty<Guid>().ToList().AsReadOnly());
+
+        // Act
+        var result = await _service.GetActiveProductStoreIdsAsync();
+
+        // Assert
+        Assert.Empty(result);
+    }
+
+    #endregion
 }

@@ -6,8 +6,75 @@
 
 <div class="container-fluid">
     <div class="row">
-        <!-- Sidebar with category navigation -->
+        <!-- Sidebar with filters and category navigation -->
         <div class="col-md-3 col-lg-2 mb-4">
+            @if (Model.Category != null)
+            {
+                <!-- Filter Panel (only show when a category is selected) -->
+                <div class="card mb-3">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Filters</h5>
+                        @if (Model.HasActiveFilters)
+                        {
+                            <form method="post" asp-page-handler="ClearFilters" class="d-inline">
+                                <input type="hidden" name="id" value="@Model.Category.Id" />
+                                <button type="submit" class="btn btn-link btn-sm p-0 text-danger">Clear All</button>
+                            </form>
+                        }
+                    </div>
+                    <div class="card-body">
+                        <form method="get" asp-page="Category" asp-route-id="@Model.Category.Id">
+                            <!-- Price Range Filter -->
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Price Range</label>
+                                <div class="row g-2">
+                                    <div class="col-6">
+                                        <input type="number" name="MinPrice" class="form-control form-control-sm" 
+                                               placeholder="Min" value="@Model.MinPrice" min="0" step="0.01">
+                                    </div>
+                                    <div class="col-6">
+                                        <input type="number" name="MaxPrice" class="form-control form-control-sm" 
+                                               placeholder="Max" value="@Model.MaxPrice" min="0" step="0.01">
+                                    </div>
+                                </div>
+                                @if (Model.MinAvailablePrice.HasValue && Model.MaxAvailablePrice.HasValue)
+                                {
+                                    <small class="text-muted">Range: @Model.MinAvailablePrice?.ToString("C") - @Model.MaxAvailablePrice?.ToString("C")</small>
+                                }
+                            </div>
+
+                            <!-- Condition Filter -->
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Availability</label>
+                                <select name="Condition" class="form-select form-select-sm">
+                                    <option value="">All</option>
+                                    <option value="InStock" selected="@(Model.Condition == "InStock")">In Stock</option>
+                                    <option value="OutOfStock" selected="@(Model.Condition == "OutOfStock")">Out of Stock</option>
+                                </select>
+                            </div>
+
+                            <!-- Seller Filter -->
+                            @if (Model.AvailableStores.Count > 0)
+                            {
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Seller</label>
+                                    <select name="StoreId" class="form-select form-select-sm">
+                                        <option value="">All Sellers</option>
+                                        @foreach (var store in Model.AvailableStores)
+                                        {
+                                            <option value="@store.Id" selected="@(Model.StoreId == store.Id)">@store.Name</option>
+                                        }
+                                    </select>
+                                </div>
+                            }
+
+                            <button type="submit" class="btn btn-primary btn-sm w-100">Apply Filters</button>
+                        </form>
+                    </div>
+                </div>
+            }
+
+            <!-- Categories Navigation -->
             <div class="card">
                 <div class="card-header">
                     <h5 class="mb-0">Categories</h5>
@@ -99,6 +166,35 @@
                     </div>
                 }
 
+                <!-- Active filters display -->
+                @if (Model.HasActiveFilters)
+                {
+                    <div class="mb-3">
+                        <span class="text-muted">Active filters: </span>
+                        @if (Model.MinPrice.HasValue)
+                        {
+                            <span class="badge bg-secondary me-1">Min: @Model.MinPrice?.ToString("C")</span>
+                        }
+                        @if (Model.MaxPrice.HasValue)
+                        {
+                            <span class="badge bg-secondary me-1">Max: @Model.MaxPrice?.ToString("C")</span>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(Model.Condition))
+                        {
+                            <span class="badge bg-secondary me-1">@Model.Condition</span>
+                        }
+                        @if (Model.StoreId.HasValue)
+                        {
+                            var storeName = Model.AvailableStores.FirstOrDefault(s => s.Id == Model.StoreId)?.Name ?? "Selected Seller";
+                            <span class="badge bg-secondary me-1">Seller: @storeName</span>
+                        }
+                        <form method="post" asp-page-handler="ClearFilters" class="d-inline">
+                            <input type="hidden" name="id" value="@Model.Category.Id" />
+                            <button type="submit" class="btn btn-link btn-sm p-0 text-danger">Clear All</button>
+                        </form>
+                    </div>
+                }
+
                 <!-- Products count and info -->
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <p class="mb-0 text-muted">
@@ -123,24 +219,36 @@
                     <div class="alert alert-info">
                         <h5 class="alert-heading">No products in this category</h5>
                         <p class="mb-0">
-                            There are currently no products available in this category. 
-                            @if (Model.Subcategories.Count > 0)
+                            @if (Model.HasActiveFilters)
                             {
-                                <span>Try browsing the subcategories above.</span>
-                            }
-                            else if (Model.ParentCategory != null)
-                            {
-                                <span>
-                                    <a asp-page="Category" asp-route-id="@Model.ParentCategory.Id">
-                                        Go back to @Model.ParentCategory.Name
-                                    </a>
-                                </span>
+                                <span>Try adjusting your filters or </span>
+                                <form method="post" asp-page-handler="ClearFilters" class="d-inline">
+                                    <input type="hidden" name="id" value="@Model.Category.Id" />
+                                    <button type="submit" class="btn btn-link p-0">clear all filters</button>
+                                </form>
+                                <span> to see more results.</span>
                             }
                             else
                             {
-                                <span>
-                                    <a asp-page="Category">Browse other categories</a>
-                                </span>
+                                <span>There are currently no products available in this category. </span>
+                                @if (Model.Subcategories.Count > 0)
+                                {
+                                    <span>Try browsing the subcategories above.</span>
+                                }
+                                else if (Model.ParentCategory != null)
+                                {
+                                    <span>
+                                        <a asp-page="Category" asp-route-id="@Model.ParentCategory.Id">
+                                            Go back to @Model.ParentCategory.Name
+                                        </a>
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span>
+                                        <a asp-page="Category">Browse other categories</a>
+                                    </span>
+                                }
                             }
                         </p>
                     </div>
@@ -198,6 +306,8 @@
                             <ul class="pagination justify-content-center">
                                 <li class="page-item @(Model.CurrentPage <= 1 ? "disabled" : "")">
                                     <a class="page-link" asp-page="Category" asp-route-id="@Model.Category.Id" 
+                                       asp-route-minprice="@Model.MinPrice" asp-route-maxprice="@Model.MaxPrice"
+                                       asp-route-condition="@Model.Condition" asp-route-storeid="@Model.StoreId"
                                        asp-route-page="@(Model.CurrentPage - 1)">
                                         Previous
                                     </a>
@@ -206,11 +316,15 @@
                                 {
                                     <li class="page-item @(i == Model.CurrentPage ? "active" : "")">
                                         <a class="page-link" asp-page="Category" asp-route-id="@Model.Category.Id" 
+                                           asp-route-minprice="@Model.MinPrice" asp-route-maxprice="@Model.MaxPrice"
+                                           asp-route-condition="@Model.Condition" asp-route-storeid="@Model.StoreId"
                                            asp-route-page="@i">@i</a>
                                     </li>
                                 }
                                 <li class="page-item @(Model.CurrentPage >= Model.TotalPages ? "disabled" : "")">
                                     <a class="page-link" asp-page="Category" asp-route-id="@Model.Category.Id" 
+                                       asp-route-minprice="@Model.MinPrice" asp-route-maxprice="@Model.MaxPrice"
+                                       asp-route-condition="@Model.Condition" asp-route-storeid="@Model.StoreId"
                                        asp-route-page="@(Model.CurrentPage + 1)">
                                         Next
                                     </a>

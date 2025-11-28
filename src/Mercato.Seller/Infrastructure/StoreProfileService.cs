@@ -369,4 +369,11 @@ public class StoreProfileService : IStoreProfileService
 
         return stringBuilder.ToString().Normalize(NormalizationForm.FormC);
     }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<Store>> GetStoresByIdsAsync(IEnumerable<Guid> ids)
+    {
+        ArgumentNullException.ThrowIfNull(ids);
+        return await _repository.GetByIdsAsync(ids);
+    }
 }

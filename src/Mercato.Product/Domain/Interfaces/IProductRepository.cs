@@ -82,4 +82,39 @@ public interface IProductRepository
     /// <param name="pageSize">The number of items per page.</param>
     /// <returns>A tuple containing the list of matching products and total count.</returns>
     Task<(IReadOnlyList<Entities.Product> Products, int TotalCount)> SearchActiveProductsAsync(string searchQuery, int page, int pageSize);
+
+    /// <summary>
+    /// Searches for active products with filters applied.
+    /// Only products with Active status are returned.
+    /// </summary>
+    /// <param name="searchQuery">Optional search query to match against title and description.</param>
+    /// <param name="categoryName">Optional category name to filter by.</param>
+    /// <param name="minPrice">Optional minimum price filter (inclusive).</param>
+    /// <param name="maxPrice">Optional maximum price filter (inclusive).</param>
+    /// <param name="condition">Optional condition filter ("InStock" or "OutOfStock").</param>
+    /// <param name="storeId">Optional store ID to filter by seller.</param>
+    /// <param name="page">The page number (1-based).</param>
+    /// <param name="pageSize">The number of items per page.</param>
+    /// <returns>A tuple containing the list of matching products and total count.</returns>
+    Task<(IReadOnlyList<Entities.Product> Products, int TotalCount)> SearchActiveProductsWithFiltersAsync(
+        string? searchQuery,
+        string? categoryName,
+        decimal? minPrice,
+        decimal? maxPrice,
+        string? condition,
+        Guid? storeId,
+        int page,
+        int pageSize);
+
+    /// <summary>
+    /// Gets the price range (min and max) of all active products.
+    /// </summary>
+    /// <returns>A tuple containing the minimum and maximum prices, or null if no products exist.</returns>
+    Task<(decimal? MinPrice, decimal? MaxPrice)> GetActivePriceRangeAsync();
+
+    /// <summary>
+    /// Gets all unique store IDs that have active products.
+    /// </summary>
+    /// <returns>A list of store IDs with active products.</returns>
+    Task<IReadOnlyList<Guid>> GetActiveProductStoreIdsAsync();
 }

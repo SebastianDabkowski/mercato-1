@@ -57,4 +57,11 @@ public interface IStoreRepository
     /// <param name="store">The store to update.</param>
     /// <returns>A task representing the asynchronous operation.</returns>
     Task UpdateAsync(Store store);
+
+    /// <summary>
+    /// Gets stores by their unique identifiers.
+    /// </summary>
+    /// <param name="ids">The store IDs to retrieve.</param>
+    /// <returns>A list of stores matching the provided IDs.</returns>
+    Task<IReadOnlyList<Store>> GetByIdsAsync(IEnumerable<Guid> ids);
 }

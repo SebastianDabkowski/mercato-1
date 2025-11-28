@@ -1,4 +1,5 @@
 using Mercato.Product.Application.Commands;
+using Mercato.Product.Application.Queries;
 using Mercato.Product.Domain.Entities;
 
 namespace Mercato.Product.Application.Services;
@@ -88,4 +89,23 @@ public interface IProductService
     /// <param name="pageSize">The number of items per page.</param>
     /// <returns>A tuple containing matching products and total count.</returns>
     Task<(IReadOnlyList<Domain.Entities.Product> Products, int TotalCount)> SearchProductsAsync(string searchQuery, int page, int pageSize);
+
+    /// <summary>
+    /// Searches for active products with filter criteria applied.
+    /// </summary>
+    /// <param name="filter">The filter query parameters.</param>
+    /// <returns>A result containing matching products and filter metadata.</returns>
+    Task<FilteredProductsResult> SearchProductsWithFiltersAsync(ProductFilterQuery filter);
+
+    /// <summary>
+    /// Gets the price range (min and max) of all active products.
+    /// </summary>
+    /// <returns>A tuple containing the minimum and maximum prices.</returns>
+    Task<(decimal? MinPrice, decimal? MaxPrice)> GetActivePriceRangeAsync();
+
+    /// <summary>
+    /// Gets all unique store IDs that have active products.
+    /// </summary>
+    /// <returns>A list of store IDs with active products.</returns>
+    Task<IReadOnlyList<Guid>> GetActiveProductStoreIdsAsync();
 }
