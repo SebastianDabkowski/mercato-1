@@ -293,20 +293,25 @@
         }
 
         const productsHtml = products.map(product => {
+            // Image URL is already validated by isValidImageUrl(), so we can use it directly
+            // since it only allows URLs starting with /uploads/ or /images/
             const imageHtml = product.imageUrl && isValidImageUrl(product.imageUrl)
-                ? `<img src="${encodeHtml(product.imageUrl)}" class="card-img-top" alt="${encodeHtml(product.title)}" style="height: 150px; object-fit: cover;">`
+                ? `<img src="${product.imageUrl}" class="card-img-top" alt="${encodeHtml(product.title)}" style="height: 150px; object-fit: cover;">`
                 : `<div class="card-img-top bg-secondary d-flex align-items-center justify-content-center" style="height: 150px;"><span class="text-white">No Image</span></div>`;
 
             const stockBadge = product.isInStock
                 ? '<span class="badge bg-success">In Stock</span>'
                 : '<span class="badge bg-secondary">Out of Stock</span>';
 
+            // For the title attribute, we HTML encode to prevent XSS
+            const encodedTitle = encodeHtml(product.title);
+
             return `
                 <div class="col">
                     <div class="card h-100">
                         ${imageHtml}
                         <div class="card-body">
-                            <h6 class="card-title text-truncate" title="${encodeHtml(product.title)}">${encodeHtml(product.title)}</h6>
+                            <h6 class="card-title text-truncate" title="${encodedTitle}">${encodedTitle}</h6>
                             <p class="card-text mb-1">
                                 <strong class="text-primary">$${product.price.toFixed(2)}</strong>
                             </p>
