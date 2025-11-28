@@ -1,12 +1,25 @@
+using Mercato.Cart.Application.Services;
+using Mercato.Cart.Domain.Interfaces;
+using Mercato.Cart.Infrastructure;
 using Mercato.Cart.Infrastructure.Persistence;
+using Mercato.Cart.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Mercato.Cart;
 
+/// <summary>
+/// Extension methods for registering cart module services.
+/// </summary>
 public static class CartModuleExtensions
 {
+    /// <summary>
+    /// Adds cart module services to the dependency injection container.
+    /// </summary>
+    /// <param name="services">The service collection.</param>
+    /// <param name="configuration">The configuration.</param>
+    /// <returns>The service collection.</returns>
     public static IServiceCollection AddCartModule(this IServiceCollection services, IConfiguration configuration)
     {
         // Register CartDbContext with SQL Server
@@ -16,7 +29,11 @@ public static class CartModuleExtensions
         services.AddDbContext<CartDbContext>(options =>
             options.UseSqlServer(connectionString));
 
-        // TODO: Register Cart module services and repositories here
+        // Register repositories
+        services.AddScoped<ICartRepository, CartRepository>();
+
+        // Register services
+        services.AddScoped<ICartService, CartService>();
 
         return services;
     }

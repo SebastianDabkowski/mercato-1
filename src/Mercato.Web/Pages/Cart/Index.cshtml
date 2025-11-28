@@ -4,21 +4,140 @@
     ViewData["Title"] = "Shopping Cart";
 }
 
-@* TODO: Implement actual UI for Cart section *@
 <h1>Shopping Cart</h1>
 
-<div class="alert alert-info">
-    <strong>Coming Soon!</strong> This page is under development.
-</div>
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @TempData["Success"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
 
-<p>Your shopping cart will allow you to:</p>
-<ul>
-    <li>View items in your cart</li>
-    <li>Update quantities</li>
-    <li>Remove items</li>
-    <li>Proceed to checkout</li>
-</ul>
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        @TempData["Error"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
 
-<div class="mt-4">
-    <a asp-page="Details" class="btn btn-outline-primary">View Cart Details</a>
-</div>
+@if (Model.CartResult?.ItemsByStore == null || Model.CartResult.ItemsByStore.Count == 0)
+{
+    <div class="alert alert-info">
+        <strong>Your cart is empty.</strong> Start shopping to add items to your cart.
+    </div>
+    <div class="mt-4">
+        <a asp-page="/Product/Index" class="btn btn-primary">Browse Products</a>
+    </div>
+}
+else
+{
+    <div class="row">
+        <div class="col-lg-8">
+            @foreach (var storeGroup in Model.CartResult.ItemsByStore)
+            {
+                <div class="card mb-4">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0">
+                            <i class="bi bi-shop me-2"></i>@storeGroup.StoreName
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        @foreach (var item in storeGroup.Items)
+                        {
+                            <div class="row align-items-center mb-3 pb-3 border-bottom">
+                                <!-- Product Image -->
+                                <div class="col-md-2 col-3">
+                                    @if (!string.IsNullOrEmpty(item.ProductImageUrl))
+                                    {
+                                        <img src="@item.ProductImageUrl" 
+                                             class="img-fluid rounded" 
+                                             alt="@item.ProductTitle"
+                                             style="max-height: 80px; object-fit: cover;">
+                                    }
+                                    else
+                                    {
+                                        <div class="bg-secondary d-flex align-items-center justify-content-center rounded" 
+                                             style="height: 80px; width: 80px;">
+                                            <span class="text-white small">No Image</span>
+                                        </div>
+                                    }
+                                </div>
+
+                                <!-- Product Details -->
+                                <div class="col-md-4 col-9">
+                                    <h6 class="mb-1">
+                                        <a asp-page="/Product/Details" asp-route-id="@item.ProductId" class="text-decoration-none">
+                                            @item.ProductTitle
+                                        </a>
+                                    </h6>
+                                    <p class="text-muted mb-0 small">@item.ProductPrice.ToString("C") each</p>
+                                </div>
+
+                                <!-- Quantity -->
+                                <div class="col-md-3 col-6 mt-2 mt-md-0">
+                                    <form method="post" asp-page-handler="UpdateQuantity" class="d-flex align-items-center">
+                                        <input type="hidden" name="cartItemId" value="@item.Id" />
+                                        <label for="quantity-@item.Id" class="me-2 small">Qty:</label>
+                                        <input type="number" 
+                                               id="quantity-@item.Id" 
+                                               name="quantity" 
+                                               value="@item.Quantity" 
+                                               min="1" 
+                                               max="99"
+                                               class="form-control form-control-sm" 
+                                               style="width: 70px;">
+                                        <button type="submit" class="btn btn-outline-secondary btn-sm ms-2">Update</button>
+                                    </form>
+                                </div>
+
+                                <!-- Subtotal & Remove -->
+                                <div class="col-md-3 col-6 text-end mt-2 mt-md-0">
+                                    <p class="mb-1 fw-bold">@((item.ProductPrice * item.Quantity).ToString("C"))</p>
+                                    <form method="post" asp-page-handler="RemoveItem" class="d-inline">
+                                        <input type="hidden" name="cartItemId" value="@item.Id" />
+                                        <button type="submit" class="btn btn-link text-danger p-0 small">
+                                            <i class="bi bi-trash me-1"></i>Remove
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        }
+                        <div class="text-end">
+                            <strong>Subtotal from @storeGroup.StoreName: @storeGroup.Subtotal.ToString("C")</strong>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <!-- Order Summary -->
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Order Summary</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>Items (@Model.CartResult.TotalItemCount):</span>
+                        <span>@Model.CartResult.TotalPrice.ToString("C")</span>
+                    </div>
+                    <hr>
+                    <div class="d-flex justify-content-between mb-3">
+                        <strong>Total:</strong>
+                        <strong class="text-primary fs-5">@Model.CartResult.TotalPrice.ToString("C")</strong>
+                    </div>
+                    <div class="d-grid gap-2">
+                        <a asp-page="/Orders/Checkout" class="btn btn-primary btn-lg">
+                            Proceed to Checkout
+                        </a>
+                        <a asp-page="/Product/Index" class="btn btn-outline-secondary">
+                            Continue Shopping
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
