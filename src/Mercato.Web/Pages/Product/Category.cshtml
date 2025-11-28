@@ -1,0 +1,251 @@
+@page "{id:guid?}"
+@model Mercato.Web.Pages.Product.CategoryModel
+@{
+    ViewData["Title"] = Model.Category?.Name ?? "Categories";
+}
+
+<div class="container-fluid">
+    <div class="row">
+        <!-- Sidebar with category navigation -->
+        <div class="col-md-3 col-lg-2 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Categories</h5>
+                </div>
+                <div class="card-body p-0">
+                    <nav class="nav flex-column">
+                        @foreach (var category in Model.RootCategories)
+                        {
+                            <a class="nav-link @(Model.Category?.Id == category.Id ? "active bg-primary text-white" : "")" 
+                               asp-page="Category" asp-route-id="@category.Id">
+                                @category.Name
+                            </a>
+                        }
+                    </nav>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main content area -->
+        <div class="col-md-9 col-lg-10">
+            <!-- Breadcrumb navigation -->
+            <nav aria-label="breadcrumb" class="mb-3">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a asp-page="/Index">Home</a></li>
+                    <li class="breadcrumb-item"><a asp-page="Category">Categories</a></li>
+                    @if (Model.ParentCategory != null)
+                    {
+                        <li class="breadcrumb-item">
+                            <a asp-page="Category" asp-route-id="@Model.ParentCategory.Id">@Model.ParentCategory.Name</a>
+                        </li>
+                    }
+                    @if (Model.Category != null)
+                    {
+                        <li class="breadcrumb-item active" aria-current="page">@Model.Category.Name</li>
+                    }
+                </ol>
+            </nav>
+
+            @if (Model.Category == null)
+            {
+                <!-- No category selected - show all root categories -->
+                <h1>Browse Categories</h1>
+                <p class="lead">Select a category to browse products.</p>
+                
+                @if (Model.RootCategories.Count == 0)
+                {
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> No categories are available at this time.
+                    </div>
+                }
+                else
+                {
+                    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+                        @foreach (var category in Model.RootCategories)
+                        {
+                            <div class="col">
+                                <div class="card h-100">
+                                    <div class="card-body">
+                                        <h5 class="card-title">@category.Name</h5>
+                                        <a asp-page="Category" asp-route-id="@category.Id" class="btn btn-primary">
+                                            Browse Products
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            }
+            else
+            {
+                <!-- Category selected - show products and subcategories -->
+                <h1>@Model.Category.Name</h1>
+
+                <!-- Subcategories section -->
+                @if (Model.Subcategories.Count > 0)
+                {
+                    <div class="mb-4">
+                        <h5>Subcategories</h5>
+                        <div class="d-flex flex-wrap gap-2">
+                            @foreach (var subcategory in Model.Subcategories)
+                            {
+                                <a asp-page="Category" asp-route-id="@subcategory.Id" 
+                                   class="btn btn-outline-secondary btn-sm">
+                                    @subcategory.Name
+                                </a>
+                            }
+                        </div>
+                    </div>
+                }
+
+                <!-- Products count and info -->
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <p class="mb-0 text-muted">
+                        @if (Model.TotalProducts == 0)
+                        {
+                            <span>No products found</span>
+                        }
+                        else if (Model.TotalProducts == 1)
+                        {
+                            <span>1 product found</span>
+                        }
+                        else
+                        {
+                            <span>@Model.TotalProducts products found</span>
+                        }
+                    </p>
+                </div>
+
+                @if (Model.TotalProducts == 0)
+                {
+                    <!-- Empty state -->
+                    <div class="alert alert-info">
+                        <h5 class="alert-heading">No products in this category</h5>
+                        <p class="mb-0">
+                            There are currently no products available in this category. 
+                            @if (Model.Subcategories.Count > 0)
+                            {
+                                <span>Try browsing the subcategories above.</span>
+                            }
+                            else if (Model.ParentCategory != null)
+                            {
+                                <span>
+                                    <a asp-page="Category" asp-route-id="@Model.ParentCategory.Id">
+                                        Go back to @Model.ParentCategory.Name
+                                    </a>
+                                </span>
+                            }
+                            else
+                            {
+                                <span>
+                                    <a asp-page="Category">Browse other categories</a>
+                                </span>
+                            }
+                        </p>
+                    </div>
+                }
+                else
+                {
+                    <!-- Products grid -->
+                    <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4">
+                        @foreach (var product in Model.Products)
+                        {
+                            <div class="col">
+                                <div class="card h-100">
+                                    @if (!string.IsNullOrEmpty(product.Images) && product.Images != "[]")
+                                    {
+                                        <img src="@(GetFirstImageUrl(product.Images))" 
+                                             class="card-img-top" 
+                                             alt="@product.Title"
+                                             style="height: 200px; object-fit: cover;">
+                                    }
+                                    else
+                                    {
+                                        <div class="card-img-top bg-secondary d-flex align-items-center justify-content-center" 
+                                             style="height: 200px;">
+                                            <span class="text-white">No Image</span>
+                                        </div>
+                                    }
+                                    <div class="card-body">
+                                        <h6 class="card-title text-truncate" title="@product.Title">@product.Title</h6>
+                                        <p class="card-text">
+                                            <strong class="text-primary">@product.Price.ToString("C")</strong>
+                                        </p>
+                                        @if (product.Stock > 0)
+                                        {
+                                            <span class="badge bg-success">In Stock</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-secondary">Out of Stock</span>
+                                        }
+                                    </div>
+                                    <div class="card-footer bg-transparent">
+                                        <a asp-page="Details" asp-route-id="@product.Id" class="btn btn-outline-primary btn-sm w-100">
+                                            View Details
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+
+                    <!-- Pagination -->
+                    @if (Model.TotalPages > 1)
+                    {
+                        <nav aria-label="Product pagination" class="mt-4">
+                            <ul class="pagination justify-content-center">
+                                <li class="page-item @(Model.CurrentPage <= 1 ? "disabled" : "")">
+                                    <a class="page-link" asp-page="Category" asp-route-id="@Model.Category.Id" 
+                                       asp-route-page="@(Model.CurrentPage - 1)">
+                                        Previous
+                                    </a>
+                                </li>
+                                @for (int i = 1; i <= Model.TotalPages; i++)
+                                {
+                                    <li class="page-item @(i == Model.CurrentPage ? "active" : "")">
+                                        <a class="page-link" asp-page="Category" asp-route-id="@Model.Category.Id" 
+                                           asp-route-page="@i">@i</a>
+                                    </li>
+                                }
+                                <li class="page-item @(Model.CurrentPage >= Model.TotalPages ? "disabled" : "")">
+                                    <a class="page-link" asp-page="Category" asp-route-id="@Model.Category.Id" 
+                                       asp-route-page="@(Model.CurrentPage + 1)">
+                                        Next
+                                    </a>
+                                </li>
+                            </ul>
+                        </nav>
+                    }
+                }
+            }
+        </div>
+    </div>
+</div>
+
+@functions {
+    /// <summary>
+    /// Gets the first image URL from a JSON array of images.
+    /// </summary>
+    /// <param name="imagesJson">The JSON string containing image URLs.</param>
+    /// <returns>The first image URL or a placeholder.</returns>
+    private static string GetFirstImageUrl(string? imagesJson)
+    {
+        if (string.IsNullOrEmpty(imagesJson) || imagesJson == "[]")
+        {
+            return "/images/placeholder.png";
+        }
+
+        try
+        {
+            // Parse the JSON array and return the first URL
+            var images = System.Text.Json.JsonSerializer.Deserialize<string[]>(imagesJson);
+            return images?.Length > 0 ? images[0] : "/images/placeholder.png";
+        }
+        catch
+        {
+            return "/images/placeholder.png";
+        }
+    }
+}

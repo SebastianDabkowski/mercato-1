@@ -70,4 +70,11 @@ public interface ICategoryRepository
     /// <param name="parentId">The parent category ID.</param>
     /// <returns>The number of child categories.</returns>
     Task<int> GetChildCountAsync(Guid parentId);
+
+    /// <summary>
+    /// Gets all active categories by parent ID.
+    /// </summary>
+    /// <param name="parentId">The parent category ID. Use null to get root categories.</param>
+    /// <returns>A list of active child categories.</returns>
+    Task<IReadOnlyList<Category>> GetActiveByParentIdAsync(Guid? parentId);
 }

@@ -110,4 +110,14 @@ public class CategoryRepository : ICategoryRepository
         return await _context.Categories
             .CountAsync(c => c.ParentId == parentId);
     }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<Category>> GetActiveByParentIdAsync(Guid? parentId)
+    {
+        return await _context.Categories
+            .Where(c => c.ParentId == parentId && c.IsActive)
+            .OrderBy(c => c.DisplayOrder)
+            .ThenBy(c => c.Name)
+            .ToListAsync();
+    }
 }

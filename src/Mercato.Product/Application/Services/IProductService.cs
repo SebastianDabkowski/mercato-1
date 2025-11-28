@@ -70,4 +70,13 @@ public interface IProductService
     /// <param name="command">The export command.</param>
     /// <returns>The result of the export operation containing the file content.</returns>
     Task<ExportProductCatalogResult> ExportProductCatalogAsync(ExportProductCatalogCommand command);
+
+    /// <summary>
+    /// Gets active products by category with pagination.
+    /// </summary>
+    /// <param name="categoryName">The category name.</param>
+    /// <param name="page">The page number (1-based).</param>
+    /// <param name="pageSize">The number of items per page.</param>
+    /// <returns>A tuple containing products and total count.</returns>
+    Task<(IReadOnlyList<Domain.Entities.Product> Products, int TotalCount)> GetProductsByCategoryAsync(string categoryName, int page, int pageSize);
 }

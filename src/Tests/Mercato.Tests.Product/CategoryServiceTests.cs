@@ -524,6 +524,66 @@ public class CategoryServiceTests
 
     #endregion
 
+    #region GetActiveCategoriesByParentIdAsync Tests
+
+    [Fact]
+    public async Task GetActiveCategoriesByParentIdAsync_ReturnsActiveChildCategories()
+    {
+        // Arrange
+        var activeCategories = new List<Category>
+        {
+            CreateTestCategory(),
+            CreateTestCategory(Guid.NewGuid())
+        };
+
+        _mockRepository.Setup(r => r.GetActiveByParentIdAsync(TestParentCategoryId))
+            .ReturnsAsync(activeCategories);
+
+        // Act
+        var result = await _service.GetActiveCategoriesByParentIdAsync(TestParentCategoryId);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(2, result.Count);
+        _mockRepository.Verify(r => r.GetActiveByParentIdAsync(TestParentCategoryId), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetActiveCategoriesByParentIdAsync_NullParentId_ReturnsActiveRootCategories()
+    {
+        // Arrange
+        var rootCategories = new List<Category> { CreateTestCategory() };
+
+        _mockRepository.Setup(r => r.GetActiveByParentIdAsync(null))
+            .ReturnsAsync(rootCategories);
+
+        // Act
+        var result = await _service.GetActiveCategoriesByParentIdAsync(null);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Single(result);
+        _mockRepository.Verify(r => r.GetActiveByParentIdAsync(null), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetActiveCategoriesByParentIdAsync_WhenNoActiveCategories_ReturnsEmptyList()
+    {
+        // Arrange
+        _mockRepository.Setup(r => r.GetActiveByParentIdAsync(TestParentCategoryId))
+            .ReturnsAsync(new List<Category>());
+
+        // Act
+        var result = await _service.GetActiveCategoriesByParentIdAsync(TestParentCategoryId);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Empty(result);
+        _mockRepository.Verify(r => r.GetActiveByParentIdAsync(TestParentCategoryId), Times.Once);
+    }
+
+    #endregion
+
     #region Helper Methods
 
     private static CreateCategoryCommand CreateValidCreateCommand()
