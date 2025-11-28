@@ -1,23 +1,107 @@
-@page
+@page "{id:guid}"
 @model Mercato.Web.Pages.Product.DetailsModel
 @{
-    ViewData["Title"] = "Product Details";
+    ViewData["Title"] = Model.Product?.Title ?? "Product Details";
 }
 
-<h1>Product Details</h1>
+@if (Model.Product != null)
+{
+    <div data-product-id="@Model.Product.Id"></div>
 
-<div class="alert alert-info">
-    <strong>Coming Soon!</strong> This page is under development.
-</div>
+    <div class="container">
+        <!-- Breadcrumb -->
+        <nav aria-label="breadcrumb" class="mb-3">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a asp-page="/Index">Home</a></li>
+                <li class="breadcrumb-item"><a asp-page="/Product/Index">Products</a></li>
+                <li class="breadcrumb-item active" aria-current="page">@Model.Product.Title</li>
+            </ol>
+        </nav>
 
-<p>This page will display detailed product information including:</p>
-<ul>
-    <li>Product images</li>
-    <li>Description and specifications</li>
-    <li>Pricing and availability</li>
-    <li>Customer reviews</li>
-</ul>
+        <div class="row">
+            <!-- Product Image -->
+            <div class="col-md-6 mb-4">
+                @if (!string.IsNullOrEmpty(Model.Product.Images) && Model.Product.Images != "[]")
+                {
+                    <img src="@Model.GetFirstImageUrl()" 
+                         class="img-fluid rounded" 
+                         alt="@Model.Product.Title"
+                         style="max-height: 500px; width: 100%; object-fit: cover;">
+                }
+                else
+                {
+                    <div class="bg-secondary d-flex align-items-center justify-content-center rounded" 
+                         style="height: 400px;">
+                        <span class="text-white fs-4">No Image Available</span>
+                    </div>
+                }
+            </div>
 
-<div class="mt-4">
-    <a asp-page="Index" class="btn btn-outline-secondary">Back to Products</a>
-</div>
+            <!-- Product Details -->
+            <div class="col-md-6">
+                <h1 class="mb-3">@Model.Product.Title</h1>
+                
+                <p class="fs-3 text-primary mb-3">
+                    <strong>@Model.Product.Price.ToString("C")</strong>
+                </p>
+
+                @if (Model.Product.Stock > 0)
+                {
+                    <span class="badge bg-success fs-6 mb-3">In Stock (@Model.Product.Stock available)</span>
+                }
+                else
+                {
+                    <span class="badge bg-secondary fs-6 mb-3">Out of Stock</span>
+                }
+
+                @if (!string.IsNullOrEmpty(Model.Product.Description))
+                {
+                    <div class="mt-4">
+                        <h5>Description</h5>
+                        <p>@Model.Product.Description</p>
+                    </div>
+                }
+
+                @if (!string.IsNullOrEmpty(Model.Product.Category))
+                {
+                    <div class="mt-3">
+                        <span class="text-muted">Category:</span>
+                        <span>@Model.Product.Category</span>
+                    </div>
+                }
+
+                @if (!string.IsNullOrEmpty(Model.Product.Sku))
+                {
+                    <div class="mt-2">
+                        <span class="text-muted">SKU:</span>
+                        <span>@Model.Product.Sku</span>
+                    </div>
+                }
+
+                <div class="mt-4">
+                    <a asp-page="/Product/Index" class="btn btn-outline-secondary">
+                        Continue Shopping
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recently Viewed Products Section -->
+        <div id="recently-viewed-section" class="mt-5" style="display: none;">
+            <h4 class="mb-3">Recently Viewed Products</h4>
+            <div class="row row-cols-2 row-cols-md-4 row-cols-lg-5 g-3 recently-viewed-list">
+                <!-- Products will be loaded via JavaScript -->
+            </div>
+        </div>
+    </div>
+}
+else
+{
+    <h1>Product Not Found</h1>
+    <div class="alert alert-warning">
+        <strong>Sorry!</strong> The product you are looking for could not be found or is no longer available.
+    </div>
+    <div class="mt-4">
+        <a asp-page="/Product/Index" class="btn btn-outline-secondary">Back to Products</a>
+    </div>
+}
