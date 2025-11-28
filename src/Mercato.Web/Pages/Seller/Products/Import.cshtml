@@ -1,0 +1,279 @@
+@page
+@model Mercato.Web.Pages.Seller.Products.ImportModel
+@{
+    ViewData["Title"] = "Import Products";
+}
+
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="bi bi-upload me-2"></i>Import Products</h2>
+                <div>
+                    <a asp-page="ImportHistory" class="btn btn-outline-secondary me-2">
+                        <i class="bi bi-clock-history me-1"></i>Import History
+                    </a>
+                    <a asp-page="Index" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left me-1"></i>Back to Products
+                    </a>
+                </div>
+            </div>
+
+            @if (Model.ImportConfirmed)
+            {
+                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    <i class="bi bi-check-circle-fill me-2"></i>
+                    <strong>Import Successful!</strong> Your products have been imported successfully.
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            }
+
+            @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+            {
+                <div class="alert alert-danger" role="alert">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>@Model.ErrorMessage
+                </div>
+            }
+
+            @if (!Model.HasStore)
+            {
+                <div class="alert alert-warning" role="alert">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    <strong>Store Required:</strong> You must configure your store profile before importing products.
+                    <a asp-page="/Seller/Settings/StoreProfile" class="alert-link">Configure Store</a>
+                </div>
+            }
+            else
+            {
+                @if (Model.UploadResult == null)
+                {
+                    <!-- Upload Form -->
+                    <div class="card shadow-sm mb-4">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="mb-0"><i class="bi bi-file-earmark-arrow-up me-2"></i>Upload Product File</h5>
+                        </div>
+                        <div class="card-body">
+                            <p class="text-muted mb-4">
+                                Upload a CSV or Excel file to import products. The file should contain the following columns:
+                            </p>
+
+                            <div class="table-responsive mb-4">
+                                <table class="table table-sm table-bordered">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Column</th>
+                                            <th>Required</th>
+                                            <th>Description</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td><code>SKU</code></td>
+                                            <td><span class="badge bg-danger">Required</span></td>
+                                            <td>Unique product identifier for matching (max 100 characters)</td>
+                                        </tr>
+                                        <tr>
+                                            <td><code>Title</code></td>
+                                            <td><span class="badge bg-danger">Required</span></td>
+                                            <td>Product title (2-200 characters)</td>
+                                        </tr>
+                                        <tr>
+                                            <td><code>Price</code></td>
+                                            <td><span class="badge bg-danger">Required</span></td>
+                                            <td>Product price (must be greater than 0)</td>
+                                        </tr>
+                                        <tr>
+                                            <td><code>Stock</code></td>
+                                            <td><span class="badge bg-danger">Required</span></td>
+                                            <td>Available stock quantity (cannot be negative)</td>
+                                        </tr>
+                                        <tr>
+                                            <td><code>Category</code></td>
+                                            <td><span class="badge bg-danger">Required</span></td>
+                                            <td>Product category (2-100 characters)</td>
+                                        </tr>
+                                        <tr>
+                                            <td><code>Description</code></td>
+                                            <td><span class="badge bg-secondary">Optional</span></td>
+                                            <td>Product description (max 2000 characters)</td>
+                                        </tr>
+                                        <tr>
+                                            <td><code>Weight</code></td>
+                                            <td><span class="badge bg-secondary">Optional</span></td>
+                                            <td>Weight in kilograms (max 1000 kg)</td>
+                                        </tr>
+                                        <tr>
+                                            <td><code>Length</code>, <code>Width</code>, <code>Height</code></td>
+                                            <td><span class="badge bg-secondary">Optional</span></td>
+                                            <td>Dimensions in centimeters (max 500 cm)</td>
+                                        </tr>
+                                        <tr>
+                                            <td><code>ShippingMethods</code></td>
+                                            <td><span class="badge bg-secondary">Optional</span></td>
+                                            <td>Comma-separated shipping methods</td>
+                                        </tr>
+                                        <tr>
+                                            <td><code>Images</code></td>
+                                            <td><span class="badge bg-secondary">Optional</span></td>
+                                            <td>JSON array of image URLs</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <form method="post" asp-page-handler="Upload" enctype="multipart/form-data">
+                                <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+                                <div class="mb-3">
+                                    <label asp-for="UploadedFile" class="form-label">Select File <span class="text-danger">*</span></label>
+                                    <input asp-for="UploadedFile" type="file" class="form-control" accept=".csv,.xls,.xlsx" />
+                                    <span asp-validation-for="UploadedFile" class="text-danger"></span>
+                                    <div class="form-text">Supported formats: CSV, XLS, XLSX. Maximum file size: 10 MB.</div>
+                                </div>
+
+                                <div class="d-flex justify-content-end">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="bi bi-upload me-2"></i>Upload and Validate
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <!-- Validation Results -->
+                    <div class="card shadow-sm mb-4">
+                        <div class="card-header @(Model.UploadResult.ErrorCount > 0 ? "bg-warning" : "bg-success") text-white">
+                            <h5 class="mb-0">
+                                @if (Model.UploadResult.ErrorCount > 0)
+                                {
+                                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                                    <text>Validation Completed with Errors</text>
+                                }
+                                else
+                                {
+                                    <i class="bi bi-check-circle-fill me-2"></i>
+                                    <text>Validation Successful</text>
+                                }
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row mb-4">
+                                <div class="col-md-3">
+                                    <div class="card bg-light">
+                                        <div class="card-body text-center">
+                                            <h3 class="mb-0">@Model.UploadResult.TotalRows</h3>
+                                            <small class="text-muted">Total Rows</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="card bg-success text-white">
+                                        <div class="card-body text-center">
+                                            <h3 class="mb-0">@Model.UploadResult.NewProductsCount</h3>
+                                            <small>New Products</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="card bg-info text-white">
+                                        <div class="card-body text-center">
+                                            <h3 class="mb-0">@Model.UploadResult.UpdatedProductsCount</h3>
+                                            <small>Updates</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="card @(Model.UploadResult.ErrorCount > 0 ? "bg-danger text-white" : "bg-light")">
+                                        <div class="card-body text-center">
+                                            <h3 class="mb-0">@Model.UploadResult.ErrorCount</h3>
+                                            <small @(Model.UploadResult.ErrorCount > 0 ? "" : "class=text-muted")>Errors</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            @if (Model.UploadResult.ErrorCount > 0)
+                            {
+                                <div class="alert alert-warning">
+                                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                                    <strong>Warning:</strong> The file contains validation errors. Please fix the errors and upload again.
+                                </div>
+
+                                <div class="table-responsive mb-4">
+                                    <table class="table table-sm table-striped">
+                                        <thead class="table-dark">
+                                            <tr>
+                                                <th>Row</th>
+                                                <th>SKU</th>
+                                                <th>Column</th>
+                                                <th>Error</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var error in Model.UploadResult.RowErrors.Take(50))
+                                            {
+                                                <tr>
+                                                    <td>@error.RowNumber</td>
+                                                    <td><code>@(error.Sku ?? "-")</code></td>
+                                                    <td>@(error.ColumnName ?? "-")</td>
+                                                    <td class="text-danger">@error.ErrorMessage</td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                    @if (Model.UploadResult.RowErrors.Count > 50)
+                                    {
+                                        <p class="text-muted">
+                                            <em>Showing first 50 errors. Total errors: @Model.UploadResult.RowErrors.Count</em>
+                                        </p>
+                                    }
+                                </div>
+
+                                <div class="d-flex justify-content-end">
+                                    <a asp-page="Import" class="btn btn-secondary">
+                                        <i class="bi bi-arrow-left me-2"></i>Upload New File
+                                    </a>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="alert alert-success">
+                                    <i class="bi bi-check-circle-fill me-2"></i>
+                                    <strong>Ready to Import:</strong> All rows validated successfully. Click "Confirm Import" to create/update products.
+                                </div>
+
+                                <form method="post" asp-page-handler="Confirm">
+                                    <input type="hidden" name="importJobId" value="@Model.ImportJobId" />
+                                    <div class="d-flex justify-content-end gap-2">
+                                        <a asp-page="Import" class="btn btn-secondary">
+                                            <i class="bi bi-x-lg me-2"></i>Cancel
+                                        </a>
+                                        <button type="submit" class="btn btn-success">
+                                            <i class="bi bi-check-lg me-2"></i>Confirm Import
+                                        </button>
+                                    </div>
+                                </form>
+                            }
+                        </div>
+                    </div>
+                }
+
+                @if (Model.ConfirmResult != null && !Model.ConfirmResult.Succeeded)
+                {
+                    <div class="alert alert-danger">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        <strong>Import Failed:</strong>
+                        <ul class="mb-0 mt-2">
+                            @foreach (var error in Model.ConfirmResult.Errors)
+                            {
+                                <li>@error</li>
+                            }
+                        </ul>
+                    </div>
+                }
+            }
+        </div>
+    </div>
+</div>
