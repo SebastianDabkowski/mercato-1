@@ -1030,7 +1030,8 @@ public class ProductService : IProductService
             filter.Condition,
             filter.StoreId,
             filter.Page,
-            filter.PageSize);
+            filter.PageSize,
+            filter.SortBy);
 
         return FilteredProductsResult.Success(products, totalCount, filter);
     }

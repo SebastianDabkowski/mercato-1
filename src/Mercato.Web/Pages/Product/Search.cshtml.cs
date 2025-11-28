@@ -74,6 +74,13 @@ public class SearchModel : PageModel
     public string? Category { get; set; }
 
     /// <summary>
+    /// Gets or sets the sort option for ordering results.
+    /// Default is Relevance for search.
+    /// </summary>
+    [BindProperty(SupportsGet = true)]
+    public ProductSortOption SortBy { get; set; } = ProductSortOption.Relevance;
+
+    /// <summary>
     /// Gets the products matching the search query.
     /// </summary>
     public IReadOnlyList<Mercato.Product.Domain.Entities.Product> Products { get; private set; } = [];
@@ -161,7 +168,8 @@ public class SearchModel : PageModel
             Condition = Condition,
             StoreId = StoreId,
             Page = CurrentPage,
-            PageSize = DefaultPageSize
+            PageSize = DefaultPageSize,
+            SortBy = SortBy
         };
 
         // Search products with filters
@@ -176,10 +184,10 @@ public class SearchModel : PageModel
     /// <summary>
     /// Handles POST request to clear all filters.
     /// </summary>
-    /// <returns>Redirect to search page with only the query preserved.</returns>
+    /// <returns>Redirect to search page with only the query and sort preserved.</returns>
     public IActionResult OnPostClearFilters()
     {
-        return RedirectToPage(new { Query });
+        return RedirectToPage(new { Query, SortBy });
     }
 
     /// <summary>

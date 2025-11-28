@@ -1,3 +1,4 @@
+using Mercato.Product.Application.Queries;
 using Mercato.Product.Domain.Entities;
 using Mercato.Product.Domain.Interfaces;
 using Mercato.Product.Infrastructure.Persistence;
@@ -131,7 +132,8 @@ public class ProductRepository : IProductRepository
         string? condition,
         Guid? storeId,
         int page,
-        int pageSize)
+        int pageSize,
+        ProductSortOption sortBy = ProductSortOption.Relevance)
     {
         var query = _context.Products
             .Where(p => p.Status == ProductStatus.Active);
@@ -183,8 +185,18 @@ public class ProductRepository : IProductRepository
 
         var totalCount = await query.CountAsync();
 
-        var products = await query
-            .OrderByDescending(p => p.CreatedAt)
+        // Apply sorting
+        IOrderedQueryable<Domain.Entities.Product> orderedQuery = sortBy switch
+        {
+            ProductSortOption.PriceAsc => query.OrderBy(p => p.Price).ThenByDescending(p => p.CreatedAt),
+            ProductSortOption.PriceDesc => query.OrderByDescending(p => p.Price).ThenByDescending(p => p.CreatedAt),
+            ProductSortOption.Newest => query.OrderByDescending(p => p.CreatedAt).ThenBy(p => p.Id),
+            // Relevance: For search queries, we could potentially implement relevance scoring,
+            // but for MVP we default to newest first. This provides a stable, consistent sort.
+            _ => query.OrderByDescending(p => p.CreatedAt).ThenBy(p => p.Id)
+        };
+
+        var products = await orderedQuery
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync();

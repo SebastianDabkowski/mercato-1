@@ -103,6 +103,13 @@ public class CategoryModel : PageModel
     public Guid? StoreId { get; set; }
 
     /// <summary>
+    /// Gets or sets the sort option for ordering results.
+    /// Default is Newest for category browsing.
+    /// </summary>
+    [BindProperty(SupportsGet = true)]
+    public ProductSortOption SortBy { get; set; } = ProductSortOption.Newest;
+
+    /// <summary>
     /// Gets the minimum available price for the price filter range.
     /// </summary>
     public decimal? MinAvailablePrice { get; private set; }
@@ -176,7 +183,8 @@ public class CategoryModel : PageModel
             Condition = Condition,
             StoreId = StoreId,
             Page = CurrentPage,
-            PageSize = DefaultPageSize
+            PageSize = DefaultPageSize,
+            SortBy = SortBy
         };
 
         // Load products with filters
@@ -192,10 +200,10 @@ public class CategoryModel : PageModel
     /// Handles POST request to clear all filters.
     /// </summary>
     /// <param name="id">The category ID to preserve.</param>
-    /// <returns>Redirect to category page with filters cleared.</returns>
+    /// <returns>Redirect to category page with filters cleared but sort preserved.</returns>
     public IActionResult OnPostClearFilters(Guid? id)
     {
-        return RedirectToPage(new { id });
+        return RedirectToPage(new { id, SortBy });
     }
 
     /// <summary>

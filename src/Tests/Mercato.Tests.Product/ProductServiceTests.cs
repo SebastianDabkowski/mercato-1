@@ -2729,7 +2729,7 @@ public class ProductServiceTests
 
         _mockRepository.Setup(r => r.SearchActiveProductsWithFiltersAsync(
                 filter.SearchQuery, filter.Category, filter.MinPrice, filter.MaxPrice,
-                filter.Condition, filter.StoreId, filter.Page, filter.PageSize))
+                filter.Condition, filter.StoreId, filter.Page, filter.PageSize, filter.SortBy))
             .ReturnsAsync((products.AsReadOnly(), 2));
 
         // Act
@@ -2756,7 +2756,7 @@ public class ProductServiceTests
 
         _mockRepository.Setup(r => r.SearchActiveProductsWithFiltersAsync(
                 filter.SearchQuery, filter.Category, filter.MinPrice, filter.MaxPrice,
-                filter.Condition, filter.StoreId, filter.Page, filter.PageSize))
+                filter.Condition, filter.StoreId, filter.Page, filter.PageSize, filter.SortBy))
             .ReturnsAsync((new List<Mercato.Product.Domain.Entities.Product>().AsReadOnly(), 0));
 
         // Act
@@ -2785,7 +2785,7 @@ public class ProductServiceTests
 
         _mockRepository.Setup(r => r.SearchActiveProductsWithFiltersAsync(
                 filter.SearchQuery, filter.Category, filter.MinPrice, filter.MaxPrice,
-                filter.Condition, filter.StoreId, filter.Page, filter.PageSize))
+                filter.Condition, filter.StoreId, filter.Page, filter.PageSize, filter.SortBy))
             .ReturnsAsync((products.AsReadOnly(), 25)); // 25 total products, 10 per page = 3 pages
 
         // Act
@@ -2802,6 +2802,76 @@ public class ProductServiceTests
         // Act & Assert
         await Assert.ThrowsAsync<ArgumentNullException>(() =>
             _service.SearchProductsWithFiltersAsync(null!));
+    }
+
+    [Fact]
+    public async Task SearchProductsWithFiltersAsync_WithSortByPriceAsc_PassesSortToRepository()
+    {
+        // Arrange
+        var filter = new Mercato.Product.Application.Queries.ProductFilterQuery
+        {
+            SearchQuery = "test",
+            Page = 1,
+            PageSize = 12,
+            SortBy = Mercato.Product.Application.Queries.ProductSortOption.PriceAsc
+        };
+
+        var products = new List<Mercato.Product.Domain.Entities.Product>
+        {
+            CreateTestProduct()
+        };
+
+        _mockRepository.Setup(r => r.SearchActiveProductsWithFiltersAsync(
+                filter.SearchQuery, filter.Category, filter.MinPrice, filter.MaxPrice,
+                filter.Condition, filter.StoreId, filter.Page, filter.PageSize, 
+                Mercato.Product.Application.Queries.ProductSortOption.PriceAsc))
+            .ReturnsAsync((products.AsReadOnly(), 1));
+
+        // Act
+        var result = await _service.SearchProductsWithFiltersAsync(filter);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(1, result.TotalCount);
+        _mockRepository.Verify(r => r.SearchActiveProductsWithFiltersAsync(
+            filter.SearchQuery, filter.Category, filter.MinPrice, filter.MaxPrice,
+            filter.Condition, filter.StoreId, filter.Page, filter.PageSize,
+            Mercato.Product.Application.Queries.ProductSortOption.PriceAsc), Times.Once);
+    }
+
+    [Fact]
+    public async Task SearchProductsWithFiltersAsync_WithSortByNewest_PassesSortToRepository()
+    {
+        // Arrange
+        var filter = new Mercato.Product.Application.Queries.ProductFilterQuery
+        {
+            SearchQuery = "test",
+            Page = 1,
+            PageSize = 12,
+            SortBy = Mercato.Product.Application.Queries.ProductSortOption.Newest
+        };
+
+        var products = new List<Mercato.Product.Domain.Entities.Product>
+        {
+            CreateTestProduct()
+        };
+
+        _mockRepository.Setup(r => r.SearchActiveProductsWithFiltersAsync(
+                filter.SearchQuery, filter.Category, filter.MinPrice, filter.MaxPrice,
+                filter.Condition, filter.StoreId, filter.Page, filter.PageSize, 
+                Mercato.Product.Application.Queries.ProductSortOption.Newest))
+            .ReturnsAsync((products.AsReadOnly(), 1));
+
+        // Act
+        var result = await _service.SearchProductsWithFiltersAsync(filter);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(1, result.TotalCount);
+        _mockRepository.Verify(r => r.SearchActiveProductsWithFiltersAsync(
+            filter.SearchQuery, filter.Category, filter.MinPrice, filter.MaxPrice,
+            filter.Condition, filter.StoreId, filter.Page, filter.PageSize,
+            Mercato.Product.Application.Queries.ProductSortOption.Newest), Times.Once);
     }
 
     #endregion
