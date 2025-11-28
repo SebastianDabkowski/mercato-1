@@ -79,4 +79,13 @@ public interface IProductService
     /// <param name="pageSize">The number of items per page.</param>
     /// <returns>A tuple containing products and total count.</returns>
     Task<(IReadOnlyList<Domain.Entities.Product> Products, int TotalCount)> GetProductsByCategoryAsync(string categoryName, int page, int pageSize);
+
+    /// <summary>
+    /// Searches for active products by keyword with pagination.
+    /// </summary>
+    /// <param name="searchQuery">The search query to match against title and description.</param>
+    /// <param name="page">The page number (1-based).</param>
+    /// <param name="pageSize">The number of items per page.</param>
+    /// <returns>A tuple containing matching products and total count.</returns>
+    Task<(IReadOnlyList<Domain.Entities.Product> Products, int TotalCount)> SearchProductsAsync(string searchQuery, int page, int pageSize);
 }

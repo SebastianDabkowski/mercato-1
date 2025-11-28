@@ -72,4 +72,14 @@ public interface IProductRepository
     /// <param name="pageSize">The number of items per page.</param>
     /// <returns>A tuple containing the list of products and total count.</returns>
     Task<(IReadOnlyList<Entities.Product> Products, int TotalCount)> GetActiveByCategoryAsync(string categoryName, int page, int pageSize);
+
+    /// <summary>
+    /// Searches for active products by keyword in title and description with pagination support.
+    /// Only products with Active status are returned.
+    /// </summary>
+    /// <param name="searchQuery">The search query to match against title and description.</param>
+    /// <param name="page">The page number (1-based).</param>
+    /// <param name="pageSize">The number of items per page.</param>
+    /// <returns>A tuple containing the list of matching products and total count.</returns>
+    Task<(IReadOnlyList<Entities.Product> Products, int TotalCount)> SearchActiveProductsAsync(string searchQuery, int page, int pageSize);
 }

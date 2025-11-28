@@ -99,4 +99,26 @@ public class ProductRepository : IProductRepository
 
         return (products, totalCount);
     }
+
+    /// <inheritdoc />
+    public async Task<(IReadOnlyList<Domain.Entities.Product> Products, int TotalCount)> SearchActiveProductsAsync(string searchQuery, int page, int pageSize)
+    {
+        // Use LIKE pattern for SQL Server compatibility
+        var likePattern = $"%{searchQuery}%";
+
+        var query = _context.Products
+            .Where(p => p.Status == ProductStatus.Active &&
+                       (EF.Functions.Like(p.Title, likePattern) ||
+                        (p.Description != null && EF.Functions.Like(p.Description, likePattern))));
+
+        var totalCount = await query.CountAsync();
+
+        var products = await query
+            .OrderByDescending(p => p.CreatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        return (products, totalCount);
+    }
 }

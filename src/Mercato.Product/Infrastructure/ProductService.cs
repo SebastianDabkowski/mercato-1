@@ -1009,4 +1009,10 @@ public class ProductService : IProductService
     {
         return await _repository.GetActiveByCategoryAsync(categoryName, page, pageSize);
     }
+
+    /// <inheritdoc />
+    public async Task<(IReadOnlyList<Domain.Entities.Product> Products, int TotalCount)> SearchProductsAsync(string searchQuery, int page, int pageSize)
+    {
+        return await _repository.SearchActiveProductsAsync(searchQuery, page, pageSize);
+    }
 }
