@@ -2757,7 +2757,7 @@ public class ProductServiceTests
         _mockRepository.Setup(r => r.SearchActiveProductsWithFiltersAsync(
                 filter.SearchQuery, filter.Category, filter.MinPrice, filter.MaxPrice,
                 filter.Condition, filter.StoreId, filter.Page, filter.PageSize))
-            .ReturnsAsync((Array.Empty<Mercato.Product.Domain.Entities.Product>().ToList().AsReadOnly(), 0));
+            .ReturnsAsync((new List<Mercato.Product.Domain.Entities.Product>().AsReadOnly(), 0));
 
         // Act
         var result = await _service.SearchProductsWithFiltersAsync(filter);
@@ -2863,7 +2863,7 @@ public class ProductServiceTests
     {
         // Arrange
         _mockRepository.Setup(r => r.GetActiveProductStoreIdsAsync())
-            .ReturnsAsync(Array.Empty<Guid>().ToList().AsReadOnly());
+            .ReturnsAsync(new List<Guid>().AsReadOnly());
 
         // Act
         var result = await _service.GetActiveProductStoreIdsAsync();

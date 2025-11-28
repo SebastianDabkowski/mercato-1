@@ -36,26 +36,6 @@ public class FilteredProductsResult
     public ProductFilterQuery AppliedFilter { get; init; } = new();
 
     /// <summary>
-    /// Gets the list of available stores for the seller filter dropdown.
-    /// </summary>
-    public IReadOnlyList<StoreFilterOption> AvailableStores { get; init; } = [];
-
-    /// <summary>
-    /// Gets the list of available categories for the category filter dropdown.
-    /// </summary>
-    public IReadOnlyList<CategoryFilterOption> AvailableCategories { get; init; } = [];
-
-    /// <summary>
-    /// Gets the minimum price among all products (for price range slider).
-    /// </summary>
-    public decimal? MinAvailablePrice { get; init; }
-
-    /// <summary>
-    /// Gets the maximum price among all products (for price range slider).
-    /// </summary>
-    public decimal? MaxAvailablePrice { get; init; }
-
-    /// <summary>
     /// Creates a successful result with the specified products and metadata.
     /// </summary>
     /// <param name="products">The matching products.</param>
