@@ -1,4 +1,7 @@
+using System.Security.Claims;
 using System.Text.Json;
+using Mercato.Cart.Application.Commands;
+using Mercato.Cart.Application.Services;
 using Mercato.Product.Application.Services;
 using Mercato.Product.Domain.Entities;
 using Mercato.Seller.Application.Services;
@@ -15,6 +18,7 @@ public class DetailsModel : PageModel
     private readonly IProductService _productService;
     private readonly ICategoryService _categoryService;
     private readonly IStoreProfileService _storeProfileService;
+    private readonly ICartService _cartService;
     private readonly ILogger<DetailsModel> _logger;
 
     private const string PlaceholderImage = "/images/placeholder.png";
@@ -26,16 +30,19 @@ public class DetailsModel : PageModel
     /// <param name="productService">The product service.</param>
     /// <param name="categoryService">The category service.</param>
     /// <param name="storeProfileService">The store profile service.</param>
+    /// <param name="cartService">The cart service.</param>
     /// <param name="logger">The logger.</param>
     public DetailsModel(
         IProductService productService,
         ICategoryService categoryService,
         IStoreProfileService storeProfileService,
+        ICartService cartService,
         ILogger<DetailsModel> logger)
     {
         _productService = productService;
         _categoryService = categoryService;
         _storeProfileService = storeProfileService;
+        _cartService = cartService;
         _logger = logger;
     }
 
@@ -87,6 +94,53 @@ public class DetailsModel : PageModel
         Store = await _storeProfileService.GetStoreByIdAsync(Product.StoreId);
 
         return Page();
+    }
+
+    /// <summary>
+    /// Handles POST requests to add a product to the cart.
+    /// </summary>
+    /// <param name="id">The product ID from the route.</param>
+    /// <param name="productId">The product ID from the form.</param>
+    /// <param name="quantity">The quantity to add.</param>
+    /// <returns>The page result.</returns>
+    public async Task<IActionResult> OnPostAddToCartAsync(Guid id, Guid productId, int quantity)
+    {
+        var buyerId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(buyerId))
+        {
+            return RedirectToPage("/Account/Login", new { ReturnUrl = $"/Product/Details/{id}" });
+        }
+
+        if (quantity <= 0)
+        {
+            TempData["CartError"] = "Quantity must be at least 1.";
+            return RedirectToPage(new { id });
+        }
+
+        var result = await _cartService.AddToCartAsync(new AddToCartCommand
+        {
+            BuyerId = buyerId,
+            ProductId = productId,
+            Quantity = quantity
+        });
+
+        if (result.Succeeded)
+        {
+            if (result.ItemAlreadyExists)
+            {
+                TempData["CartSuccess"] = "Product quantity updated in your cart.";
+            }
+            else
+            {
+                TempData["CartSuccess"] = "Product added to your cart.";
+            }
+        }
+        else
+        {
+            TempData["CartError"] = string.Join(", ", result.Errors);
+        }
+
+        return RedirectToPage(new { id });
     }
 
     /// <summary>
