@@ -36,6 +36,7 @@ public static class CartModuleExtensions
         services.AddScoped<ICartService, CartService>();
         services.AddScoped<IShippingCalculator, ShippingCalculator>();
         services.AddScoped<ICommissionCalculator, CommissionCalculator>();
+        services.AddScoped<IShippingMethodService, ShippingMethodService>();
 
         return services;
     }
