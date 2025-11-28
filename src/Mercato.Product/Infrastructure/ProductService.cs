@@ -41,6 +41,12 @@ public class ProductService : IProductService
                 Price = command.Price,
                 Stock = command.Stock,
                 Category = command.Category,
+                Weight = command.Weight,
+                Length = command.Length,
+                Width = command.Width,
+                Height = command.Height,
+                ShippingMethods = command.ShippingMethods,
+                Images = command.Images,
                 Status = ProductStatus.Draft,
                 CreatedAt = DateTimeOffset.UtcNow,
                 LastUpdatedAt = DateTimeOffset.UtcNow
@@ -106,6 +112,12 @@ public class ProductService : IProductService
             product.Price = command.Price;
             product.Stock = command.Stock;
             product.Category = command.Category;
+            product.Weight = command.Weight;
+            product.Length = command.Length;
+            product.Width = command.Width;
+            product.Height = command.Height;
+            product.ShippingMethods = command.ShippingMethods;
+            product.Images = command.Images;
             product.LastUpdatedAt = DateTimeOffset.UtcNow;
             product.LastUpdatedBy = command.SellerId;
 
@@ -190,6 +202,8 @@ public class ProductService : IProductService
         }
 
         ValidateProductFields(command.Title, command.Description, command.Price, command.Stock, command.Category, errors);
+        ValidateShippingFields(command.Weight, command.Length, command.Width, command.Height, command.ShippingMethods, errors);
+        ValidateImagesField(command.Images, errors);
 
         return errors;
     }
@@ -214,6 +228,8 @@ public class ProductService : IProductService
         }
 
         ValidateProductFields(command.Title, command.Description, command.Price, command.Stock, command.Category, errors);
+        ValidateShippingFields(command.Weight, command.Length, command.Width, command.Height, command.ShippingMethods, errors);
+        ValidateImagesField(command.Images, errors);
 
         return errors;
     }
@@ -275,6 +291,70 @@ public class ProductService : IProductService
         if (description != null && description.Length > ProductValidationConstants.DescriptionMaxLength)
         {
             errors.Add($"Description must be at most {ProductValidationConstants.DescriptionMaxLength} characters.");
+        }
+    }
+
+    private static void ValidateShippingFields(decimal? weight, decimal? length, decimal? width, decimal? height, string? shippingMethods, List<string> errors)
+    {
+        if (weight.HasValue)
+        {
+            if (weight.Value < 0)
+            {
+                errors.Add("Weight cannot be negative.");
+            }
+            else if (weight.Value > ProductValidationConstants.WeightMaxKg)
+            {
+                errors.Add($"Weight must be at most {ProductValidationConstants.WeightMaxKg} kg.");
+            }
+        }
+
+        if (length.HasValue)
+        {
+            if (length.Value < 0)
+            {
+                errors.Add("Length cannot be negative.");
+            }
+            else if (length.Value > ProductValidationConstants.DimensionMaxCm)
+            {
+                errors.Add($"Length must be at most {ProductValidationConstants.DimensionMaxCm} cm.");
+            }
+        }
+
+        if (width.HasValue)
+        {
+            if (width.Value < 0)
+            {
+                errors.Add("Width cannot be negative.");
+            }
+            else if (width.Value > ProductValidationConstants.DimensionMaxCm)
+            {
+                errors.Add($"Width must be at most {ProductValidationConstants.DimensionMaxCm} cm.");
+            }
+        }
+
+        if (height.HasValue)
+        {
+            if (height.Value < 0)
+            {
+                errors.Add("Height cannot be negative.");
+            }
+            else if (height.Value > ProductValidationConstants.DimensionMaxCm)
+            {
+                errors.Add($"Height must be at most {ProductValidationConstants.DimensionMaxCm} cm.");
+            }
+        }
+
+        if (shippingMethods != null && shippingMethods.Length > ProductValidationConstants.ShippingMethodsMaxLength)
+        {
+            errors.Add($"Shipping methods must be at most {ProductValidationConstants.ShippingMethodsMaxLength} characters.");
+        }
+    }
+
+    private static void ValidateImagesField(string? images, List<string> errors)
+    {
+        if (images != null && images.Length > ProductValidationConstants.ImagesMaxLength)
+        {
+            errors.Add($"Images must be at most {ProductValidationConstants.ImagesMaxLength} characters.");
         }
     }
 }

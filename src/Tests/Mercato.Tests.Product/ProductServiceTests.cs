@@ -693,6 +693,265 @@ public class ProductServiceTests
 
     #endregion
 
+    #region Shipping Parameter Validation Tests
+
+    [Fact]
+    public async Task CreateProductAsync_ValidShippingParameters_Succeeds()
+    {
+        // Arrange
+        var command = CreateValidCommand();
+        command.Weight = 2.5m;
+        command.Length = 30.0m;
+        command.Width = 20.0m;
+        command.Height = 10.0m;
+        command.ShippingMethods = "standard,express";
+        command.Images = "[\"https://example.com/image1.jpg\"]";
+
+        _mockRepository.Setup(r => r.AddAsync(It.IsAny<Mercato.Product.Domain.Entities.Product>()))
+            .ReturnsAsync((Mercato.Product.Domain.Entities.Product p) => p);
+
+        // Act
+        var result = await _service.CreateProductAsync(command);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        _mockRepository.Verify(r => r.AddAsync(It.Is<Mercato.Product.Domain.Entities.Product>(p =>
+            p.Weight == 2.5m &&
+            p.Length == 30.0m &&
+            p.Width == 20.0m &&
+            p.Height == 10.0m &&
+            p.ShippingMethods == "standard,express" &&
+            p.Images == "[\"https://example.com/image1.jpg\"]"
+        )), Times.Once);
+    }
+
+    [Fact]
+    public async Task CreateProductAsync_NegativeWeight_ReturnsFailure()
+    {
+        // Arrange
+        var command = CreateValidCommand();
+        command.Weight = -1.0m;
+
+        // Act
+        var result = await _service.CreateProductAsync(command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains("Weight cannot be negative.", result.Errors);
+    }
+
+    [Fact]
+    public async Task CreateProductAsync_WeightExceedsMax_ReturnsFailure()
+    {
+        // Arrange
+        var command = CreateValidCommand();
+        command.Weight = 1001m;
+
+        // Act
+        var result = await _service.CreateProductAsync(command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains($"Weight must be at most {ProductValidationConstants.WeightMaxKg} kg.", result.Errors);
+    }
+
+    [Fact]
+    public async Task CreateProductAsync_NegativeLength_ReturnsFailure()
+    {
+        // Arrange
+        var command = CreateValidCommand();
+        command.Length = -1.0m;
+
+        // Act
+        var result = await _service.CreateProductAsync(command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains("Length cannot be negative.", result.Errors);
+    }
+
+    [Fact]
+    public async Task CreateProductAsync_LengthExceedsMax_ReturnsFailure()
+    {
+        // Arrange
+        var command = CreateValidCommand();
+        command.Length = 501m;
+
+        // Act
+        var result = await _service.CreateProductAsync(command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains($"Length must be at most {ProductValidationConstants.DimensionMaxCm} cm.", result.Errors);
+    }
+
+    [Fact]
+    public async Task CreateProductAsync_NegativeWidth_ReturnsFailure()
+    {
+        // Arrange
+        var command = CreateValidCommand();
+        command.Width = -1.0m;
+
+        // Act
+        var result = await _service.CreateProductAsync(command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains("Width cannot be negative.", result.Errors);
+    }
+
+    [Fact]
+    public async Task CreateProductAsync_WidthExceedsMax_ReturnsFailure()
+    {
+        // Arrange
+        var command = CreateValidCommand();
+        command.Width = 501m;
+
+        // Act
+        var result = await _service.CreateProductAsync(command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains($"Width must be at most {ProductValidationConstants.DimensionMaxCm} cm.", result.Errors);
+    }
+
+    [Fact]
+    public async Task CreateProductAsync_NegativeHeight_ReturnsFailure()
+    {
+        // Arrange
+        var command = CreateValidCommand();
+        command.Height = -1.0m;
+
+        // Act
+        var result = await _service.CreateProductAsync(command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains("Height cannot be negative.", result.Errors);
+    }
+
+    [Fact]
+    public async Task CreateProductAsync_HeightExceedsMax_ReturnsFailure()
+    {
+        // Arrange
+        var command = CreateValidCommand();
+        command.Height = 501m;
+
+        // Act
+        var result = await _service.CreateProductAsync(command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains($"Height must be at most {ProductValidationConstants.DimensionMaxCm} cm.", result.Errors);
+    }
+
+    [Fact]
+    public async Task CreateProductAsync_ShippingMethodsTooLong_ReturnsFailure()
+    {
+        // Arrange
+        var command = CreateValidCommand();
+        command.ShippingMethods = new string('A', ProductValidationConstants.ShippingMethodsMaxLength + 1);
+
+        // Act
+        var result = await _service.CreateProductAsync(command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains($"Shipping methods must be at most {ProductValidationConstants.ShippingMethodsMaxLength} characters.", result.Errors);
+    }
+
+    [Fact]
+    public async Task CreateProductAsync_ImagesTooLong_ReturnsFailure()
+    {
+        // Arrange
+        var command = CreateValidCommand();
+        command.Images = new string('A', ProductValidationConstants.ImagesMaxLength + 1);
+
+        // Act
+        var result = await _service.CreateProductAsync(command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains($"Images must be at most {ProductValidationConstants.ImagesMaxLength} characters.", result.Errors);
+    }
+
+    [Fact]
+    public async Task UpdateProductAsync_ValidShippingParameters_Succeeds()
+    {
+        // Arrange
+        var command = CreateValidUpdateCommand();
+        command.Weight = 2.5m;
+        command.Length = 30.0m;
+        command.Width = 20.0m;
+        command.Height = 10.0m;
+        command.ShippingMethods = "standard,express";
+        command.Images = "[\"https://example.com/image1.jpg\"]";
+
+        var product = CreateTestProduct();
+
+        _mockRepository.Setup(r => r.GetByIdAsync(command.ProductId))
+            .ReturnsAsync(product);
+        _mockRepository.Setup(r => r.UpdateAsync(It.IsAny<Mercato.Product.Domain.Entities.Product>()))
+            .Returns(Task.CompletedTask);
+
+        // Act
+        var result = await _service.UpdateProductAsync(command);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        _mockRepository.Verify(r => r.UpdateAsync(It.Is<Mercato.Product.Domain.Entities.Product>(p =>
+            p.Weight == 2.5m &&
+            p.Length == 30.0m &&
+            p.Width == 20.0m &&
+            p.Height == 10.0m &&
+            p.ShippingMethods == "standard,express" &&
+            p.Images == "[\"https://example.com/image1.jpg\"]"
+        )), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateProductAsync_NegativeWeight_ReturnsFailure()
+    {
+        // Arrange
+        var command = CreateValidUpdateCommand();
+        command.Weight = -1.0m;
+
+        // Act
+        var result = await _service.UpdateProductAsync(command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains("Weight cannot be negative.", result.Errors);
+    }
+
+    [Fact]
+    public async Task UpdateProductAsync_NullShippingParameters_Succeeds()
+    {
+        // Arrange
+        var command = CreateValidUpdateCommand();
+        command.Weight = null;
+        command.Length = null;
+        command.Width = null;
+        command.Height = null;
+        command.ShippingMethods = null;
+        command.Images = null;
+
+        var product = CreateTestProduct();
+
+        _mockRepository.Setup(r => r.GetByIdAsync(command.ProductId))
+            .ReturnsAsync(product);
+        _mockRepository.Setup(r => r.UpdateAsync(It.IsAny<Mercato.Product.Domain.Entities.Product>()))
+            .Returns(Task.CompletedTask);
+
+        // Act
+        var result = await _service.UpdateProductAsync(command);
+
+        // Assert
+        Assert.True(result.Succeeded);
+    }
+
+    #endregion
+
     #region Helper Methods
 
     private static CreateProductCommand CreateValidCommand()

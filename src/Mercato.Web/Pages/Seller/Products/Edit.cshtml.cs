@@ -75,6 +75,48 @@ public class EditModel : PageModel
     public string Category { get; set; } = string.Empty;
 
     /// <summary>
+    /// Gets or sets the product weight in kilograms.
+    /// </summary>
+    [BindProperty]
+    [Range(0, 1000, ErrorMessage = "Weight must be between 0 and 1000 kg.")]
+    public decimal? Weight { get; set; }
+
+    /// <summary>
+    /// Gets or sets the product length in centimeters.
+    /// </summary>
+    [BindProperty]
+    [Range(0, 500, ErrorMessage = "Length must be between 0 and 500 cm.")]
+    public decimal? Length { get; set; }
+
+    /// <summary>
+    /// Gets or sets the product width in centimeters.
+    /// </summary>
+    [BindProperty]
+    [Range(0, 500, ErrorMessage = "Width must be between 0 and 500 cm.")]
+    public decimal? Width { get; set; }
+
+    /// <summary>
+    /// Gets or sets the product height in centimeters.
+    /// </summary>
+    [BindProperty]
+    [Range(0, 500, ErrorMessage = "Height must be between 0 and 500 cm.")]
+    public decimal? Height { get; set; }
+
+    /// <summary>
+    /// Gets or sets the available shipping methods for this product.
+    /// </summary>
+    [BindProperty]
+    [StringLength(500, ErrorMessage = "Shipping methods must be at most 500 characters.")]
+    public string? ShippingMethods { get; set; }
+
+    /// <summary>
+    /// Gets or sets the product images as a JSON array of image URLs.
+    /// </summary>
+    [BindProperty]
+    [StringLength(4000, ErrorMessage = "Images must be at most 4000 characters.")]
+    public string? Images { get; set; }
+
+    /// <summary>
     /// Gets or sets an error message.
     /// </summary>
     public string? ErrorMessage { get; private set; }
@@ -130,6 +172,12 @@ public class EditModel : PageModel
             Price = product.Price;
             Stock = product.Stock;
             Category = product.Category;
+            Weight = product.Weight;
+            Length = product.Length;
+            Width = product.Width;
+            Height = product.Height;
+            ShippingMethods = product.ShippingMethods;
+            Images = product.Images;
 
             return Page();
         }
@@ -176,7 +224,13 @@ public class EditModel : PageModel
                 Description = Description,
                 Price = Price,
                 Stock = Stock,
-                Category = Category
+                Category = Category,
+                Weight = Weight,
+                Length = Length,
+                Width = Width,
+                Height = Height,
+                ShippingMethods = ShippingMethods,
+                Images = Images
             };
 
             var result = await _productService.UpdateProductAsync(command);

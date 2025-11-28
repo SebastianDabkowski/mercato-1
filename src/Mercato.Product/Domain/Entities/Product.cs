@@ -69,4 +69,39 @@ public class Product
     /// Gets or sets the ID of the user who archived the product.
     /// </summary>
     public string? ArchivedBy { get; set; }
+
+    /// <summary>
+    /// Gets or sets the product weight in kilograms.
+    /// Used for shipping cost calculation.
+    /// </summary>
+    public decimal? Weight { get; set; }
+
+    /// <summary>
+    /// Gets or sets the product length in centimeters.
+    /// Used for shipping cost calculation.
+    /// </summary>
+    public decimal? Length { get; set; }
+
+    /// <summary>
+    /// Gets or sets the product width in centimeters.
+    /// Used for shipping cost calculation.
+    /// </summary>
+    public decimal? Width { get; set; }
+
+    /// <summary>
+    /// Gets or sets the product height in centimeters.
+    /// Used for shipping cost calculation.
+    /// </summary>
+    public decimal? Height { get; set; }
+
+    /// <summary>
+    /// Gets or sets the available shipping methods for this product.
+    /// Stored as a comma-separated string of shipping method codes.
+    /// </summary>
+    public string? ShippingMethods { get; set; }
+
+    /// <summary>
+    /// Gets or sets the product images as a JSON array of image URLs.
+    /// </summary>
+    public string? Images { get; set; }
 }

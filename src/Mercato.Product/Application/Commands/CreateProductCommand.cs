@@ -45,4 +45,40 @@ public class CreateProductCommand
     [Required(ErrorMessage = "Category is required.")]
     [StringLength(100, MinimumLength = 2, ErrorMessage = "Category must be between 2 and 100 characters.")]
     public string Category { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the product weight in kilograms.
+    /// </summary>
+    [Range(0, 1000, ErrorMessage = "Weight must be between 0 and 1000 kg.")]
+    public decimal? Weight { get; set; }
+
+    /// <summary>
+    /// Gets or sets the product length in centimeters.
+    /// </summary>
+    [Range(0, 500, ErrorMessage = "Length must be between 0 and 500 cm.")]
+    public decimal? Length { get; set; }
+
+    /// <summary>
+    /// Gets or sets the product width in centimeters.
+    /// </summary>
+    [Range(0, 500, ErrorMessage = "Width must be between 0 and 500 cm.")]
+    public decimal? Width { get; set; }
+
+    /// <summary>
+    /// Gets or sets the product height in centimeters.
+    /// </summary>
+    [Range(0, 500, ErrorMessage = "Height must be between 0 and 500 cm.")]
+    public decimal? Height { get; set; }
+
+    /// <summary>
+    /// Gets or sets the available shipping methods for this product.
+    /// </summary>
+    [StringLength(500, ErrorMessage = "Shipping methods must be at most 500 characters.")]
+    public string? ShippingMethods { get; set; }
+
+    /// <summary>
+    /// Gets or sets the product images as a JSON array of image URLs.
+    /// </summary>
+    [StringLength(4000, ErrorMessage = "Images must be at most 4000 characters.")]
+    public string? Images { get; set; }
 }
