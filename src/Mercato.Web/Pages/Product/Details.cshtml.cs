@@ -22,6 +22,7 @@ public class DetailsModel : PageModel
     private readonly ILogger<DetailsModel> _logger;
 
     private const string PlaceholderImage = "/images/placeholder.png";
+    private const string GuestCartCookieName = "GuestCartId";
     private static readonly string[] AllowedImagePrefixes = ["/uploads/", "/images/"];
 
     /// <summary>
@@ -105,24 +106,37 @@ public class DetailsModel : PageModel
     /// <returns>The page result.</returns>
     public async Task<IActionResult> OnPostAddToCartAsync(Guid id, Guid productId, int quantity)
     {
-        var buyerId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrEmpty(buyerId))
-        {
-            return RedirectToPage("/Account/Login", new { ReturnUrl = $"/Product/Details/{id}" });
-        }
-
         if (quantity <= 0)
         {
             TempData["CartError"] = "Quantity must be at least 1.";
             return RedirectToPage(new { id });
         }
 
-        var result = await _cartService.AddToCartAsync(new AddToCartCommand
+        var buyerId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        AddToCartResult result;
+
+        if (!string.IsNullOrEmpty(buyerId))
         {
-            BuyerId = buyerId,
-            ProductId = productId,
-            Quantity = quantity
-        });
+            // Authenticated user - add to user cart
+            result = await _cartService.AddToCartAsync(new AddToCartCommand
+            {
+                BuyerId = buyerId,
+                ProductId = productId,
+                Quantity = quantity
+            });
+        }
+        else
+        {
+            // Guest user - add to guest cart
+            var guestCartId = GetOrCreateGuestCartId();
+            result = await _cartService.AddToGuestCartAsync(new AddToCartCommand
+            {
+                GuestCartId = guestCartId,
+                ProductId = productId,
+                Quantity = quantity
+            });
+        }
 
         if (result.Succeeded)
         {
@@ -179,6 +193,23 @@ public class DetailsModel : PageModel
         {
             return PlaceholderImage;
         }
+    }
+
+    private string GetOrCreateGuestCartId()
+    {
+        var guestCartId = Request.Cookies[GuestCartCookieName];
+        if (string.IsNullOrEmpty(guestCartId))
+        {
+            guestCartId = Guid.NewGuid().ToString();
+            Response.Cookies.Append(GuestCartCookieName, guestCartId, new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = true,
+                SameSite = SameSiteMode.Lax,
+                Expires = DateTimeOffset.UtcNow.AddDays(30)
+            });
+        }
+        return guestCartId;
     }
 
     private static bool IsValidImageUrl(string? url)

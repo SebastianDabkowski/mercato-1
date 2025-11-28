@@ -15,6 +15,13 @@ public interface ICartRepository
     Task<Entities.Cart?> GetByBuyerIdAsync(string buyerId);
 
     /// <summary>
+    /// Gets a cart by the guest cart ID.
+    /// </summary>
+    /// <param name="guestCartId">The guest cart ID.</param>
+    /// <returns>The cart if found; otherwise, null.</returns>
+    Task<Entities.Cart?> GetByGuestCartIdAsync(string guestCartId);
+
+    /// <summary>
     /// Gets a cart by its unique identifier.
     /// </summary>
     /// <param name="id">The cart ID.</param>
@@ -34,6 +41,13 @@ public interface ICartRepository
     /// <param name="cart">The cart to update.</param>
     /// <returns>A task representing the asynchronous operation.</returns>
     Task UpdateAsync(Entities.Cart cart);
+
+    /// <summary>
+    /// Deletes a cart and all its items.
+    /// </summary>
+    /// <param name="cart">The cart to delete.</param>
+    /// <returns>A task representing the asynchronous operation.</returns>
+    Task DeleteAsync(Entities.Cart cart);
 
     /// <summary>
     /// Adds an item to a cart.

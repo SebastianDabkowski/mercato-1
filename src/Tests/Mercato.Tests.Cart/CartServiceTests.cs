@@ -864,6 +864,555 @@ public class CartServiceTests
 
     #endregion
 
+    #region MergeGuestCartAsync Tests
+
+    [Fact]
+    public async Task MergeGuestCartAsync_NoGuestCart_ReturnsNoGuestCart()
+    {
+        // Arrange
+        var command = new MergeGuestCartCommand
+        {
+            BuyerId = TestBuyerId,
+            GuestCartId = "guest-123"
+        };
+
+        _mockCartRepository.Setup(r => r.GetByGuestCartIdAsync("guest-123"))
+            .ReturnsAsync((CartEntity?)null);
+
+        // Act
+        var result = await _service.MergeGuestCartAsync(command);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.False(result.GuestCartFound);
+        Assert.Equal(0, result.ItemsMerged);
+    }
+
+    [Fact]
+    public async Task MergeGuestCartAsync_EmptyGuestCart_ReturnsNoGuestCart()
+    {
+        // Arrange
+        var command = new MergeGuestCartCommand
+        {
+            BuyerId = TestBuyerId,
+            GuestCartId = "guest-123"
+        };
+
+        var emptyGuestCart = new CartEntity
+        {
+            Id = Guid.NewGuid(),
+            GuestCartId = "guest-123",
+            CreatedAt = DateTimeOffset.UtcNow,
+            LastUpdatedAt = DateTimeOffset.UtcNow,
+            Items = new List<CartItemEntity>()
+        };
+
+        _mockCartRepository.Setup(r => r.GetByGuestCartIdAsync("guest-123"))
+            .ReturnsAsync(emptyGuestCart);
+
+        // Act
+        var result = await _service.MergeGuestCartAsync(command);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.False(result.GuestCartFound);
+        Assert.Equal(0, result.ItemsMerged);
+    }
+
+    [Fact]
+    public async Task MergeGuestCartAsync_CreatesNewUserCart_WhenNoUserCartExists()
+    {
+        // Arrange
+        var command = new MergeGuestCartCommand
+        {
+            BuyerId = TestBuyerId,
+            GuestCartId = "guest-123"
+        };
+
+        var guestCartId = Guid.NewGuid();
+        var guestCart = new CartEntity
+        {
+            Id = guestCartId,
+            GuestCartId = "guest-123",
+            CreatedAt = DateTimeOffset.UtcNow,
+            LastUpdatedAt = DateTimeOffset.UtcNow,
+            Items = new List<CartItemEntity>
+            {
+                new CartItemEntity
+                {
+                    Id = Guid.NewGuid(),
+                    CartId = guestCartId,
+                    ProductId = TestProductId,
+                    StoreId = TestStoreId,
+                    Quantity = 2,
+                    ProductTitle = "Test Product",
+                    ProductPrice = 29.99m,
+                    StoreName = "Test Store",
+                    CreatedAt = DateTimeOffset.UtcNow,
+                    LastUpdatedAt = DateTimeOffset.UtcNow
+                }
+            }
+        };
+
+        var product = CreateTestProduct();
+
+        _mockCartRepository.Setup(r => r.GetByGuestCartIdAsync("guest-123"))
+            .ReturnsAsync(guestCart);
+
+        _mockCartRepository.Setup(r => r.GetByBuyerIdAsync(TestBuyerId))
+            .ReturnsAsync((CartEntity?)null);
+
+        _mockCartRepository.Setup(r => r.AddAsync(It.IsAny<CartEntity>()))
+            .ReturnsAsync((CartEntity c) => c);
+
+        _mockCartRepository.Setup(r => r.GetItemByProductIdAsync(It.IsAny<Guid>(), TestProductId))
+            .ReturnsAsync((CartItemEntity?)null);
+
+        _mockProductService.Setup(s => s.GetProductByIdAsync(TestProductId))
+            .ReturnsAsync(product);
+
+        _mockCartRepository.Setup(r => r.AddItemAsync(It.IsAny<CartItemEntity>()))
+            .ReturnsAsync((CartItemEntity i) => i);
+
+        _mockCartRepository.Setup(r => r.UpdateAsync(It.IsAny<CartEntity>()))
+            .Returns(Task.CompletedTask);
+
+        _mockCartRepository.Setup(r => r.DeleteAsync(guestCart))
+            .Returns(Task.CompletedTask);
+
+        // Act
+        var result = await _service.MergeGuestCartAsync(command);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.True(result.GuestCartFound);
+        Assert.Equal(1, result.ItemsMerged);
+        _mockCartRepository.Verify(r => r.AddAsync(It.Is<CartEntity>(c => c.BuyerId == TestBuyerId)), Times.Once);
+        _mockCartRepository.Verify(r => r.DeleteAsync(guestCart), Times.Once);
+    }
+
+    [Fact]
+    public async Task MergeGuestCartAsync_MergesDuplicateProducts_SumsQuantities()
+    {
+        // Arrange
+        var command = new MergeGuestCartCommand
+        {
+            BuyerId = TestBuyerId,
+            GuestCartId = "guest-123"
+        };
+
+        var guestCartId = Guid.NewGuid();
+        var guestCart = new CartEntity
+        {
+            Id = guestCartId,
+            GuestCartId = "guest-123",
+            CreatedAt = DateTimeOffset.UtcNow,
+            LastUpdatedAt = DateTimeOffset.UtcNow,
+            Items = new List<CartItemEntity>
+            {
+                new CartItemEntity
+                {
+                    Id = Guid.NewGuid(),
+                    CartId = guestCartId,
+                    ProductId = TestProductId,
+                    StoreId = TestStoreId,
+                    Quantity = 3,
+                    ProductTitle = "Test Product",
+                    ProductPrice = 29.99m,
+                    StoreName = "Test Store",
+                    CreatedAt = DateTimeOffset.UtcNow,
+                    LastUpdatedAt = DateTimeOffset.UtcNow
+                }
+            }
+        };
+
+        var existingItem = new CartItemEntity
+        {
+            Id = TestCartItemId,
+            CartId = TestCartId,
+            ProductId = TestProductId,
+            StoreId = TestStoreId,
+            Quantity = 2,
+            ProductTitle = "Test Product",
+            ProductPrice = 29.99m,
+            StoreName = "Test Store",
+            CreatedAt = DateTimeOffset.UtcNow,
+            LastUpdatedAt = DateTimeOffset.UtcNow
+        };
+
+        var userCart = CreateTestCart();
+        userCart.Items.Add(existingItem);
+
+        var product = CreateTestProduct();
+        product.Stock = 10;
+
+        _mockCartRepository.Setup(r => r.GetByGuestCartIdAsync("guest-123"))
+            .ReturnsAsync(guestCart);
+
+        _mockCartRepository.Setup(r => r.GetByBuyerIdAsync(TestBuyerId))
+            .ReturnsAsync(userCart);
+
+        _mockCartRepository.Setup(r => r.GetItemByProductIdAsync(TestCartId, TestProductId))
+            .ReturnsAsync(existingItem);
+
+        _mockProductService.Setup(s => s.GetProductByIdAsync(TestProductId))
+            .ReturnsAsync(product);
+
+        _mockCartRepository.Setup(r => r.UpdateItemAsync(It.IsAny<CartItemEntity>()))
+            .Returns(Task.CompletedTask);
+
+        _mockCartRepository.Setup(r => r.UpdateAsync(It.IsAny<CartEntity>()))
+            .Returns(Task.CompletedTask);
+
+        _mockCartRepository.Setup(r => r.DeleteAsync(guestCart))
+            .Returns(Task.CompletedTask);
+
+        // Act
+        var result = await _service.MergeGuestCartAsync(command);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.True(result.GuestCartFound);
+        Assert.Equal(1, result.ItemsMerged);
+        _mockCartRepository.Verify(r => r.UpdateItemAsync(It.Is<CartItemEntity>(i =>
+            i.Id == TestCartItemId &&
+            i.Quantity == 5)), Times.Once);
+    }
+
+    [Fact]
+    public async Task MergeGuestCartAsync_RespectsStockLimits_WhenMerging()
+    {
+        // Arrange
+        var command = new MergeGuestCartCommand
+        {
+            BuyerId = TestBuyerId,
+            GuestCartId = "guest-123"
+        };
+
+        var guestCartId = Guid.NewGuid();
+        var guestCart = new CartEntity
+        {
+            Id = guestCartId,
+            GuestCartId = "guest-123",
+            CreatedAt = DateTimeOffset.UtcNow,
+            LastUpdatedAt = DateTimeOffset.UtcNow,
+            Items = new List<CartItemEntity>
+            {
+                new CartItemEntity
+                {
+                    Id = Guid.NewGuid(),
+                    CartId = guestCartId,
+                    ProductId = TestProductId,
+                    StoreId = TestStoreId,
+                    Quantity = 8,
+                    ProductTitle = "Test Product",
+                    ProductPrice = 29.99m,
+                    StoreName = "Test Store",
+                    CreatedAt = DateTimeOffset.UtcNow,
+                    LastUpdatedAt = DateTimeOffset.UtcNow
+                }
+            }
+        };
+
+        var existingItem = new CartItemEntity
+        {
+            Id = TestCartItemId,
+            CartId = TestCartId,
+            ProductId = TestProductId,
+            StoreId = TestStoreId,
+            Quantity = 5,
+            ProductTitle = "Test Product",
+            ProductPrice = 29.99m,
+            StoreName = "Test Store",
+            CreatedAt = DateTimeOffset.UtcNow,
+            LastUpdatedAt = DateTimeOffset.UtcNow
+        };
+
+        var userCart = CreateTestCart();
+        userCart.Items.Add(existingItem);
+
+        var product = CreateTestProduct();
+        product.Stock = 10; // Total would be 13 (5+8) but stock is only 10
+
+        _mockCartRepository.Setup(r => r.GetByGuestCartIdAsync("guest-123"))
+            .ReturnsAsync(guestCart);
+
+        _mockCartRepository.Setup(r => r.GetByBuyerIdAsync(TestBuyerId))
+            .ReturnsAsync(userCart);
+
+        _mockCartRepository.Setup(r => r.GetItemByProductIdAsync(TestCartId, TestProductId))
+            .ReturnsAsync(existingItem);
+
+        _mockProductService.Setup(s => s.GetProductByIdAsync(TestProductId))
+            .ReturnsAsync(product);
+
+        _mockCartRepository.Setup(r => r.UpdateItemAsync(It.IsAny<CartItemEntity>()))
+            .Returns(Task.CompletedTask);
+
+        _mockCartRepository.Setup(r => r.UpdateAsync(It.IsAny<CartEntity>()))
+            .Returns(Task.CompletedTask);
+
+        _mockCartRepository.Setup(r => r.DeleteAsync(guestCart))
+            .Returns(Task.CompletedTask);
+
+        // Act
+        var result = await _service.MergeGuestCartAsync(command);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.True(result.GuestCartFound);
+        Assert.Equal(1, result.ItemsMerged);
+        // Quantity should be capped at stock limit (10)
+        _mockCartRepository.Verify(r => r.UpdateItemAsync(It.Is<CartItemEntity>(i =>
+            i.Id == TestCartItemId &&
+            i.Quantity == 10)), Times.Once);
+    }
+
+    [Fact]
+    public async Task MergeGuestCartAsync_SkipsUnavailableProducts()
+    {
+        // Arrange
+        var command = new MergeGuestCartCommand
+        {
+            BuyerId = TestBuyerId,
+            GuestCartId = "guest-123"
+        };
+
+        var unavailableProductId = Guid.NewGuid();
+        var guestCartId = Guid.NewGuid();
+        var guestCart = new CartEntity
+        {
+            Id = guestCartId,
+            GuestCartId = "guest-123",
+            CreatedAt = DateTimeOffset.UtcNow,
+            LastUpdatedAt = DateTimeOffset.UtcNow,
+            Items = new List<CartItemEntity>
+            {
+                new CartItemEntity
+                {
+                    Id = Guid.NewGuid(),
+                    CartId = guestCartId,
+                    ProductId = unavailableProductId,
+                    StoreId = TestStoreId,
+                    Quantity = 2,
+                    ProductTitle = "Unavailable Product",
+                    ProductPrice = 19.99m,
+                    StoreName = "Test Store",
+                    CreatedAt = DateTimeOffset.UtcNow,
+                    LastUpdatedAt = DateTimeOffset.UtcNow
+                }
+            }
+        };
+
+        var userCart = CreateTestCart();
+
+        _mockCartRepository.Setup(r => r.GetByGuestCartIdAsync("guest-123"))
+            .ReturnsAsync(guestCart);
+
+        _mockCartRepository.Setup(r => r.GetByBuyerIdAsync(TestBuyerId))
+            .ReturnsAsync(userCart);
+
+        _mockCartRepository.Setup(r => r.GetItemByProductIdAsync(TestCartId, unavailableProductId))
+            .ReturnsAsync((CartItemEntity?)null);
+
+        _mockProductService.Setup(s => s.GetProductByIdAsync(unavailableProductId))
+            .ReturnsAsync((ProductEntity?)null);
+
+        _mockCartRepository.Setup(r => r.UpdateAsync(It.IsAny<CartEntity>()))
+            .Returns(Task.CompletedTask);
+
+        _mockCartRepository.Setup(r => r.DeleteAsync(guestCart))
+            .Returns(Task.CompletedTask);
+
+        // Act
+        var result = await _service.MergeGuestCartAsync(command);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.True(result.GuestCartFound);
+        Assert.Equal(0, result.ItemsMerged);
+        _mockCartRepository.Verify(r => r.DeleteAsync(guestCart), Times.Once);
+    }
+
+    [Fact]
+    public async Task MergeGuestCartAsync_EmptyBuyerId_ReturnsFailure()
+    {
+        // Arrange
+        var command = new MergeGuestCartCommand
+        {
+            BuyerId = string.Empty,
+            GuestCartId = "guest-123"
+        };
+
+        // Act
+        var result = await _service.MergeGuestCartAsync(command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains("Buyer ID is required.", result.Errors);
+    }
+
+    [Fact]
+    public async Task MergeGuestCartAsync_EmptyGuestCartId_ReturnsFailure()
+    {
+        // Arrange
+        var command = new MergeGuestCartCommand
+        {
+            BuyerId = TestBuyerId,
+            GuestCartId = string.Empty
+        };
+
+        // Act
+        var result = await _service.MergeGuestCartAsync(command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains("Guest cart ID is required.", result.Errors);
+    }
+
+    #endregion
+
+    #region AddToGuestCartAsync Tests
+
+    [Fact]
+    public async Task AddToGuestCartAsync_ValidCommand_NewCart_ReturnsSuccess()
+    {
+        // Arrange
+        var command = new AddToCartCommand
+        {
+            GuestCartId = "guest-123",
+            ProductId = TestProductId,
+            Quantity = 2
+        };
+
+        var product = CreateTestProduct();
+        var store = CreateTestStore();
+
+        _mockCartRepository.Setup(r => r.GetByGuestCartIdAsync("guest-123"))
+            .ReturnsAsync((CartEntity?)null);
+
+        _mockCartRepository.Setup(r => r.AddAsync(It.IsAny<CartEntity>()))
+            .ReturnsAsync((CartEntity c) => c);
+
+        _mockCartRepository.Setup(r => r.GetItemByProductIdAsync(It.IsAny<Guid>(), TestProductId))
+            .ReturnsAsync((CartItemEntity?)null);
+
+        _mockProductService.Setup(s => s.GetProductByIdAsync(TestProductId))
+            .ReturnsAsync(product);
+
+        _mockStoreProfileService.Setup(s => s.GetStoreByIdAsync(TestStoreId))
+            .ReturnsAsync(store);
+
+        _mockCartRepository.Setup(r => r.AddItemAsync(It.IsAny<CartItemEntity>()))
+            .ReturnsAsync((CartItemEntity i) => i);
+
+        _mockCartRepository.Setup(r => r.UpdateAsync(It.IsAny<CartEntity>()))
+            .Returns(Task.CompletedTask);
+
+        // Act
+        var result = await _service.AddToGuestCartAsync(command);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.NotNull(result.CartItemId);
+        Assert.False(result.ItemAlreadyExists);
+        _mockCartRepository.Verify(r => r.AddAsync(It.Is<CartEntity>(c => c.GuestCartId == "guest-123")), Times.Once);
+    }
+
+    [Fact]
+    public async Task AddToGuestCartAsync_EmptyGuestCartId_ReturnsFailure()
+    {
+        // Arrange
+        var command = new AddToCartCommand
+        {
+            GuestCartId = string.Empty,
+            ProductId = TestProductId,
+            Quantity = 1
+        };
+
+        // Act
+        var result = await _service.AddToGuestCartAsync(command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains("Guest cart ID is required.", result.Errors);
+    }
+
+    #endregion
+
+    #region GetGuestCartAsync Tests
+
+    [Fact]
+    public async Task GetGuestCartAsync_ValidGuestCartId_ReturnsCart()
+    {
+        // Arrange
+        var guestCartId = "guest-123";
+        var cartId = Guid.NewGuid();
+        var cart = new CartEntity
+        {
+            Id = cartId,
+            GuestCartId = guestCartId,
+            CreatedAt = DateTimeOffset.UtcNow,
+            LastUpdatedAt = DateTimeOffset.UtcNow,
+            Items = new List<CartItemEntity>
+            {
+                new CartItemEntity
+                {
+                    Id = TestCartItemId,
+                    CartId = cartId,
+                    ProductId = TestProductId,
+                    StoreId = TestStoreId,
+                    Quantity = 2,
+                    ProductTitle = "Test Product",
+                    ProductPrice = 29.99m,
+                    StoreName = "Test Store",
+                    CreatedAt = DateTimeOffset.UtcNow,
+                    LastUpdatedAt = DateTimeOffset.UtcNow
+                }
+            }
+        };
+
+        _mockCartRepository.Setup(r => r.GetByGuestCartIdAsync(guestCartId))
+            .ReturnsAsync(cart);
+
+        var shippingByStore = new Dictionary<Guid, StoreShippingCost>
+        {
+            [TestStoreId] = new StoreShippingCost
+            {
+                StoreId = TestStoreId,
+                StoreName = "Test Store",
+                ShippingCost = 5.99m,
+                IsFreeShipping = false,
+                AmountToFreeShipping = null
+            }
+        };
+
+        _mockShippingCalculator.Setup(s => s.CalculateShippingAsync(It.IsAny<IReadOnlyList<CartItemsByStore>>()))
+            .ReturnsAsync(shippingByStore);
+
+        // Act
+        var result = await _service.GetGuestCartAsync(guestCartId);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.NotNull(result.Cart);
+        Assert.Single(result.ItemsByStore);
+        Assert.Equal(2, result.TotalItemCount);
+    }
+
+    [Fact]
+    public async Task GetGuestCartAsync_EmptyGuestCartId_ReturnsFailure()
+    {
+        // Arrange & Act
+        var result = await _service.GetGuestCartAsync(string.Empty);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains("Guest cart ID is required.", result.Errors);
+    }
+
+    #endregion
+
     #region Helper Methods
 
     private static ProductEntity CreateTestProduct()

@@ -22,6 +22,17 @@
     </div>
 }
 
+@if (Model.IsGuest)
+{
+    <div class="alert alert-info">
+        <i class="bi bi-info-circle me-2"></i>
+        <strong>Shopping as a guest.</strong> 
+        <a asp-page="/Account/Login" asp-route-returnUrl="/Cart">Sign in</a> or 
+        <a asp-page="/Account/Register" asp-route-returnUrl="/Cart">create an account</a> 
+        to checkout and save your cart for later.
+    </div>
+}
+
 @if (Model.CartResult?.ItemsByStore == null || Model.CartResult.ItemsByStore.Count == 0)
 {
     <div class="alert alert-info">
@@ -175,10 +186,21 @@ else
                         </div>
                     }
                     <div class="d-grid gap-2">
-                        @* TODO: Checkout page to be implemented in Orders module *@
-                        <a asp-page="/Orders/Checkout" class="btn btn-primary btn-lg">
-                            Proceed to Checkout
-                        </a>
+                        @if (Model.IsGuest)
+                        {
+                            <a asp-page="/Account/Login" asp-route-returnUrl="/Orders/Checkout" class="btn btn-primary btn-lg">
+                                Sign in to Checkout
+                            </a>
+                            <a asp-page="/Account/Register" asp-route-returnUrl="/Orders/Checkout" class="btn btn-outline-primary">
+                                Create Account
+                            </a>
+                        }
+                        else
+                        {
+                            <a asp-page="/Orders/Checkout" class="btn btn-primary btn-lg">
+                                Proceed to Checkout
+                            </a>
+                        }
                         <a asp-page="/Product/Index" class="btn btn-outline-secondary">
                             Continue Shopping
                         </a>
