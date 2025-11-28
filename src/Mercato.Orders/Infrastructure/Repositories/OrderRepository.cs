@@ -73,48 +73,60 @@ public class OrderRepository : IOrderRepository
         int page,
         int pageSize)
     {
-        var query = _context.Orders
-            .Include(o => o.Items)
-            .Include(o => o.SellerSubOrders)
-                .ThenInclude(s => s.Items)
-            .Where(o => o.BuyerId == buyerId);
+        // Build the base query for filtering (without includes for counting)
+        var baseQuery = _context.Orders.Where(o => o.BuyerId == buyerId);
 
         // Apply status filter
         if (statuses != null && statuses.Count > 0)
         {
-            query = query.Where(o => statuses.Contains(o.Status));
+            baseQuery = baseQuery.Where(o => statuses.Contains(o.Status));
         }
 
         // Apply date range filter
         if (fromDate.HasValue)
         {
-            query = query.Where(o => o.CreatedAt >= fromDate.Value);
+            baseQuery = baseQuery.Where(o => o.CreatedAt >= fromDate.Value);
         }
 
         if (toDate.HasValue)
         {
             // Include the entire end date by adding one day and using less than
             var endOfDay = toDate.Value.Date.AddDays(1);
-            query = query.Where(o => o.CreatedAt < endOfDay);
+            baseQuery = baseQuery.Where(o => o.CreatedAt < endOfDay);
         }
 
         // Apply seller (store) filter
         if (storeId.HasValue)
         {
-            query = query.Where(o => o.SellerSubOrders.Any(s => s.StoreId == storeId.Value));
+            baseQuery = baseQuery.Where(o => o.SellerSubOrders.Any(s => s.StoreId == storeId.Value));
         }
 
-        // Get total count before pagination
-        var totalCount = await query.CountAsync();
+        // Get total count without includes (more efficient)
+        var totalCount = await baseQuery.CountAsync();
 
-        // Apply sorting and pagination
-        var orders = await query
+        // Apply includes, sorting, and pagination for the data query
+        var orders = await baseQuery
+            .Include(o => o.Items)
+            .Include(o => o.SellerSubOrders)
+                .ThenInclude(s => s.Items)
             .OrderByDescending(o => o.CreatedAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync();
 
         return (orders, totalCount);
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<(Guid StoreId, string StoreName)>> GetDistinctSellersByBuyerIdAsync(string buyerId)
+    {
+        return await _context.SellerSubOrders
+            .Where(s => s.Order.BuyerId == buyerId)
+            .Select(s => new { s.StoreId, s.StoreName })
+            .Distinct()
+            .OrderBy(s => s.StoreName)
+            .Select(s => ValueTuple.Create(s.StoreId, s.StoreName))
+            .ToListAsync();
     }
 
     /// <inheritdoc />

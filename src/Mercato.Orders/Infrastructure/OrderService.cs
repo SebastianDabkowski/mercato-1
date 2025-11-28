@@ -318,6 +318,25 @@ public class OrderService : IOrderService
     }
 
     /// <inheritdoc />
+    public async Task<IReadOnlyList<(Guid StoreId, string StoreName)>> GetDistinctSellersForBuyerAsync(string buyerId)
+    {
+        if (string.IsNullOrEmpty(buyerId))
+        {
+            return [];
+        }
+
+        try
+        {
+            return await _orderRepository.GetDistinctSellersByBuyerIdAsync(buyerId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting distinct sellers for buyer {BuyerId}", buyerId);
+            return [];
+        }
+    }
+
+    /// <inheritdoc />
     public async Task<SendEmailResult> SendOrderConfirmationEmailAsync(Guid orderId, string buyerEmail)
     {
         if (string.IsNullOrEmpty(buyerEmail))

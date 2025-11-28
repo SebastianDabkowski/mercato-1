@@ -54,6 +54,13 @@ public interface IOrderService
     Task<GetFilteredOrdersResult> GetFilteredOrdersForBuyerAsync(BuyerOrderFilterQuery query);
 
     /// <summary>
+    /// Gets distinct sellers from a buyer's orders for filter dropdowns.
+    /// </summary>
+    /// <param name="buyerId">The buyer ID.</param>
+    /// <returns>A list of distinct store IDs and names.</returns>
+    Task<IReadOnlyList<(Guid StoreId, string StoreName)>> GetDistinctSellersForBuyerAsync(string buyerId);
+
+    /// <summary>
     /// Sends a confirmation email for an order.
     /// </summary>
     /// <param name="orderId">The order ID.</param>

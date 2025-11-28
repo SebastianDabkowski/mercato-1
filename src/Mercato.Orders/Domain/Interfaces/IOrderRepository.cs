@@ -56,6 +56,13 @@ public interface IOrderRepository
         int pageSize);
 
     /// <summary>
+    /// Gets distinct sellers (stores) from a buyer's orders.
+    /// </summary>
+    /// <param name="buyerId">The buyer ID.</param>
+    /// <returns>A list of distinct store IDs and names.</returns>
+    Task<IReadOnlyList<(Guid StoreId, string StoreName)>> GetDistinctSellersByBuyerIdAsync(string buyerId);
+
+    /// <summary>
     /// Adds a new order to the repository.
     /// </summary>
     /// <param name="order">The order to add.</param>

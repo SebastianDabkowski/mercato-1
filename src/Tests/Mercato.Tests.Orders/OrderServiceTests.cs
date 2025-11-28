@@ -719,6 +719,55 @@ public class OrderServiceTests
 
     #endregion
 
+    #region GetDistinctSellersForBuyerAsync Tests
+
+    [Fact]
+    public async Task GetDistinctSellersForBuyerAsync_ValidBuyer_ReturnsSellers()
+    {
+        // Arrange
+        var sellers = new List<(Guid StoreId, string StoreName)>
+        {
+            (TestStoreId, "Test Store"),
+            (Guid.NewGuid(), "Another Store")
+        };
+
+        _mockOrderRepository.Setup(r => r.GetDistinctSellersByBuyerIdAsync(TestBuyerId))
+            .ReturnsAsync(sellers);
+
+        // Act
+        var result = await _service.GetDistinctSellersForBuyerAsync(TestBuyerId);
+
+        // Assert
+        Assert.Equal(2, result.Count);
+        Assert.Contains(result, s => s.StoreName == "Test Store");
+    }
+
+    [Fact]
+    public async Task GetDistinctSellersForBuyerAsync_EmptyBuyerId_ReturnsEmptyList()
+    {
+        // Act
+        var result = await _service.GetDistinctSellersForBuyerAsync(string.Empty);
+
+        // Assert
+        Assert.Empty(result);
+    }
+
+    [Fact]
+    public async Task GetDistinctSellersForBuyerAsync_NoSellers_ReturnsEmptyList()
+    {
+        // Arrange
+        _mockOrderRepository.Setup(r => r.GetDistinctSellersByBuyerIdAsync(TestBuyerId))
+            .ReturnsAsync(new List<(Guid StoreId, string StoreName)>());
+
+        // Act
+        var result = await _service.GetDistinctSellersForBuyerAsync(TestBuyerId);
+
+        // Assert
+        Assert.Empty(result);
+    }
+
+    #endregion
+
     #region SendOrderConfirmationEmailAsync Tests
 
     [Fact]

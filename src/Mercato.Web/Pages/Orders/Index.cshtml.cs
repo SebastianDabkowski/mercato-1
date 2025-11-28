@@ -118,8 +118,7 @@ public class IndexModel : PageModel
             return Forbid();
         }
 
-        CurrentPage = page < 1 ? 1 : page;
-
+        // Let service layer handle page validation via BuyerOrderFilterQuery
         var query = new BuyerOrderFilterQuery
         {
             BuyerId = buyerId,
@@ -127,7 +126,7 @@ public class IndexModel : PageModel
             FromDate = FromDate,
             ToDate = ToDate,
             StoreId = StoreId,
-            Page = CurrentPage,
+            Page = page,
             PageSize = DefaultPageSize
         };
 
@@ -136,16 +135,19 @@ public class IndexModel : PageModel
         if (!result.Succeeded)
         {
             ErrorMessage = string.Join(", ", result.Errors);
+            // Load sellers for filter even on error
+            AvailableSellers = await _orderService.GetDistinctSellersForBuyerAsync(buyerId);
             return Page();
         }
 
         Orders = result.Orders;
         TotalCount = result.TotalCount;
+        CurrentPage = result.Page;
         TotalPages = result.TotalPages;
         PageSize = result.PageSize;
 
-        // Load available sellers for the filter dropdown (from all buyer's orders)
-        await LoadAvailableSellersAsync(buyerId);
+        // Load available sellers for the filter dropdown using efficient query
+        AvailableSellers = await _orderService.GetDistinctSellersForBuyerAsync(buyerId);
 
         return Page();
     }
@@ -219,22 +221,5 @@ public class IndexModel : PageModel
     private string? GetBuyerId()
     {
         return User.FindFirstValue(ClaimTypes.NameIdentifier);
-    }
-
-    private async Task LoadAvailableSellersAsync(string buyerId)
-    {
-        // Get all orders (without filters) to build the list of available sellers
-        var allOrdersResult = await _orderService.GetOrdersForBuyerAsync(buyerId);
-        if (allOrdersResult.Succeeded)
-        {
-            var sellers = allOrdersResult.Orders
-                .SelectMany(o => o.SellerSubOrders)
-                .Select(s => (s.StoreId, s.StoreName))
-                .Distinct()
-                .OrderBy(s => s.StoreName)
-                .ToList();
-
-            AvailableSellers = sellers;
-        }
     }
 }
