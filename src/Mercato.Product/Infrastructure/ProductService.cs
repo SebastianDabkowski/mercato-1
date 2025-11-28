@@ -981,10 +981,17 @@ public class ProductService : IProductService
             worksheet.Cell(excelRow, 5).Value = product.Stock;
             worksheet.Cell(excelRow, 6).Value = product.Category;
             worksheet.Cell(excelRow, 7).Value = product.Status.ToString();
-            worksheet.Cell(excelRow, 8).Value = product.Weight.HasValue ? (double)product.Weight.Value : string.Empty;
-            worksheet.Cell(excelRow, 9).Value = product.Length.HasValue ? (double)product.Length.Value : string.Empty;
-            worksheet.Cell(excelRow, 10).Value = product.Width.HasValue ? (double)product.Width.Value : string.Empty;
-            worksheet.Cell(excelRow, 11).Value = product.Height.HasValue ? (double)product.Height.Value : string.Empty;
+
+            // Handle nullable numeric fields - leave cell empty (Blank) if no value
+            if (product.Weight.HasValue)
+                worksheet.Cell(excelRow, 8).Value = (double)product.Weight.Value;
+            if (product.Length.HasValue)
+                worksheet.Cell(excelRow, 9).Value = (double)product.Length.Value;
+            if (product.Width.HasValue)
+                worksheet.Cell(excelRow, 10).Value = (double)product.Width.Value;
+            if (product.Height.HasValue)
+                worksheet.Cell(excelRow, 11).Value = (double)product.Height.Value;
+
             worksheet.Cell(excelRow, 12).Value = product.ShippingMethods ?? string.Empty;
             worksheet.Cell(excelRow, 13).Value = product.Images ?? string.Empty;
         }
