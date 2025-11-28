@@ -9,7 +9,6 @@
 </head>
 <body>
     <header>
-        @* TODO: Implement actual UI for header section - add logo, search bar, user menu *@
         <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
             <div class="container">
                 <a class="navbar-brand" asp-area="" asp-page="/Index">Mercato</a>
@@ -48,6 +47,11 @@
                             <a class="nav-link text-dark" asp-area="" asp-page="/Admin/Index">Admin</a>
                         </li>
                     </ul>
+                    <!-- Global Search Bar -->
+                    <form class="d-flex me-3" asp-page="/Product/Search" method="get" role="search">
+                        <input class="form-control me-2" type="search" name="query" placeholder="Search products..." aria-label="Search" maxlength="200">
+                        <button class="btn btn-outline-primary" type="submit">Search</button>
+                    </form>
                     <ul class="navbar-nav">
                         @if (User.Identity?.IsAuthenticated == true)
                         {

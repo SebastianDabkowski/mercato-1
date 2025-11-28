@@ -1,0 +1,246 @@
+@page
+@model Mercato.Web.Pages.Product.SearchModel
+@{
+    ViewData["Title"] = string.IsNullOrWhiteSpace(Model.Query) ? "Search Products" : $"Search: {Model.Query}";
+}
+
+<div class="container-fluid">
+    <div class="row">
+        <!-- Sidebar with category navigation -->
+        <div class="col-md-3 col-lg-2 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Categories</h5>
+                </div>
+                <div class="card-body p-0">
+                    <nav class="nav flex-column">
+                        @foreach (var category in Model.RootCategories)
+                        {
+                            <a class="nav-link" asp-page="Category" asp-route-id="@category.Id">
+                                @category.Name
+                            </a>
+                        }
+                    </nav>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main content area -->
+        <div class="col-md-9 col-lg-10">
+            <!-- Breadcrumb navigation -->
+            <nav aria-label="breadcrumb" class="mb-3">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a asp-page="/Index">Home</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Search</li>
+                </ol>
+            </nav>
+
+            @if (string.IsNullOrWhiteSpace(Model.Query))
+            {
+                <!-- No search query provided -->
+                <h1>Search Products</h1>
+                <p class="lead">Enter a keyword in the search bar above to find products.</p>
+                
+                <div class="alert alert-info">
+                    <h5 class="alert-heading">Search Tips</h5>
+                    <ul class="mb-0">
+                        <li>Search by product name or description</li>
+                        <li>Try different keywords if you don't find what you're looking for</li>
+                        <li>Browse categories on the left to explore products</li>
+                    </ul>
+                </div>
+            }
+            else
+            {
+                <!-- Search query provided - show results -->
+                <h1>Search Results</h1>
+                <p class="text-muted mb-3">
+                    Results for: <strong>"@Model.Query"</strong>
+                </p>
+
+                <!-- Products count and info -->
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <p class="mb-0 text-muted">
+                        @if (Model.TotalProducts == 0)
+                        {
+                            <span>No products found</span>
+                        }
+                        else if (Model.TotalProducts == 1)
+                        {
+                            <span>1 product found</span>
+                        }
+                        else
+                        {
+                            <span>@Model.TotalProducts products found</span>
+                        }
+                    </p>
+                </div>
+
+                @if (Model.TotalProducts == 0)
+                {
+                    <!-- Empty state -->
+                    <div class="alert alert-info">
+                        <h5 class="alert-heading">No products match your search</h5>
+                        <p class="mb-0">
+                            Try adjusting your search terms or browse our <a asp-page="Category">categories</a> to find what you're looking for.
+                        </p>
+                        <hr>
+                        <p class="mb-0">
+                            <strong>Suggestions:</strong>
+                        </p>
+                        <ul class="mb-0">
+                            <li>Check for typos or try different keywords</li>
+                            <li>Use more general terms</li>
+                            <li>Browse our product categories</li>
+                        </ul>
+                    </div>
+                }
+                else
+                {
+                    <!-- Products grid -->
+                    <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4">
+                        @foreach (var product in Model.Products)
+                        {
+                            <div class="col">
+                                <div class="card h-100">
+                                    @if (!string.IsNullOrEmpty(product.Images) && product.Images != "[]")
+                                    {
+                                        <img src="@(GetFirstImageUrl(product.Images))" 
+                                             class="card-img-top" 
+                                             alt="@product.Title"
+                                             style="height: 200px; object-fit: cover;">
+                                    }
+                                    else
+                                    {
+                                        <div class="card-img-top bg-secondary d-flex align-items-center justify-content-center" 
+                                             style="height: 200px;">
+                                            <span class="text-white">No Image</span>
+                                        </div>
+                                    }
+                                    <div class="card-body">
+                                        <h6 class="card-title text-truncate" title="@product.Title">@product.Title</h6>
+                                        <p class="card-text">
+                                            <strong class="text-primary">@product.Price.ToString("C")</strong>
+                                        </p>
+                                        @if (product.Stock > 0)
+                                        {
+                                            <span class="badge bg-success">In Stock</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-secondary">Out of Stock</span>
+                                        }
+                                    </div>
+                                    <div class="card-footer bg-transparent">
+                                        <a asp-page="Details" asp-route-id="@product.Id" class="btn btn-outline-primary btn-sm w-100">
+                                            View Details
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+
+                    <!-- Pagination -->
+                    @if (Model.TotalPages > 1)
+                    {
+                        <nav aria-label="Search results pagination" class="mt-4">
+                            <ul class="pagination justify-content-center">
+                                <li class="page-item @(Model.CurrentPage <= 1 ? "disabled" : "")">
+                                    <a class="page-link" asp-page="Search" asp-route-query="@Model.Query" 
+                                       asp-route-page="@(Model.CurrentPage - 1)">
+                                        Previous
+                                    </a>
+                                </li>
+                                @for (int i = 1; i <= Model.TotalPages; i++)
+                                {
+                                    <li class="page-item @(i == Model.CurrentPage ? "active" : "")">
+                                        <a class="page-link" asp-page="Search" asp-route-query="@Model.Query" 
+                                           asp-route-page="@i">@i</a>
+                                    </li>
+                                }
+                                <li class="page-item @(Model.CurrentPage >= Model.TotalPages ? "disabled" : "")">
+                                    <a class="page-link" asp-page="Search" asp-route-query="@Model.Query" 
+                                       asp-route-page="@(Model.CurrentPage + 1)">
+                                        Next
+                                    </a>
+                                </li>
+                            </ul>
+                        </nav>
+                    }
+                }
+            }
+        </div>
+    </div>
+</div>
+
+@functions {
+    private const string PlaceholderImage = "/images/placeholder.png";
+    private static readonly string[] AllowedImagePrefixes = ["/uploads/", "/images/"];
+
+    /// <summary>
+    /// Gets the first image URL from a JSON array of images.
+    /// Only returns URLs that start with trusted prefixes to prevent XSS attacks.
+    /// </summary>
+    /// <param name="imagesJson">The JSON string containing image URLs.</param>
+    /// <returns>The first valid image URL or a placeholder.</returns>
+    private static string GetFirstImageUrl(string? imagesJson)
+    {
+        if (string.IsNullOrEmpty(imagesJson) || imagesJson == "[]")
+        {
+            return PlaceholderImage;
+        }
+
+        try
+        {
+            // Parse the JSON array with safe deserialization options
+            var options = new System.Text.Json.JsonSerializerOptions
+            {
+                MaxDepth = 2 // Limit depth to prevent deep nesting attacks
+            };
+            var images = System.Text.Json.JsonSerializer.Deserialize<string[]>(imagesJson, options);
+            
+            if (images == null || images.Length == 0)
+            {
+                return PlaceholderImage;
+            }
+
+            // Validate URL starts with allowed prefix
+            var imageUrl = images[0];
+            if (IsValidImageUrl(imageUrl))
+            {
+                return imageUrl;
+            }
+
+            return PlaceholderImage;
+        }
+        catch
+        {
+            return PlaceholderImage;
+        }
+    }
+
+    /// <summary>
+    /// Validates that an image URL starts with an allowed prefix.
+    /// </summary>
+    /// <param name="url">The URL to validate.</param>
+    /// <returns>True if the URL is valid and trusted; otherwise, false.</returns>
+    private static bool IsValidImageUrl(string? url)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+        {
+            return false;
+        }
+
+        // Only allow relative URLs starting with trusted prefixes
+        foreach (var prefix in AllowedImagePrefixes)
+        {
+            if (url.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+}

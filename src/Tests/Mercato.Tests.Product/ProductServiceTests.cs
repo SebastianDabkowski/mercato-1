@@ -2626,4 +2626,80 @@ public class ProductServiceTests
     }
 
     #endregion
+
+    #region SearchProductsAsync Tests
+
+    [Fact]
+    public async Task SearchProductsAsync_ReturnsMatchingProducts()
+    {
+        // Arrange
+        var searchQuery = "laptop";
+        var products = new List<Mercato.Product.Domain.Entities.Product>
+        {
+            CreateTestProduct(Guid.NewGuid()),
+            CreateTestProduct(Guid.NewGuid())
+        };
+        products[0].Title = "Gaming Laptop";
+        products[0].Status = ProductStatus.Active;
+        products[1].Title = "Work Laptop";
+        products[1].Status = ProductStatus.Active;
+
+        _mockRepository.Setup(r => r.SearchActiveProductsAsync(searchQuery, 1, 12))
+            .ReturnsAsync((products, 2));
+
+        // Act
+        var (resultProducts, totalCount) = await _service.SearchProductsAsync(searchQuery, 1, 12);
+
+        // Assert
+        Assert.NotNull(resultProducts);
+        Assert.Equal(2, resultProducts.Count);
+        Assert.Equal(2, totalCount);
+        _mockRepository.Verify(r => r.SearchActiveProductsAsync(searchQuery, 1, 12), Times.Once);
+    }
+
+    [Fact]
+    public async Task SearchProductsAsync_WhenNoProducts_ReturnsEmptyList()
+    {
+        // Arrange
+        var searchQuery = "nonexistent";
+
+        _mockRepository.Setup(r => r.SearchActiveProductsAsync(searchQuery, 1, 12))
+            .ReturnsAsync((new List<Mercato.Product.Domain.Entities.Product>(), 0));
+
+        // Act
+        var (resultProducts, totalCount) = await _service.SearchProductsAsync(searchQuery, 1, 12);
+
+        // Assert
+        Assert.NotNull(resultProducts);
+        Assert.Empty(resultProducts);
+        Assert.Equal(0, totalCount);
+        _mockRepository.Verify(r => r.SearchActiveProductsAsync(searchQuery, 1, 12), Times.Once);
+    }
+
+    [Fact]
+    public async Task SearchProductsAsync_WithPagination_ReturnsCorrectPage()
+    {
+        // Arrange
+        var searchQuery = "phone";
+        var products = new List<Mercato.Product.Domain.Entities.Product>
+        {
+            CreateTestProduct(Guid.NewGuid())
+        };
+        products[0].Title = "Smart Phone";
+        products[0].Status = ProductStatus.Active;
+
+        _mockRepository.Setup(r => r.SearchActiveProductsAsync(searchQuery, 2, 10))
+            .ReturnsAsync((products, 15));
+
+        // Act
+        var (resultProducts, totalCount) = await _service.SearchProductsAsync(searchQuery, 2, 10);
+
+        // Assert
+        Assert.NotNull(resultProducts);
+        Assert.Single(resultProducts);
+        Assert.Equal(15, totalCount);
+        _mockRepository.Verify(r => r.SearchActiveProductsAsync(searchQuery, 2, 10), Times.Once);
+    }
+
+    #endregion
 }

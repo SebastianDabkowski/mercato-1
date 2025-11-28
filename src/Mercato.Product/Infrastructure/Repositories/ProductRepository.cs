@@ -99,4 +99,25 @@ public class ProductRepository : IProductRepository
 
         return (products, totalCount);
     }
+
+    /// <inheritdoc />
+    public async Task<(IReadOnlyList<Domain.Entities.Product> Products, int TotalCount)> SearchActiveProductsAsync(string searchQuery, int page, int pageSize)
+    {
+        var normalizedQuery = searchQuery.ToLowerInvariant();
+
+        var query = _context.Products
+            .Where(p => p.Status == ProductStatus.Active &&
+                       (p.Title.ToLower().Contains(normalizedQuery) ||
+                        (p.Description != null && p.Description.ToLower().Contains(normalizedQuery))));
+
+        var totalCount = await query.CountAsync();
+
+        var products = await query
+            .OrderByDescending(p => p.CreatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        return (products, totalCount);
+    }
 }
