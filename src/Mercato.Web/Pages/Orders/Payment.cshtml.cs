@@ -237,8 +237,8 @@ public class PaymentModel : PageModel
             return Redirect(initiateResult.RedirectUrl);
         }
 
-        // If no redirect needed, go directly to callback
-        return RedirectToPage("PaymentCallback", new { transactionId = initiateResult.TransactionId, success = true });
+        // If no redirect needed, go directly to callback (the callback handler determines success)
+        return RedirectToPage("PaymentCallback", new { transactionId = initiateResult.TransactionId });
     }
 
     private bool TryLoadDeliveryAddress()

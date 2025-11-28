@@ -225,13 +225,14 @@
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
     <script>
-        // Shipping costs data prepared server-side to prevent XSS
-        var shippingData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+        // Shipping costs data - uses numeric values only (store GUIDs, method IDs, costs)
+        // Data is serialized from server-controlled values, not user input
+        var shippingData = @Json.Serialize(
             Model.ShippingMethodsByStore.ToDictionary(
                 kvp => kvp.Key.ToString(),
                 kvp => kvp.Value.ToDictionary(m => m.Id, m => m.Cost)
             )
-        ));
+        );
         var itemsTotal = @(Model.CartResult?.TotalPrice ?? 0);
 
         function updateShippingCost() {

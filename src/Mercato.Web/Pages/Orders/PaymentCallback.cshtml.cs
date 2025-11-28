@@ -147,7 +147,7 @@ public class PaymentCallbackModel : PageModel
             OrderNumber = $"ORD-{Transaction.Id.ToString("N")[..8].ToUpper()}",
             Amount = Transaction.Amount,
             PaymentMethod = Transaction.PaymentMethodId,
-            CompletedAt = Transaction.CompletedAt ?? DateTimeOffset.UtcNow,
+            CompletedAt = Transaction.CompletedAt ?? Transaction.CreatedAt,
             DeliveryAddress = DeliveryAddress,
             ShippingData = ShippingData
         };
