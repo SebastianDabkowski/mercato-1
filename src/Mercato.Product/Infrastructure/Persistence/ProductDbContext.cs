@@ -106,6 +106,9 @@ public class ProductDbContext : DbContext
 
             // Index for filtering archived products by store
             entity.HasIndex(e => new { e.StoreId, e.Status });
+
+            // Index for efficient category lookups (used by category management)
+            entity.HasIndex(e => e.Category);
         });
     }
 

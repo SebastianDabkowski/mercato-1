@@ -295,7 +295,11 @@ public class CategoryService : ICategoryService
 
     private async Task<bool> WouldCreateCircularReferenceAsync(Guid categoryId, Guid newParentId)
     {
-        // Check if newParentId is a descendant of categoryId
+        // Load all categories once to avoid N+1 query pattern
+        var allCategories = await _repository.GetAllAsync();
+        var categoryLookup = allCategories.ToDictionary(c => c.Id);
+
+        // Check if newParentId is a descendant of categoryId by traversing up the tree
         var currentId = newParentId;
         var visited = new HashSet<Guid> { categoryId };
 
@@ -308,8 +312,7 @@ public class CategoryService : ICategoryService
 
             visited.Add(currentId);
 
-            var current = await _repository.GetByIdAsync(currentId);
-            if (current?.ParentId == null)
+            if (!categoryLookup.TryGetValue(currentId, out var current) || current.ParentId == null)
             {
                 break;
             }
