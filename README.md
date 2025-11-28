@@ -64,29 +64,42 @@ This solution uses a modular, layered architecture with a Razor Pages Web App an
 3. **Build the solution:**
    ```bash
    cd src
-   dotnet build SD.ProjectNameVertical.sln
+   dotnet build Mercato.sln
    ```
 4. **Run the web application:**
    ```bash
-   cd Application/SD.ProjectName.WebApp
+   cd src/Mercato.Web
    dotnet run
    ```
 5. **Run tests:**
    ```bash
    cd src
-   dotnet test SD.ProjectNameVertical.sln
+   dotnet test Mercato.sln
    ```
 
 ## Folder Structure Explanation
 ```
 src/
-├── Application/
-│   └── SD.ProjectName.WebApp          # Razor Pages UI, app startup, DI, EF Core Identity
-├── Modules/
-│   └── SD.ProjectName.Modules.Products # Feature module (Domain, Application, Infrastructure)
-├── Tests/
-│   └── SD.ProjectName.Tests.Products   # Unit tests for Products module
-└── SD.ProjectNameVertical.sln          # Solution file
+├── Mercato.sln                  # Main solution file
+├── Mercato.Web/                 # ASP.NET Core Web App (entry point)
+│   ├── Data/                    # ApplicationDbContext for Identity
+│   ├── Filters/                 # MVC filters
+│   ├── Middleware/              # Custom middleware
+│   ├── Pages/                   # Razor Pages organized by feature
+│   └── Program.cs               # DI and startup configuration
+├── Mercato.Identity/            # Identity module
+├── Mercato.Seller/              # Seller module
+├── Mercato.Buyer/               # Buyer module
+├── Mercato.Product/             # Product module
+├── Mercato.Cart/                # Cart module
+├── Mercato.Orders/              # Orders module
+├── Mercato.Payments/            # Payments module
+├── Mercato.Admin/               # Admin module
+└── Tests/
+    ├── Mercato.Tests.Admin/     # Admin module tests
+    ├── Mercato.Tests.Identity/  # Identity module tests
+    ├── Mercato.Tests.Product/   # Product module tests
+    └── Mercato.Tests.Seller/    # Seller module tests
 ```
 
 ## Future Development Roadmap (from PRD)
