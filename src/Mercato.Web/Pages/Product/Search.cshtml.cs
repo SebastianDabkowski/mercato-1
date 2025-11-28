@@ -15,6 +15,7 @@ public class SearchModel : PageModel
     private readonly ICategoryService _categoryService;
     private readonly IStoreProfileService _storeProfileService;
     private const int DefaultPageSize = 12;
+    private const string SearchPageBasePath = "/Product/Search";
 
     /// <summary>
     /// Maximum length for search queries to prevent abuse.
@@ -237,7 +238,7 @@ public class SearchModel : PageModel
             queryParams.Add($"page={CurrentPage}");
         }
 
-        var returnUrl = "/Product/Search";
+        var returnUrl = SearchPageBasePath;
         if (queryParams.Count > 0)
         {
             returnUrl += "?" + string.Join("&", queryParams);

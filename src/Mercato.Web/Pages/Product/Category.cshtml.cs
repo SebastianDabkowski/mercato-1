@@ -16,6 +16,7 @@ public class CategoryModel : PageModel
     private readonly IProductService _productService;
     private readonly IStoreProfileService _storeProfileService;
     private const int DefaultPageSize = 12;
+    private const string CategoryPageBasePath = "/Product/Category";
 
     /// <summary>
     /// Initializes a new instance of the <see cref="CategoryModel"/> class.
@@ -220,7 +221,7 @@ public class CategoryModel : PageModel
     {
         if (Category == null)
         {
-            return "/Product/Category";
+            return CategoryPageBasePath;
         }
 
         var queryParams = new List<string>();
@@ -250,7 +251,7 @@ public class CategoryModel : PageModel
             queryParams.Add($"page={CurrentPage}");
         }
 
-        var returnUrl = $"/Product/Category/{Category.Id}";
+        var returnUrl = $"{CategoryPageBasePath}/{Category.Id}";
         if (queryParams.Count > 0)
         {
             returnUrl += "?" + string.Join("&", queryParams);
