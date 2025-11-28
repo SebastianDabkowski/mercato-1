@@ -184,6 +184,17 @@ public class CategoryService : ICategoryService
         return await _repository.GetActiveByParentIdAsync(parentId);
     }
 
+    /// <inheritdoc />
+    public async Task<Category?> GetCategoryByNameAsync(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return null;
+        }
+
+        return await _repository.GetByNameAsync(name);
+    }
+
     private async Task<List<string>> ValidateCreateCommandAsync(CreateCategoryCommand command)
     {
         var errors = new List<string>();

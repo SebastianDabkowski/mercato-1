@@ -153,4 +153,16 @@ public class CategoryRepository : ICategoryRepository
             .Replace("_", "\\_")
             .Replace("[", "\\[");
     }
+
+    /// <inheritdoc />
+    public async Task<Category?> GetByNameAsync(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return null;
+        }
+
+        return await _context.Categories
+            .FirstOrDefaultAsync(c => c.Name == name && c.IsActive);
+    }
 }

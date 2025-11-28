@@ -86,4 +86,11 @@ public interface ICategoryRepository
     /// <param name="maxResults">The maximum number of results to return.</param>
     /// <returns>A list of categories matching the search term.</returns>
     Task<IReadOnlyList<Category>> SearchCategoriesAsync(string searchTerm, int maxResults);
+
+    /// <summary>
+    /// Gets a category by its name.
+    /// </summary>
+    /// <param name="name">The category name.</param>
+    /// <returns>The category if found; otherwise, null.</returns>
+    Task<Category?> GetByNameAsync(string name);
 }

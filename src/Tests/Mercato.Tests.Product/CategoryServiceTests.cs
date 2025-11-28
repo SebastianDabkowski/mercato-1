@@ -584,6 +584,86 @@ public class CategoryServiceTests
 
     #endregion
 
+    #region GetCategoryByNameAsync Tests
+
+    [Fact]
+    public async Task GetCategoryByNameAsync_WhenCategoryExists_ReturnsCategory()
+    {
+        // Arrange
+        var expectedCategory = CreateTestCategory();
+        var categoryName = expectedCategory.Name;
+        
+        _mockRepository.Setup(r => r.GetByNameAsync(categoryName))
+            .ReturnsAsync(expectedCategory);
+
+        // Act
+        var result = await _service.GetCategoryByNameAsync(categoryName);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(expectedCategory.Id, result.Id);
+        Assert.Equal(expectedCategory.Name, result.Name);
+        _mockRepository.Verify(r => r.GetByNameAsync(categoryName), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetCategoryByNameAsync_WhenCategoryNotExists_ReturnsNull()
+    {
+        // Arrange
+        var categoryName = "NonExistent Category";
+        
+        _mockRepository.Setup(r => r.GetByNameAsync(categoryName))
+            .ReturnsAsync((Category?)null);
+
+        // Act
+        var result = await _service.GetCategoryByNameAsync(categoryName);
+
+        // Assert
+        Assert.Null(result);
+        _mockRepository.Verify(r => r.GetByNameAsync(categoryName), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetCategoryByNameAsync_EmptyName_ReturnsNull()
+    {
+        // Arrange
+        var categoryName = string.Empty;
+
+        // Act
+        var result = await _service.GetCategoryByNameAsync(categoryName);
+
+        // Assert
+        Assert.Null(result);
+        _mockRepository.Verify(r => r.GetByNameAsync(It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GetCategoryByNameAsync_WhitespaceName_ReturnsNull()
+    {
+        // Arrange
+        var categoryName = "   ";
+
+        // Act
+        var result = await _service.GetCategoryByNameAsync(categoryName);
+
+        // Assert
+        Assert.Null(result);
+        _mockRepository.Verify(r => r.GetByNameAsync(It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GetCategoryByNameAsync_NullName_ReturnsNull()
+    {
+        // Act
+        var result = await _service.GetCategoryByNameAsync(null!);
+
+        // Assert
+        Assert.Null(result);
+        _mockRepository.Verify(r => r.GetByNameAsync(It.IsAny<string>()), Times.Never);
+    }
+
+    #endregion
+
     #region Helper Methods
 
     private static CreateCategoryCommand CreateValidCreateCommand()

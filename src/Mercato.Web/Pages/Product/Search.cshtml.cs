@@ -197,6 +197,56 @@ public class SearchModel : PageModel
     }
 
     /// <summary>
+    /// Generates a return URL that includes the current search parameters for navigation back to this page.
+    /// </summary>
+    /// <returns>The return URL with all current filter and pagination parameters.</returns>
+    public string GetReturnUrl()
+    {
+        var queryParams = new List<string>();
+        
+        if (!string.IsNullOrWhiteSpace(Query))
+        {
+            queryParams.Add($"query={Uri.EscapeDataString(Query)}");
+        }
+        if (!string.IsNullOrWhiteSpace(Category))
+        {
+            queryParams.Add($"category={Uri.EscapeDataString(Category)}");
+        }
+        if (MinPrice.HasValue)
+        {
+            queryParams.Add($"minPrice={MinPrice.Value}");
+        }
+        if (MaxPrice.HasValue)
+        {
+            queryParams.Add($"maxPrice={MaxPrice.Value}");
+        }
+        if (!string.IsNullOrWhiteSpace(Condition))
+        {
+            queryParams.Add($"condition={Uri.EscapeDataString(Condition)}");
+        }
+        if (StoreId.HasValue)
+        {
+            queryParams.Add($"storeId={StoreId.Value}");
+        }
+        if (SortBy != ProductSortOption.Relevance)
+        {
+            queryParams.Add($"sortBy={SortBy}");
+        }
+        if (CurrentPage > 1)
+        {
+            queryParams.Add($"page={CurrentPage}");
+        }
+
+        var returnUrl = "/Product/Search";
+        if (queryParams.Count > 0)
+        {
+            returnUrl += "?" + string.Join("&", queryParams);
+        }
+
+        return returnUrl;
+    }
+
+    /// <summary>
     /// Loads the available stores for the seller filter dropdown.
     /// </summary>
     private async Task LoadAvailableStoresAsync()
