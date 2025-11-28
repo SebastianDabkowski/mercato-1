@@ -1,3 +1,4 @@
+using Mercato.Product.Application.Commands;
 using Mercato.Product.Application.Services;
 using Mercato.Product.Domain.Entities;
 using Mercato.Seller.Application.Services;
@@ -50,6 +51,18 @@ public class IndexModel : PageModel
     public bool Success { get; set; }
 
     /// <summary>
+    /// Gets whether a product was successfully updated.
+    /// </summary>
+    [BindProperty(SupportsGet = true)]
+    public bool Updated { get; set; }
+
+    /// <summary>
+    /// Gets whether a product was successfully archived.
+    /// </summary>
+    [BindProperty(SupportsGet = true)]
+    public bool Archived { get; set; }
+
+    /// <summary>
     /// Gets whether the seller has a store configured.
     /// </summary>
     public bool HasStore { get; private set; }
@@ -76,13 +89,55 @@ public class IndexModel : PageModel
                 return;
             }
 
-            Products = await _productService.GetProductsByStoreIdAsync(store.Id);
+            Products = await _productService.GetActiveProductsByStoreIdAsync(store.Id);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error loading products for seller {SellerId}", sellerId);
             HasError = true;
             ErrorMessage = "An error occurred while loading your products. Please try again.";
+        }
+    }
+
+    public async Task<IActionResult> OnPostDeleteAsync(Guid productId)
+    {
+        var sellerId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(sellerId))
+        {
+            _logger.LogWarning("User ID not found in claims");
+            return RedirectToPage("/Seller/Login");
+        }
+
+        try
+        {
+            var store = await _storeProfileService.GetStoreBySellerIdAsync(sellerId);
+            if (store == null)
+            {
+                return RedirectToPage("Index");
+            }
+
+            var command = new ArchiveProductCommand
+            {
+                ProductId = productId,
+                SellerId = sellerId,
+                StoreId = store.Id
+            };
+
+            var result = await _productService.ArchiveProductAsync(command);
+
+            if (result.Succeeded)
+            {
+                _logger.LogInformation("Product {ProductId} archived by seller {SellerId}", productId, sellerId);
+                return RedirectToPage("Index", new { archived = true });
+            }
+
+            _logger.LogWarning("Failed to archive product {ProductId}: {Errors}", productId, string.Join(", ", result.Errors));
+            return RedirectToPage("Index");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error archiving product {ProductId}", productId);
+            return RedirectToPage("Index");
         }
     }
 
@@ -99,6 +154,7 @@ public class IndexModel : PageModel
             ProductStatus.Active => "bg-success",
             ProductStatus.Inactive => "bg-warning",
             ProductStatus.OutOfStock => "bg-danger",
+            ProductStatus.Archived => "bg-dark",
             _ => "bg-secondary"
         };
     }
@@ -116,6 +172,7 @@ public class IndexModel : PageModel
             ProductStatus.Active => "Active",
             ProductStatus.Inactive => "Inactive",
             ProductStatus.OutOfStock => "Out of Stock",
+            ProductStatus.Archived => "Archived",
             _ => "Unknown"
         };
     }

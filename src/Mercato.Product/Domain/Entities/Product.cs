@@ -54,4 +54,19 @@ public class Product
     /// Gets or sets the date and time when the product was last updated.
     /// </summary>
     public DateTimeOffset LastUpdatedAt { get; set; }
+
+    /// <summary>
+    /// Gets or sets the ID of the user who last updated the product.
+    /// </summary>
+    public string? LastUpdatedBy { get; set; }
+
+    /// <summary>
+    /// Gets or sets the date and time when the product was archived.
+    /// </summary>
+    public DateTimeOffset? ArchivedAt { get; set; }
+
+    /// <summary>
+    /// Gets or sets the ID of the user who archived the product.
+    /// </summary>
+    public string? ArchivedBy { get; set; }
 }

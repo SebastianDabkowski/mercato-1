@@ -23,5 +23,10 @@ public enum ProductStatus
     /// <summary>
     /// Product is out of stock.
     /// </summary>
-    OutOfStock = 3
+    OutOfStock = 3,
+
+    /// <summary>
+    /// Product has been archived (soft-deleted) and is not visible anywhere.
+    /// </summary>
+    Archived = 4
 }

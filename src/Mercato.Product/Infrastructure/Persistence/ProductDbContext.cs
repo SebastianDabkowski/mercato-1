@@ -64,11 +64,22 @@ public class ProductDbContext : DbContext
             entity.Property(e => e.LastUpdatedAt)
                 .IsRequired();
 
+            entity.Property(e => e.LastUpdatedBy)
+                .HasMaxLength(450);
+
+            entity.Property(e => e.ArchivedAt);
+
+            entity.Property(e => e.ArchivedBy)
+                .HasMaxLength(450);
+
             // Index for querying products by store
             entity.HasIndex(e => e.StoreId);
 
             // Index for querying products by status
             entity.HasIndex(e => e.Status);
+
+            // Index for filtering archived products by store
+            entity.HasIndex(e => new { e.StoreId, e.Status });
         });
     }
 }
