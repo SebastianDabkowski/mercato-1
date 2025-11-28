@@ -104,8 +104,32 @@ else
                                 </div>
                             </div>
                         }
-                        <div class="text-end">
-                            <strong>Subtotal from @storeGroup.StoreName: @storeGroup.Subtotal.ToString("C")</strong>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <span class="text-muted small">Subtotal: @storeGroup.Subtotal.ToString("C")</span>
+                                @if (storeGroup.IsFreeShipping)
+                                {
+                                    <span class="badge bg-success ms-2">Free Shipping</span>
+                                }
+                                else if (storeGroup.AmountToFreeShipping.HasValue)
+                                {
+                                    <span class="text-muted small ms-2">
+                                        <i class="bi bi-truck me-1"></i>Add @storeGroup.AmountToFreeShipping.Value.ToString("C") for free shipping
+                                    </span>
+                                }
+                            </div>
+                            <div class="text-end">
+                                @if (storeGroup.IsFreeShipping)
+                                {
+                                    <span class="text-muted small"><del>Shipping: @storeGroup.ShippingCost.ToString("C")</del></span>
+                                    <strong class="ms-2">@storeGroup.Subtotal.ToString("C")</strong>
+                                }
+                                else
+                                {
+                                    <span class="text-muted small">+ Shipping: @storeGroup.ShippingCost.ToString("C")</span>
+                                    <strong class="ms-2">@storeGroup.StoreTotal.ToString("C")</strong>
+                                }
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -123,11 +147,33 @@ else
                         <span>Items (@Model.CartResult.TotalItemCount):</span>
                         <span>@Model.CartResult.TotalPrice.ToString("C")</span>
                     </div>
-                    <hr>
-                    <div class="d-flex justify-content-between mb-3">
-                        <strong>Total:</strong>
-                        <strong class="text-primary fs-5">@Model.CartResult.TotalPrice.ToString("C")</strong>
-                    </div>
+                    @if (Model.CartResult.Totals != null)
+                    {
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Shipping:</span>
+                            @if (Model.CartResult.Totals.TotalShipping == 0)
+                            {
+                                <span class="text-success">Free</span>
+                            }
+                            else
+                            {
+                                <span>@Model.CartResult.Totals.TotalShipping.ToString("C")</span>
+                            }
+                        </div>
+                        <hr>
+                        <div class="d-flex justify-content-between mb-3">
+                            <strong>Total:</strong>
+                            <strong class="text-primary fs-5">@Model.CartResult.Totals.TotalAmount.ToString("C")</strong>
+                        </div>
+                    }
+                    else
+                    {
+                        <hr>
+                        <div class="d-flex justify-content-between mb-3">
+                            <strong>Total:</strong>
+                            <strong class="text-primary fs-5">@Model.CartResult.TotalPrice.ToString("C")</strong>
+                        </div>
+                    }
                     <div class="d-grid gap-2">
                         @* TODO: Checkout page to be implemented in Orders module *@
                         <a asp-page="/Orders/Checkout" class="btn btn-primary btn-lg">

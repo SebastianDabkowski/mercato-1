@@ -45,6 +45,11 @@ public class SellerDbContext : DbContext
     /// </summary>
     public DbSet<StoreUser> StoreUsers { get; set; }
 
+    /// <summary>
+    /// Gets or sets the shipping rules.
+    /// </summary>
+    public DbSet<ShippingRule> ShippingRules { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -164,6 +169,18 @@ public class SellerDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(e => e.StoreId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Configure ShippingRule entity
+        modelBuilder.Entity<ShippingRule>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.StoreId).IsRequired();
+            entity.Property(e => e.FlatRate).HasPrecision(18, 2);
+            entity.Property(e => e.FreeShippingThreshold).HasPrecision(18, 2);
+            entity.Property(e => e.PerItemRate).HasPrecision(18, 2);
+
+            entity.HasIndex(e => e.StoreId).IsUnique();
         });
     }
 }
