@@ -73,8 +73,26 @@ public class CartService : ICartService
             var existingItem = await _cartRepository.GetItemByProductIdAsync(cart.Id, command.ProductId);
             if (existingItem != null)
             {
+                // Validate total quantity against current product stock
+                var product = await _productService.GetProductByIdAsync(command.ProductId);
+                if (product == null)
+                {
+                    return AddToCartResult.Failure("Product is no longer available.");
+                }
+
+                if (product.Status != ProductStatus.Active)
+                {
+                    return AddToCartResult.Failure("Product is no longer available for purchase.");
+                }
+
+                var newQuantity = existingItem.Quantity + command.Quantity;
+                if (newQuantity > product.Stock)
+                {
+                    return AddToCartResult.InsufficientStock(product.Stock);
+                }
+
                 // Update quantity
-                existingItem.Quantity += command.Quantity;
+                existingItem.Quantity = newQuantity;
                 existingItem.LastUpdatedAt = DateTimeOffset.UtcNow;
                 await _cartRepository.UpdateItemAsync(existingItem);
 
@@ -89,19 +107,25 @@ public class CartService : ICartService
             }
 
             // Get product information
-            var product = await _productService.GetProductByIdAsync(command.ProductId);
-            if (product == null)
+            var productInfo = await _productService.GetProductByIdAsync(command.ProductId);
+            if (productInfo == null)
             {
                 return AddToCartResult.Failure("Product not found.");
             }
 
-            if (product.Status != ProductStatus.Active)
+            if (productInfo.Status != ProductStatus.Active)
             {
                 return AddToCartResult.Failure("Product is not available.");
             }
 
+            // Validate quantity against available stock
+            if (command.Quantity > productInfo.Stock)
+            {
+                return AddToCartResult.InsufficientStock(productInfo.Stock);
+            }
+
             // Get store information
-            var store = await _storeProfileService.GetStoreByIdAsync(product.StoreId);
+            var store = await _storeProfileService.GetStoreByIdAsync(productInfo.StoreId);
             if (store == null)
             {
                 return AddToCartResult.Failure("Store not found.");
@@ -112,12 +136,12 @@ public class CartService : ICartService
             {
                 Id = Guid.NewGuid(),
                 CartId = cart.Id,
-                ProductId = product.Id,
-                StoreId = product.StoreId,
+                ProductId = productInfo.Id,
+                StoreId = productInfo.StoreId,
                 Quantity = command.Quantity,
-                ProductTitle = product.Title,
-                ProductPrice = product.Price,
-                ProductImageUrl = GetFirstImageUrl(product.Images),
+                ProductTitle = productInfo.Title,
+                ProductPrice = productInfo.Price,
+                ProductImageUrl = GetFirstImageUrl(productInfo.Images),
                 StoreName = store.Name,
                 CreatedAt = DateTimeOffset.UtcNow,
                 LastUpdatedAt = DateTimeOffset.UtcNow
@@ -198,6 +222,23 @@ public class CartService : ICartService
             }
             else
             {
+                // Validate quantity against current product stock
+                var product = await _productService.GetProductByIdAsync(cartItem.ProductId);
+                if (product == null)
+                {
+                    return UpdateCartItemQuantityResult.Failure("Product is no longer available.");
+                }
+
+                if (product.Status != Product.Domain.Entities.ProductStatus.Active)
+                {
+                    return UpdateCartItemQuantityResult.Failure("Product is no longer available for purchase.");
+                }
+
+                if (command.Quantity > product.Stock)
+                {
+                    return UpdateCartItemQuantityResult.InsufficientStock(product.Stock);
+                }
+
                 cartItem.Quantity = command.Quantity;
                 cartItem.LastUpdatedAt = DateTimeOffset.UtcNow;
                 await _cartRepository.UpdateItemAsync(cartItem);

@@ -21,6 +21,11 @@ public class UpdateCartItemQuantityResult
     public bool IsNotAuthorized { get; private init; }
 
     /// <summary>
+    /// Gets the available stock for the product when validation fails due to insufficient stock.
+    /// </summary>
+    public int? AvailableStock { get; private init; }
+
+    /// <summary>
     /// Creates a successful result.
     /// </summary>
     /// <returns>A successful result.</returns>
@@ -47,6 +52,18 @@ public class UpdateCartItemQuantityResult
     /// <param name="error">The error message.</param>
     /// <returns>A failed result.</returns>
     public static UpdateCartItemQuantityResult Failure(string error) => Failure([error]);
+
+    /// <summary>
+    /// Creates a failed result for insufficient stock.
+    /// </summary>
+    /// <param name="availableStock">The current available stock.</param>
+    /// <returns>A failed result with stock information.</returns>
+    public static UpdateCartItemQuantityResult InsufficientStock(int availableStock) => new()
+    {
+        Succeeded = false,
+        AvailableStock = availableStock,
+        Errors = [$"Requested quantity exceeds available stock. Only {availableStock} item(s) available."]
+    };
 
     /// <summary>
     /// Creates a not authorized result.
