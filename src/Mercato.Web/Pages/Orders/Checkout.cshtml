@@ -287,6 +287,19 @@
                                         <span>@Model.CartResult.Totals.TotalShipping.ToString("C")</span>
                                     }
                                 </div>
+                                @if (Model.CartResult.Totals.DiscountAmount > 0)
+                                {
+                                    <div class="d-flex justify-content-between mb-2 text-success">
+                                        <span>
+                                            <i class="bi bi-tag-fill me-1"></i>Discount
+                                            @if (!string.IsNullOrEmpty(Model.CartResult.Totals.AppliedPromoCode))
+                                            {
+                                                <span class="small">(@Model.CartResult.Totals.AppliedPromoCode)</span>
+                                            }
+                                        </span>
+                                        <span>-@Model.CartResult.Totals.DiscountAmount.ToString("C")</span>
+                                    </div>
+                                }
                                 <hr>
                                 <div class="d-flex justify-content-between">
                                     <strong>Total:</strong>
