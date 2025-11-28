@@ -199,12 +199,12 @@
                                     </div>
                                 </li>
                             }
-                            @if (order.Status == Mercato.Orders.Domain.Entities.OrderStatus.Confirmed && !order.ShippedAt.HasValue)
+                            @if (order.Status == Mercato.Orders.Domain.Entities.OrderStatus.Paid && !order.ShippedAt.HasValue)
                             {
                                 <li class="d-flex align-items-start mb-3">
                                     <span class="badge bg-secondary rounded-circle p-2 me-3"><i class="bi bi-hourglass"></i></span>
                                     <div>
-                                        <strong class="text-muted">Processing</strong>
+                                        <strong class="text-muted">Preparing</strong>
                                         <br><small class="text-muted">Your order is being prepared</small>
                                     </div>
                                 </li>

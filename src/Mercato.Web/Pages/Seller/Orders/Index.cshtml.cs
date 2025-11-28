@@ -94,9 +94,9 @@ public class IndexModel : PageModel
     /// <returns>The CSS class name.</returns>
     public static string GetStatusBadgeClass(SellerSubOrderStatus status) => status switch
     {
-        SellerSubOrderStatus.Pending => "bg-warning text-dark",
-        SellerSubOrderStatus.Confirmed => "bg-info",
-        SellerSubOrderStatus.Processing => "bg-primary",
+        SellerSubOrderStatus.New => "bg-warning text-dark",
+        SellerSubOrderStatus.Paid => "bg-info",
+        SellerSubOrderStatus.Preparing => "bg-primary",
         SellerSubOrderStatus.Shipped => "bg-secondary",
         SellerSubOrderStatus.Delivered => "bg-success",
         SellerSubOrderStatus.Cancelled => "bg-danger",
@@ -111,9 +111,9 @@ public class IndexModel : PageModel
     /// <returns>The display text.</returns>
     public static string GetStatusDisplayText(SellerSubOrderStatus status) => status switch
     {
-        SellerSubOrderStatus.Pending => "Pending",
-        SellerSubOrderStatus.Confirmed => "Confirmed",
-        SellerSubOrderStatus.Processing => "Processing",
+        SellerSubOrderStatus.New => "New",
+        SellerSubOrderStatus.Paid => "Paid",
+        SellerSubOrderStatus.Preparing => "Preparing",
         SellerSubOrderStatus.Shipped => "Shipped",
         SellerSubOrderStatus.Delivered => "Delivered",
         SellerSubOrderStatus.Cancelled => "Cancelled",

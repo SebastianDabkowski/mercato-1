@@ -58,7 +58,7 @@ public class OrderServiceTests
             o.BuyerId == TestBuyerId &&
             o.PaymentTransactionId == TestTransactionId &&
             o.Items.Count == 1 &&
-            o.Status == OrderStatus.Pending)), Times.Once);
+            o.Status == OrderStatus.New)), Times.Once);
     }
 
     [Fact]
@@ -305,7 +305,7 @@ public class OrderServiceTests
     #region UpdateOrderStatusAsync Tests
 
     [Fact]
-    public async Task UpdateOrderStatusAsync_PaymentSuccessful_ConfirmsOrder()
+    public async Task UpdateOrderStatusAsync_PaymentSuccessful_SetsOrderToPaid()
     {
         // Arrange
         var order = CreateTestOrder();
@@ -322,7 +322,7 @@ public class OrderServiceTests
         // Assert
         Assert.True(result.Succeeded);
         _mockOrderRepository.Verify(r => r.UpdateAsync(It.Is<Order>(o =>
-            o.Status == OrderStatus.Confirmed &&
+            o.Status == OrderStatus.Paid &&
             o.ConfirmedAt != null)), Times.Once);
     }
 
@@ -509,7 +509,7 @@ public class OrderServiceTests
             Id = TestOrderId,
             BuyerId = TestBuyerId,
             OrderNumber = "ORD-12345678",
-            Status = OrderStatus.Pending,
+            Status = OrderStatus.New,
             PaymentTransactionId = TestTransactionId,
             ItemsSubtotal = 59.98m,
             ShippingTotal = 5.99m,
@@ -537,7 +537,7 @@ public class OrderServiceTests
             StoreId = TestStoreId,
             StoreName = "Test Store",
             SubOrderNumber = "ORD-12345678-S1",
-            Status = SellerSubOrderStatus.Confirmed,
+            Status = SellerSubOrderStatus.Paid,
             ItemsSubtotal = 59.98m,
             ShippingCost = 5.99m,
             TotalAmount = 65.97m,
@@ -568,7 +568,7 @@ public class OrderServiceTests
         _mockOrderRepository.Verify(r => r.AddAsync(It.Is<Order>(o =>
             o.SellerSubOrders.Count == 1 &&
             o.SellerSubOrders.First().StoreId == TestStoreId &&
-            o.SellerSubOrders.First().Status == SellerSubOrderStatus.Pending)), Times.Once);
+            o.SellerSubOrders.First().Status == SellerSubOrderStatus.New)), Times.Once);
     }
 
     [Fact]
@@ -761,7 +761,7 @@ public class OrderServiceTests
     {
         // Arrange
         var subOrder = CreateTestSellerSubOrder();
-        subOrder.Status = SellerSubOrderStatus.Confirmed;
+        subOrder.Status = SellerSubOrderStatus.Paid;
 
         _mockSellerSubOrderRepository.Setup(r => r.GetByIdAsync(subOrder.Id))
             .ReturnsAsync(subOrder);
@@ -770,7 +770,7 @@ public class OrderServiceTests
 
         var command = new UpdateSellerSubOrderStatusCommand
         {
-            NewStatus = SellerSubOrderStatus.Processing
+            NewStatus = SellerSubOrderStatus.Preparing
         };
 
         // Act
@@ -779,7 +779,7 @@ public class OrderServiceTests
         // Assert
         Assert.True(result.Succeeded);
         _mockSellerSubOrderRepository.Verify(r => r.UpdateAsync(It.Is<SellerSubOrder>(s =>
-            s.Status == SellerSubOrderStatus.Processing)), Times.Once);
+            s.Status == SellerSubOrderStatus.Preparing)), Times.Once);
     }
 
     [Fact]
@@ -787,14 +787,14 @@ public class OrderServiceTests
     {
         // Arrange
         var subOrder = CreateTestSellerSubOrder();
-        subOrder.Status = SellerSubOrderStatus.Delivered; // Final status
+        subOrder.Status = SellerSubOrderStatus.Delivered; // Cannot transition to Preparing from Delivered
 
         _mockSellerSubOrderRepository.Setup(r => r.GetByIdAsync(subOrder.Id))
             .ReturnsAsync(subOrder);
 
         var command = new UpdateSellerSubOrderStatusCommand
         {
-            NewStatus = SellerSubOrderStatus.Processing // Invalid transition
+            NewStatus = SellerSubOrderStatus.Preparing // Invalid transition
         };
 
         // Act
@@ -802,7 +802,7 @@ public class OrderServiceTests
 
         // Assert
         Assert.False(result.Succeeded);
-        Assert.Contains("Cannot transition from Delivered to Processing.", result.Errors);
+        Assert.Contains("Cannot transition from Delivered to Preparing.", result.Errors);
     }
 
     [Fact]
@@ -810,7 +810,7 @@ public class OrderServiceTests
     {
         // Arrange
         var subOrder = CreateTestSellerSubOrder();
-        subOrder.Status = SellerSubOrderStatus.Processing;
+        subOrder.Status = SellerSubOrderStatus.Preparing;
 
         _mockSellerSubOrderRepository.Setup(r => r.GetByIdAsync(subOrder.Id))
             .ReturnsAsync(subOrder);
@@ -848,7 +848,7 @@ public class OrderServiceTests
 
         var command = new UpdateSellerSubOrderStatusCommand
         {
-            NewStatus = SellerSubOrderStatus.Processing
+            NewStatus = SellerSubOrderStatus.Preparing
         };
 
         // Act
@@ -857,6 +857,33 @@ public class OrderServiceTests
         // Assert
         Assert.False(result.Succeeded);
         Assert.True(result.IsNotAuthorized);
+    }
+
+    [Fact]
+    public async Task UpdateSellerSubOrderStatusAsync_Refunded_SetsRefundedAt()
+    {
+        // Arrange
+        var subOrder = CreateTestSellerSubOrder();
+        subOrder.Status = SellerSubOrderStatus.Delivered;
+
+        _mockSellerSubOrderRepository.Setup(r => r.GetByIdAsync(subOrder.Id))
+            .ReturnsAsync(subOrder);
+        _mockSellerSubOrderRepository.Setup(r => r.UpdateAsync(It.IsAny<SellerSubOrder>()))
+            .Returns(Task.CompletedTask);
+
+        var command = new UpdateSellerSubOrderStatusCommand
+        {
+            NewStatus = SellerSubOrderStatus.Refunded
+        };
+
+        // Act
+        var result = await _service.UpdateSellerSubOrderStatusAsync(subOrder.Id, TestStoreId, command);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        _mockSellerSubOrderRepository.Verify(r => r.UpdateAsync(It.Is<SellerSubOrder>(s =>
+            s.Status == SellerSubOrderStatus.Refunded &&
+            s.RefundedAt != null)), Times.Once);
     }
 
     #endregion

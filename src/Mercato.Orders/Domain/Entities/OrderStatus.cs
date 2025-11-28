@@ -8,17 +8,17 @@ public enum OrderStatus
     /// <summary>
     /// The order has been created but payment is pending.
     /// </summary>
-    Pending = 0,
+    New = 0,
 
     /// <summary>
-    /// Payment has been confirmed and the order is being processed.
+    /// Payment has been authorized and the order is ready for fulfillment.
     /// </summary>
-    Confirmed = 1,
+    Paid = 1,
 
     /// <summary>
     /// The order is being prepared for shipment.
     /// </summary>
-    Processing = 2,
+    Preparing = 2,
 
     /// <summary>
     /// The order has been shipped.

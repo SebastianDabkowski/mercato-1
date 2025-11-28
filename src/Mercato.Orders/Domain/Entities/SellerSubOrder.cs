@@ -34,7 +34,7 @@ public class SellerSubOrder
     /// <summary>
     /// Gets or sets the current status of the seller sub-order.
     /// </summary>
-    public SellerSubOrderStatus Status { get; set; } = SellerSubOrderStatus.Pending;
+    public SellerSubOrderStatus Status { get; set; } = SellerSubOrderStatus.New;
 
     /// <summary>
     /// Gets or sets the subtotal for items in this sub-order.
@@ -80,6 +80,11 @@ public class SellerSubOrder
     /// Gets or sets the date and time when the sub-order was cancelled.
     /// </summary>
     public DateTimeOffset? CancelledAt { get; set; }
+
+    /// <summary>
+    /// Gets or sets the date and time when the sub-order was refunded.
+    /// </summary>
+    public DateTimeOffset? RefundedAt { get; set; }
 
     /// <summary>
     /// Gets or sets the tracking number for shipment.

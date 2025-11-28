@@ -93,9 +93,9 @@ public class DetailsModel : PageModel
     /// <returns>The CSS class name.</returns>
     public static string GetStatusBadgeClass(OrderStatus status) => status switch
     {
-        OrderStatus.Pending => "bg-warning text-dark",
-        OrderStatus.Confirmed => "bg-info",
-        OrderStatus.Processing => "bg-primary",
+        OrderStatus.New => "bg-warning text-dark",
+        OrderStatus.Paid => "bg-info",
+        OrderStatus.Preparing => "bg-primary",
         OrderStatus.Shipped => "bg-secondary",
         OrderStatus.Delivered => "bg-success",
         OrderStatus.Cancelled => "bg-danger",
@@ -110,9 +110,9 @@ public class DetailsModel : PageModel
     /// <returns>The display text.</returns>
     public static string GetStatusDisplayText(OrderStatus status) => status switch
     {
-        OrderStatus.Pending => "Pending",
-        OrderStatus.Confirmed => "Confirmed",
-        OrderStatus.Processing => "Processing",
+        OrderStatus.New => "New",
+        OrderStatus.Paid => "Paid",
+        OrderStatus.Preparing => "Preparing",
         OrderStatus.Shipped => "Shipped",
         OrderStatus.Delivered => "Delivered",
         OrderStatus.Cancelled => "Cancelled",
@@ -127,9 +127,9 @@ public class DetailsModel : PageModel
     /// <returns>The CSS class name.</returns>
     public static string GetSubOrderStatusBadgeClass(SellerSubOrderStatus status) => status switch
     {
-        SellerSubOrderStatus.Pending => "bg-warning text-dark",
-        SellerSubOrderStatus.Confirmed => "bg-info",
-        SellerSubOrderStatus.Processing => "bg-primary",
+        SellerSubOrderStatus.New => "bg-warning text-dark",
+        SellerSubOrderStatus.Paid => "bg-info",
+        SellerSubOrderStatus.Preparing => "bg-primary",
         SellerSubOrderStatus.Shipped => "bg-secondary",
         SellerSubOrderStatus.Delivered => "bg-success",
         SellerSubOrderStatus.Cancelled => "bg-danger",
@@ -144,9 +144,9 @@ public class DetailsModel : PageModel
     /// <returns>The display text.</returns>
     public static string GetSubOrderStatusDisplayText(SellerSubOrderStatus status) => status switch
     {
-        SellerSubOrderStatus.Pending => "Pending",
-        SellerSubOrderStatus.Confirmed => "Confirmed",
-        SellerSubOrderStatus.Processing => "Processing",
+        SellerSubOrderStatus.New => "New",
+        SellerSubOrderStatus.Paid => "Paid",
+        SellerSubOrderStatus.Preparing => "Preparing",
         SellerSubOrderStatus.Shipped => "Shipped",
         SellerSubOrderStatus.Delivered => "Delivered",
         SellerSubOrderStatus.Cancelled => "Cancelled",
