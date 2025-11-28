@@ -64,6 +64,60 @@ public class OrderRepository : IOrderRepository
     }
 
     /// <inheritdoc />
+    public async Task<(IReadOnlyList<Order> Orders, int TotalCount)> GetFilteredByBuyerIdAsync(
+        string buyerId,
+        IReadOnlyList<OrderStatus>? statuses,
+        DateTimeOffset? fromDate,
+        DateTimeOffset? toDate,
+        Guid? storeId,
+        int page,
+        int pageSize)
+    {
+        var query = _context.Orders
+            .Include(o => o.Items)
+            .Include(o => o.SellerSubOrders)
+                .ThenInclude(s => s.Items)
+            .Where(o => o.BuyerId == buyerId);
+
+        // Apply status filter
+        if (statuses != null && statuses.Count > 0)
+        {
+            query = query.Where(o => statuses.Contains(o.Status));
+        }
+
+        // Apply date range filter
+        if (fromDate.HasValue)
+        {
+            query = query.Where(o => o.CreatedAt >= fromDate.Value);
+        }
+
+        if (toDate.HasValue)
+        {
+            // Include the entire end date by adding one day and using less than
+            var endOfDay = toDate.Value.Date.AddDays(1);
+            query = query.Where(o => o.CreatedAt < endOfDay);
+        }
+
+        // Apply seller (store) filter
+        if (storeId.HasValue)
+        {
+            query = query.Where(o => o.SellerSubOrders.Any(s => s.StoreId == storeId.Value));
+        }
+
+        // Get total count before pagination
+        var totalCount = await query.CountAsync();
+
+        // Apply sorting and pagination
+        var orders = await query
+            .OrderByDescending(o => o.CreatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        return (orders, totalCount);
+    }
+
+    /// <inheritdoc />
     public async Task<Order> AddAsync(Order order)
     {
         await _context.Orders.AddAsync(order);

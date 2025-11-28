@@ -1,4 +1,5 @@
 using Mercato.Orders.Application.Commands;
+using Mercato.Orders.Application.Queries;
 using Mercato.Orders.Application.Services;
 using Mercato.Orders.Domain.Entities;
 using Mercato.Orders.Domain.Interfaces;
@@ -426,6 +427,294 @@ public class OrderServiceTests
         // Assert
         Assert.True(result.Succeeded);
         Assert.Empty(result.Orders);
+    }
+
+    #endregion
+
+    #region GetFilteredOrdersForBuyerAsync Tests
+
+    [Fact]
+    public async Task GetFilteredOrdersForBuyerAsync_ValidQuery_ReturnsFilteredOrders()
+    {
+        // Arrange
+        var orders = new List<Order> { CreateTestOrder() };
+        var query = new BuyerOrderFilterQuery
+        {
+            BuyerId = TestBuyerId,
+            Page = 1,
+            PageSize = 10
+        };
+
+        _mockOrderRepository.Setup(r => r.GetFilteredByBuyerIdAsync(
+                TestBuyerId, null, null, null, null, 1, 10))
+            .ReturnsAsync((orders, 1));
+
+        // Act
+        var result = await _service.GetFilteredOrdersForBuyerAsync(query);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.Single(result.Orders);
+        Assert.Equal(1, result.TotalCount);
+        Assert.Equal(1, result.Page);
+        Assert.Equal(10, result.PageSize);
+    }
+
+    [Fact]
+    public async Task GetFilteredOrdersForBuyerAsync_WithStatusFilter_ReturnsMatchingOrders()
+    {
+        // Arrange
+        var orders = new List<Order> { CreateTestOrder() };
+        var statuses = new List<OrderStatus> { OrderStatus.New, OrderStatus.Paid };
+        var query = new BuyerOrderFilterQuery
+        {
+            BuyerId = TestBuyerId,
+            Statuses = statuses,
+            Page = 1,
+            PageSize = 10
+        };
+
+        _mockOrderRepository.Setup(r => r.GetFilteredByBuyerIdAsync(
+                TestBuyerId, statuses, null, null, null, 1, 10))
+            .ReturnsAsync((orders, 1));
+
+        // Act
+        var result = await _service.GetFilteredOrdersForBuyerAsync(query);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.Single(result.Orders);
+        _mockOrderRepository.Verify(r => r.GetFilteredByBuyerIdAsync(
+            TestBuyerId, statuses, null, null, null, 1, 10), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetFilteredOrdersForBuyerAsync_WithDateRange_ReturnsMatchingOrders()
+    {
+        // Arrange
+        var orders = new List<Order> { CreateTestOrder() };
+        var fromDate = DateTimeOffset.UtcNow.AddDays(-7);
+        var toDate = DateTimeOffset.UtcNow;
+        var query = new BuyerOrderFilterQuery
+        {
+            BuyerId = TestBuyerId,
+            FromDate = fromDate,
+            ToDate = toDate,
+            Page = 1,
+            PageSize = 10
+        };
+
+        _mockOrderRepository.Setup(r => r.GetFilteredByBuyerIdAsync(
+                TestBuyerId, null, fromDate, toDate, null, 1, 10))
+            .ReturnsAsync((orders, 1));
+
+        // Act
+        var result = await _service.GetFilteredOrdersForBuyerAsync(query);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        _mockOrderRepository.Verify(r => r.GetFilteredByBuyerIdAsync(
+            TestBuyerId, null, fromDate, toDate, null, 1, 10), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetFilteredOrdersForBuyerAsync_WithStoreId_ReturnsMatchingOrders()
+    {
+        // Arrange
+        var orders = new List<Order> { CreateTestOrder() };
+        var query = new BuyerOrderFilterQuery
+        {
+            BuyerId = TestBuyerId,
+            StoreId = TestStoreId,
+            Page = 1,
+            PageSize = 10
+        };
+
+        _mockOrderRepository.Setup(r => r.GetFilteredByBuyerIdAsync(
+                TestBuyerId, null, null, null, TestStoreId, 1, 10))
+            .ReturnsAsync((orders, 1));
+
+        // Act
+        var result = await _service.GetFilteredOrdersForBuyerAsync(query);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        _mockOrderRepository.Verify(r => r.GetFilteredByBuyerIdAsync(
+            TestBuyerId, null, null, null, TestStoreId, 1, 10), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetFilteredOrdersForBuyerAsync_EmptyBuyerId_ReturnsFailure()
+    {
+        // Arrange
+        var query = new BuyerOrderFilterQuery
+        {
+            BuyerId = string.Empty,
+            Page = 1,
+            PageSize = 10
+        };
+
+        // Act
+        var result = await _service.GetFilteredOrdersForBuyerAsync(query);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains("Buyer ID is required.", result.Errors);
+    }
+
+    [Fact]
+    public async Task GetFilteredOrdersForBuyerAsync_InvalidPage_ReturnsFailure()
+    {
+        // Arrange
+        var query = new BuyerOrderFilterQuery
+        {
+            BuyerId = TestBuyerId,
+            Page = 0,
+            PageSize = 10
+        };
+
+        // Act
+        var result = await _service.GetFilteredOrdersForBuyerAsync(query);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains("Page number must be at least 1.", result.Errors);
+    }
+
+    [Fact]
+    public async Task GetFilteredOrdersForBuyerAsync_InvalidPageSize_ReturnsFailure()
+    {
+        // Arrange
+        var query = new BuyerOrderFilterQuery
+        {
+            BuyerId = TestBuyerId,
+            Page = 1,
+            PageSize = 0
+        };
+
+        // Act
+        var result = await _service.GetFilteredOrdersForBuyerAsync(query);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains("Page size must be between 1 and 100.", result.Errors);
+    }
+
+    [Fact]
+    public async Task GetFilteredOrdersForBuyerAsync_PageSizeTooLarge_ReturnsFailure()
+    {
+        // Arrange
+        var query = new BuyerOrderFilterQuery
+        {
+            BuyerId = TestBuyerId,
+            Page = 1,
+            PageSize = 101
+        };
+
+        // Act
+        var result = await _service.GetFilteredOrdersForBuyerAsync(query);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains("Page size must be between 1 and 100.", result.Errors);
+    }
+
+    [Fact]
+    public async Task GetFilteredOrdersForBuyerAsync_FromDateAfterToDate_ReturnsFailure()
+    {
+        // Arrange
+        var query = new BuyerOrderFilterQuery
+        {
+            BuyerId = TestBuyerId,
+            FromDate = DateTimeOffset.UtcNow,
+            ToDate = DateTimeOffset.UtcNow.AddDays(-7),
+            Page = 1,
+            PageSize = 10
+        };
+
+        // Act
+        var result = await _service.GetFilteredOrdersForBuyerAsync(query);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains("From date cannot be after to date.", result.Errors);
+    }
+
+    [Fact]
+    public async Task GetFilteredOrdersForBuyerAsync_NoResults_ReturnsEmptyList()
+    {
+        // Arrange
+        var query = new BuyerOrderFilterQuery
+        {
+            BuyerId = TestBuyerId,
+            Page = 1,
+            PageSize = 10
+        };
+
+        _mockOrderRepository.Setup(r => r.GetFilteredByBuyerIdAsync(
+                TestBuyerId, null, null, null, null, 1, 10))
+            .ReturnsAsync((new List<Order>(), 0));
+
+        // Act
+        var result = await _service.GetFilteredOrdersForBuyerAsync(query);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.Empty(result.Orders);
+        Assert.Equal(0, result.TotalCount);
+    }
+
+    [Fact]
+    public async Task GetFilteredOrdersForBuyerAsync_Pagination_ReturnsCorrectTotalPages()
+    {
+        // Arrange
+        var orders = new List<Order> { CreateTestOrder() };
+        var query = new BuyerOrderFilterQuery
+        {
+            BuyerId = TestBuyerId,
+            Page = 1,
+            PageSize = 10
+        };
+
+        _mockOrderRepository.Setup(r => r.GetFilteredByBuyerIdAsync(
+                TestBuyerId, null, null, null, null, 1, 10))
+            .ReturnsAsync((orders, 25));
+
+        // Act
+        var result = await _service.GetFilteredOrdersForBuyerAsync(query);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.Equal(25, result.TotalCount);
+        Assert.Equal(3, result.TotalPages);
+        Assert.True(result.HasNextPage);
+        Assert.False(result.HasPreviousPage);
+    }
+
+    [Fact]
+    public async Task GetFilteredOrdersForBuyerAsync_MiddlePage_HasPreviousAndNextPages()
+    {
+        // Arrange
+        var orders = new List<Order> { CreateTestOrder() };
+        var query = new BuyerOrderFilterQuery
+        {
+            BuyerId = TestBuyerId,
+            Page = 2,
+            PageSize = 10
+        };
+
+        _mockOrderRepository.Setup(r => r.GetFilteredByBuyerIdAsync(
+                TestBuyerId, null, null, null, null, 2, 10))
+            .ReturnsAsync((orders, 25));
+
+        // Act
+        var result = await _service.GetFilteredOrdersForBuyerAsync(query);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.Equal(2, result.Page);
+        Assert.True(result.HasNextPage);
+        Assert.True(result.HasPreviousPage);
     }
 
     #endregion

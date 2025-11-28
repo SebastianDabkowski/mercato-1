@@ -1,4 +1,5 @@
 using Mercato.Orders.Application.Commands;
+using Mercato.Orders.Application.Queries;
 using Mercato.Orders.Application.Services;
 using Mercato.Orders.Domain.Entities;
 using Mercato.Orders.Domain.Interfaces;
@@ -288,6 +289,35 @@ public class OrderService : IOrderService
     }
 
     /// <inheritdoc />
+    public async Task<GetFilteredOrdersResult> GetFilteredOrdersForBuyerAsync(BuyerOrderFilterQuery query)
+    {
+        var validationErrors = ValidateFilterQuery(query);
+        if (validationErrors.Count > 0)
+        {
+            return GetFilteredOrdersResult.Failure(validationErrors);
+        }
+
+        try
+        {
+            var (orders, totalCount) = await _orderRepository.GetFilteredByBuyerIdAsync(
+                query.BuyerId,
+                query.Statuses.Count > 0 ? query.Statuses : null,
+                query.FromDate,
+                query.ToDate,
+                query.StoreId,
+                query.Page,
+                query.PageSize);
+
+            return GetFilteredOrdersResult.Success(orders, totalCount, query.Page, query.PageSize);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting filtered orders for buyer {BuyerId}", query.BuyerId);
+            return GetFilteredOrdersResult.Failure("An error occurred while getting the orders.");
+        }
+    }
+
+    /// <inheritdoc />
     public async Task<SendEmailResult> SendOrderConfirmationEmailAsync(Guid orderId, string buyerEmail)
     {
         if (string.IsNullOrEmpty(buyerEmail))
@@ -544,6 +574,33 @@ public class OrderService : IOrderService
             !allowedStatuses.Contains(newStatus))
         {
             errors.Add($"Cannot transition from {currentStatus} to {newStatus}.");
+        }
+
+        return errors;
+    }
+
+    private static List<string> ValidateFilterQuery(BuyerOrderFilterQuery query)
+    {
+        var errors = new List<string>();
+
+        if (string.IsNullOrEmpty(query.BuyerId))
+        {
+            errors.Add("Buyer ID is required.");
+        }
+
+        if (query.Page < 1)
+        {
+            errors.Add("Page number must be at least 1.");
+        }
+
+        if (query.PageSize < 1 || query.PageSize > 100)
+        {
+            errors.Add("Page size must be between 1 and 100.");
+        }
+
+        if (query.FromDate.HasValue && query.ToDate.HasValue && query.FromDate > query.ToDate)
+        {
+            errors.Add("From date cannot be after to date.");
         }
 
         return errors;
