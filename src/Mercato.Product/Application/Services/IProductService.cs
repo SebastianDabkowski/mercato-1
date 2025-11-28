@@ -56,4 +56,11 @@ public interface IProductService
     /// <param name="command">The change status command.</param>
     /// <returns>The result of the status change operation.</returns>
     Task<ChangeProductStatusResult> ChangeProductStatusAsync(ChangeProductStatusCommand command);
+
+    /// <summary>
+    /// Bulk updates price and/or stock for multiple products.
+    /// </summary>
+    /// <param name="command">The bulk update command.</param>
+    /// <returns>The result of the bulk update operation.</returns>
+    Task<BulkUpdatePriceStockResult> BulkUpdatePriceStockAsync(BulkUpdatePriceStockCommand command);
 }

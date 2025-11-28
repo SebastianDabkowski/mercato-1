@@ -66,4 +66,20 @@ public class ProductRepository : IProductRepository
             .OrderByDescending(p => p.CreatedAt)
             .ToListAsync();
     }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<Domain.Entities.Product>> GetByIdsAsync(IEnumerable<Guid> ids)
+    {
+        var idList = ids.ToList();
+        return await _context.Products
+            .Where(p => idList.Contains(p.Id))
+            .ToListAsync();
+    }
+
+    /// <inheritdoc />
+    public async Task UpdateManyAsync(IEnumerable<Domain.Entities.Product> products)
+    {
+        _context.Products.UpdateRange(products);
+        await _context.SaveChangesAsync();
+    }
 }

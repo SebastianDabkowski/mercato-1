@@ -561,4 +561,238 @@ public class ProductService : IProductService
             errors.Add("At least one image is required to set product to Active.");
         }
     }
+
+    /// <inheritdoc />
+    public async Task<BulkUpdatePriceStockResult> BulkUpdatePriceStockAsync(BulkUpdatePriceStockCommand command)
+    {
+        var validationErrors = ValidateBulkUpdateCommand(command);
+        if (validationErrors.Count > 0)
+        {
+            return BulkUpdatePriceStockResult.Failure(validationErrors);
+        }
+
+        try
+        {
+            var products = await _repository.GetByIdsAsync(command.ProductIds);
+
+            if (products.Count == 0)
+            {
+                return BulkUpdatePriceStockResult.Failure("No products found with the specified IDs.");
+            }
+
+            var successCount = 0;
+            var failedProducts = new List<BulkUpdateProductFailure>();
+            var productsToUpdate = new List<Domain.Entities.Product>();
+
+            foreach (var product in products)
+            {
+                // Authorization check: product must belong to the seller's store
+                if (product.StoreId != command.StoreId)
+                {
+                    failedProducts.Add(new BulkUpdateProductFailure
+                    {
+                        ProductId = product.Id,
+                        ProductTitle = product.Title,
+                        Error = "You are not authorized to update this product."
+                    });
+                    continue;
+                }
+
+                // Cannot update archived products
+                if (product.Status == ProductStatus.Archived)
+                {
+                    failedProducts.Add(new BulkUpdateProductFailure
+                    {
+                        ProductId = product.Id,
+                        ProductTitle = product.Title,
+                        Error = "Cannot update an archived product."
+                    });
+                    continue;
+                }
+
+                // Calculate new price if price update is specified
+                decimal? newPrice = null;
+                if (command.PriceUpdate != null)
+                {
+                    newPrice = CalculateNewPrice(product.Price, command.PriceUpdate);
+                    if (newPrice <= 0)
+                    {
+                        failedProducts.Add(new BulkUpdateProductFailure
+                        {
+                            ProductId = product.Id,
+                            ProductTitle = product.Title,
+                            Error = "Resulting price would be zero or negative."
+                        });
+                        continue;
+                    }
+                }
+
+                // Calculate new stock if stock update is specified
+                int? newStock = null;
+                if (command.StockUpdate != null)
+                {
+                    newStock = CalculateNewStock(product.Stock, command.StockUpdate);
+                    if (newStock < 0)
+                    {
+                        failedProducts.Add(new BulkUpdateProductFailure
+                        {
+                            ProductId = product.Id,
+                            ProductTitle = product.Title,
+                            Error = "Resulting stock would be negative."
+                        });
+                        continue;
+                    }
+                }
+
+                // Apply the updates
+                if (newPrice.HasValue)
+                {
+                    product.Price = newPrice.Value;
+                }
+
+                if (newStock.HasValue)
+                {
+                    product.Stock = newStock.Value;
+                }
+
+                product.LastUpdatedAt = DateTimeOffset.UtcNow;
+                product.LastUpdatedBy = command.SellerId;
+
+                productsToUpdate.Add(product);
+                successCount++;
+            }
+
+            // Update all successful products in a batch
+            if (productsToUpdate.Count > 0)
+            {
+                await _repository.UpdateManyAsync(productsToUpdate);
+            }
+
+            _logger.LogInformation(
+                "Bulk update completed for store {StoreId} by seller {SellerId}: {SuccessCount} succeeded, {FailureCount} failed",
+                command.StoreId,
+                command.SellerId,
+                successCount,
+                failedProducts.Count);
+
+            return BulkUpdatePriceStockResult.Success(successCount, failedProducts);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during bulk update for store {StoreId}", command.StoreId);
+            return BulkUpdatePriceStockResult.Failure("An error occurred while updating the products.");
+        }
+    }
+
+    private static List<string> ValidateBulkUpdateCommand(BulkUpdatePriceStockCommand command)
+    {
+        var errors = new List<string>();
+
+        if (command.StoreId == Guid.Empty)
+        {
+            errors.Add("Store ID is required.");
+        }
+
+        if (string.IsNullOrWhiteSpace(command.SellerId))
+        {
+            errors.Add("Seller ID is required.");
+        }
+
+        if (command.ProductIds == null || command.ProductIds.Count == 0)
+        {
+            errors.Add("At least one product ID is required.");
+        }
+
+        if (command.PriceUpdate == null && command.StockUpdate == null)
+        {
+            errors.Add("At least one update (price or stock) must be specified.");
+        }
+
+        if (command.PriceUpdate != null)
+        {
+            ValidatePriceUpdate(command.PriceUpdate, errors);
+        }
+
+        if (command.StockUpdate != null)
+        {
+            ValidateStockUpdate(command.StockUpdate, errors);
+        }
+
+        return errors;
+    }
+
+    private static void ValidatePriceUpdate(BulkPriceUpdate priceUpdate, List<string> errors)
+    {
+        switch (priceUpdate.UpdateType)
+        {
+            case BulkPriceUpdateType.Fixed:
+                if (priceUpdate.Value <= 0)
+                {
+                    errors.Add("Fixed price must be greater than 0.");
+                }
+                break;
+            case BulkPriceUpdateType.PercentageIncrease:
+            case BulkPriceUpdateType.PercentageDecrease:
+                if (priceUpdate.Value <= 0)
+                {
+                    errors.Add("Percentage must be greater than 0.");
+                }
+                if (priceUpdate.Value > 100 && priceUpdate.UpdateType == BulkPriceUpdateType.PercentageDecrease)
+                {
+                    errors.Add("Percentage decrease cannot exceed 100%.");
+                }
+                break;
+            case BulkPriceUpdateType.AmountIncrease:
+            case BulkPriceUpdateType.AmountDecrease:
+                if (priceUpdate.Value <= 0)
+                {
+                    errors.Add("Amount must be greater than 0.");
+                }
+                break;
+        }
+    }
+
+    private static void ValidateStockUpdate(BulkStockUpdate stockUpdate, List<string> errors)
+    {
+        switch (stockUpdate.UpdateType)
+        {
+            case BulkStockUpdateType.Fixed:
+                if (stockUpdate.Value < 0)
+                {
+                    errors.Add("Fixed stock cannot be negative.");
+                }
+                break;
+            case BulkStockUpdateType.Increase:
+            case BulkStockUpdateType.Decrease:
+                if (stockUpdate.Value <= 0)
+                {
+                    errors.Add("Stock adjustment amount must be greater than 0.");
+                }
+                break;
+        }
+    }
+
+    private static decimal CalculateNewPrice(decimal currentPrice, BulkPriceUpdate priceUpdate)
+    {
+        return priceUpdate.UpdateType switch
+        {
+            BulkPriceUpdateType.Fixed => priceUpdate.Value,
+            BulkPriceUpdateType.PercentageIncrease => currentPrice * (1 + priceUpdate.Value / 100),
+            BulkPriceUpdateType.PercentageDecrease => currentPrice * (1 - priceUpdate.Value / 100),
+            BulkPriceUpdateType.AmountIncrease => currentPrice + priceUpdate.Value,
+            BulkPriceUpdateType.AmountDecrease => currentPrice - priceUpdate.Value,
+            _ => currentPrice
+        };
+    }
+
+    private static int CalculateNewStock(int currentStock, BulkStockUpdate stockUpdate)
+    {
+        return stockUpdate.UpdateType switch
+        {
+            BulkStockUpdateType.Fixed => stockUpdate.Value,
+            BulkStockUpdateType.Increase => currentStock + stockUpdate.Value,
+            BulkStockUpdateType.Decrease => currentStock - stockUpdate.Value,
+            _ => currentStock
+        };
+    }
 }

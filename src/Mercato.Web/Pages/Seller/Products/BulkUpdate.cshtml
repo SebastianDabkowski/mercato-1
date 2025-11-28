@@ -1,0 +1,316 @@
+@page
+@model Mercato.Web.Pages.Seller.Products.BulkUpdateModel
+@using Mercato.Product.Application.Commands
+@{
+    ViewData["Title"] = "Bulk Update Products";
+}
+
+<div class="container py-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0"><i class="bi bi-pencil-square me-2"></i>Bulk Update Price & Stock</h4>
+                    <a asp-page="Index" class="btn btn-light btn-sm">
+                        <i class="bi bi-arrow-left me-1"></i>Back to Products
+                    </a>
+                </div>
+                <div class="card-body">
+                    @if (Model.HasError)
+                    {
+                        <div class="alert alert-danger" role="alert">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                            <strong>Error:</strong> @Model.ErrorMessage
+                        </div>
+                    }
+                    else if (!Model.HasStore)
+                    {
+                        <div class="alert alert-warning" role="alert">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                            <strong>Store Required:</strong> You must configure your store profile before managing products.
+                            <a asp-page="/Seller/Settings/StoreProfile" class="alert-link">Configure Store</a>
+                        </div>
+                    }
+                    else if (Model.Products.Count == 0)
+                    {
+                        <div class="text-center py-5">
+                            <i class="bi bi-inbox text-muted" style="font-size: 4rem;"></i>
+                            <h5 class="mt-3">No Products Available</h5>
+                            <p class="text-muted">You need to add products before you can bulk update them.</p>
+                            <a asp-page="Create" class="btn btn-primary">
+                                <i class="bi bi-plus-lg me-1"></i>Add Product
+                            </a>
+                        </div>
+                    }
+                    else
+                    {
+                        @if (Model.UpdateResult != null)
+                        {
+                            if (Model.UpdateResult.Succeeded)
+                            {
+                                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                                    <i class="bi bi-check-circle-fill me-2"></i>
+                                    <strong>Update Complete!</strong> 
+                                    @Model.UpdateResult.SuccessCount product(s) updated successfully.
+                                    @if (Model.UpdateResult.FailureCount > 0)
+                                    {
+                                        <span class="text-warning">@Model.UpdateResult.FailureCount product(s) failed to update.</span>
+                                    }
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                                    <strong>Update Failed:</strong>
+                                    @foreach (var error in Model.UpdateResult.Errors)
+                                    {
+                                        <span>@error </span>
+                                    }
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                </div>
+                            }
+
+                            @if (Model.UpdateResult.FailedProducts.Count > 0)
+                            {
+                                <div class="alert alert-warning" role="alert">
+                                    <h6 class="alert-heading"><i class="bi bi-exclamation-circle me-2"></i>Failed Products:</h6>
+                                    <ul class="mb-0">
+                                        @foreach (var failure in Model.UpdateResult.FailedProducts)
+                                        {
+                                            <li><strong>@failure.ProductTitle:</strong> @failure.Error</li>
+                                        }
+                                    </ul>
+                                </div>
+                            }
+                        }
+
+                        <form method="post">
+                            <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+
+                            <!-- Product Selection -->
+                            <div class="card mb-4">
+                                <div class="card-header">
+                                    <h5 class="mb-0"><i class="bi bi-list-check me-2"></i>Select Products</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="selectAll">
+                                            <label class="form-check-label fw-bold" for="selectAll">Select All</label>
+                                        </div>
+                                    </div>
+                                    <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                                        <table class="table table-hover table-sm">
+                                            <thead class="table-light sticky-top">
+                                                <tr>
+                                                    <th style="width: 40px;"></th>
+                                                    <th>Title</th>
+                                                    <th>Category</th>
+                                                    <th class="text-end">Current Price</th>
+                                                    <th class="text-center">Current Stock</th>
+                                                    <th class="text-center">Status</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach (var product in Model.Products)
+                                                {
+                                                    <tr>
+                                                        <td>
+                                                            <input class="form-check-input product-checkbox" type="checkbox" 
+                                                                   name="SelectedProductIds" 
+                                                                   value="@product.Id"
+                                                                   @(Model.SelectedProductIds.Contains(product.Id) ? "checked" : "")>
+                                                        </td>
+                                                        <td>@product.Title</td>
+                                                        <td>@product.Category</td>
+                                                        <td class="text-end">@product.Price.ToString("C")</td>
+                                                        <td class="text-center">@product.Stock</td>
+                                                        <td class="text-center">
+                                                            <span class="badge @IndexModel.GetStatusBadgeClass(product.Status)">
+                                                                @IndexModel.GetStatusDisplayName(product.Status)
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <div class="mt-2 text-muted">
+                                        <span id="selectedCount">0</span> product(s) selected
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Update Options -->
+                            <div class="row">
+                                <!-- Price Update -->
+                                <div class="col-md-6 mb-4">
+                                    <div class="card h-100">
+                                        <div class="card-header">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" name="UpdatePrice" value="true" 
+                                                       id="updatePrice" @(Model.UpdatePrice ? "checked" : "")>
+                                                <label class="form-check-label fw-bold" for="updatePrice">
+                                                    <i class="bi bi-currency-dollar me-1"></i>Update Price
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div class="card-body" id="priceUpdateOptions">
+                                            <div class="mb-3">
+                                                <label class="form-label">Update Type</label>
+                                                <select class="form-select" name="PriceUpdateType" id="priceUpdateType">
+                                                    @foreach (BulkPriceUpdateType updateType in Enum.GetValues(typeof(BulkPriceUpdateType)))
+                                                    {
+                                                        var isSelected = Model.PriceUpdateType == updateType;
+                                                        <option value="@((int)updateType)" selected="@isSelected">
+                                                            @BulkUpdateModel.GetPriceUpdateTypeDisplayName(updateType)
+                                                        </option>
+                                                    }
+                                                </select>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label" id="priceValueLabel">Value</label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text" id="pricePrefix">$</span>
+                                                    <input type="number" class="form-control" name="PriceValue" 
+                                                           step="0.01" min="0.01" value="@Model.PriceValue" 
+                                                           placeholder="Enter value">
+                                                    <span class="input-group-text d-none" id="priceSuffix">%</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Stock Update -->
+                                <div class="col-md-6 mb-4">
+                                    <div class="card h-100">
+                                        <div class="card-header">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" name="UpdateStock" value="true" 
+                                                       id="updateStock" @(Model.UpdateStock ? "checked" : "")>
+                                                <label class="form-check-label fw-bold" for="updateStock">
+                                                    <i class="bi bi-box-seam me-1"></i>Update Stock
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div class="card-body" id="stockUpdateOptions">
+                                            <div class="mb-3">
+                                                <label class="form-label">Update Type</label>
+                                                <select class="form-select" name="StockUpdateType" id="stockUpdateType">
+                                                    @foreach (BulkStockUpdateType updateType in Enum.GetValues(typeof(BulkStockUpdateType)))
+                                                    {
+                                                        var isSelected = Model.StockUpdateType == updateType;
+                                                        <option value="@((int)updateType)" selected="@isSelected">
+                                                            @BulkUpdateModel.GetStockUpdateTypeDisplayName(updateType)
+                                                        </option>
+                                                    }
+                                                </select>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label">Value</label>
+                                                <input type="number" class="form-control" name="StockValue" 
+                                                       step="1" min="0" value="@Model.StockValue" 
+                                                       placeholder="Enter value">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Submit Button -->
+                            <div class="d-flex gap-2">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-check-lg me-1"></i>Apply Bulk Update
+                                </button>
+                                <a asp-page="Index" class="btn btn-outline-secondary">
+                                    <i class="bi bi-x-lg me-1"></i>Cancel
+                                </a>
+                            </div>
+                        </form>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="mt-4">
+        <a asp-page="/Seller/Index" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Back to Dashboard
+        </a>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Select All functionality
+            const selectAllCheckbox = document.getElementById('selectAll');
+            const productCheckboxes = document.querySelectorAll('.product-checkbox');
+            const selectedCountSpan = document.getElementById('selectedCount');
+
+            function updateSelectedCount() {
+                const checkedCount = document.querySelectorAll('.product-checkbox:checked').length;
+                selectedCountSpan.textContent = checkedCount;
+            }
+
+            selectAllCheckbox.addEventListener('change', function() {
+                productCheckboxes.forEach(checkbox => {
+                    checkbox.checked = this.checked;
+                });
+                updateSelectedCount();
+            });
+
+            productCheckboxes.forEach(checkbox => {
+                checkbox.addEventListener('change', function() {
+                    updateSelectedCount();
+                    // Update selectAll checkbox state
+                    const allChecked = document.querySelectorAll('.product-checkbox:checked').length === productCheckboxes.length;
+                    selectAllCheckbox.checked = allChecked;
+                });
+            });
+
+            updateSelectedCount();
+
+            // Toggle update options based on checkbox
+            const updatePriceCheckbox = document.getElementById('updatePrice');
+            const updateStockCheckbox = document.getElementById('updateStock');
+            const priceUpdateOptions = document.getElementById('priceUpdateOptions');
+            const stockUpdateOptions = document.getElementById('stockUpdateOptions');
+
+            function toggleOptions() {
+                priceUpdateOptions.style.opacity = updatePriceCheckbox.checked ? '1' : '0.5';
+                stockUpdateOptions.style.opacity = updateStockCheckbox.checked ? '1' : '0.5';
+            }
+
+            updatePriceCheckbox.addEventListener('change', toggleOptions);
+            updateStockCheckbox.addEventListener('change', toggleOptions);
+            toggleOptions();
+
+            // Update price input label based on update type
+            const priceUpdateType = document.getElementById('priceUpdateType');
+            const pricePrefix = document.getElementById('pricePrefix');
+            const priceSuffix = document.getElementById('priceSuffix');
+            const priceValueLabel = document.getElementById('priceValueLabel');
+
+            function updatePriceInputDisplay() {
+                const type = parseInt(priceUpdateType.value);
+                // 0 = Fixed, 1 = PercentageIncrease, 2 = PercentageDecrease, 3 = AmountIncrease, 4 = AmountDecrease
+                if (type === 1 || type === 2) {
+                    pricePrefix.classList.add('d-none');
+                    priceSuffix.classList.remove('d-none');
+                    priceValueLabel.textContent = 'Percentage';
+                } else {
+                    pricePrefix.classList.remove('d-none');
+                    priceSuffix.classList.add('d-none');
+                    priceValueLabel.textContent = 'Amount';
+                }
+            }
+
+            priceUpdateType.addEventListener('change', updatePriceInputDisplay);
+            updatePriceInputDisplay();
+        });
+    </script>
+}

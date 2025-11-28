@@ -13,9 +13,14 @@
                     <h4 class="mb-0"><i class="bi bi-box-seam me-2"></i>My Products</h4>
                     @if (Model.HasStore)
                     {
-                        <a asp-page="Create" class="btn btn-light btn-sm">
-                            <i class="bi bi-plus-lg me-1"></i>Add Product
-                        </a>
+                        <div class="btn-group btn-group-sm">
+                            <a asp-page="BulkUpdate" class="btn btn-light">
+                                <i class="bi bi-pencil-square me-1"></i>Bulk Update
+                            </a>
+                            <a asp-page="Create" class="btn btn-light">
+                                <i class="bi bi-plus-lg me-1"></i>Add Product
+                            </a>
+                        </div>
                     }
                 </div>
                 <div class="card-body">
