@@ -27,6 +27,11 @@ public class AddToCartResult
     public Guid? CartItemId { get; private init; }
 
     /// <summary>
+    /// Gets the available stock for the product when validation fails due to insufficient stock.
+    /// </summary>
+    public int? AvailableStock { get; private init; }
+
+    /// <summary>
     /// Creates a successful result.
     /// </summary>
     /// <param name="cartItemId">The ID of the cart item.</param>
@@ -57,4 +62,16 @@ public class AddToCartResult
     /// <param name="error">The error message.</param>
     /// <returns>A failed result.</returns>
     public static AddToCartResult Failure(string error) => Failure([error]);
+
+    /// <summary>
+    /// Creates a failed result for insufficient stock.
+    /// </summary>
+    /// <param name="availableStock">The current available stock.</param>
+    /// <returns>A failed result with stock information.</returns>
+    public static AddToCartResult InsufficientStock(int availableStock) => new()
+    {
+        Succeeded = false,
+        AvailableStock = availableStock,
+        Errors = [$"Requested quantity exceeds available stock. Only {availableStock} item(s) available."]
+    };
 }

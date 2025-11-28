@@ -120,11 +120,17 @@ public class CartServiceTests
             LastUpdatedAt = DateTimeOffset.UtcNow
         };
 
+        var product = CreateTestProduct();
+        product.Stock = 100;
+
         _mockCartRepository.Setup(r => r.GetByBuyerIdAsync(TestBuyerId))
             .ReturnsAsync(existingCart);
 
         _mockCartRepository.Setup(r => r.GetItemByProductIdAsync(TestCartId, TestProductId))
             .ReturnsAsync(existingItem);
+
+        _mockProductService.Setup(s => s.GetProductByIdAsync(TestProductId))
+            .ReturnsAsync(product);
 
         _mockCartRepository.Setup(r => r.UpdateItemAsync(It.IsAny<CartItemEntity>()))
             .Returns(Task.CompletedTask);
@@ -266,6 +272,88 @@ public class CartServiceTests
         Assert.Contains("Product is not available.", result.Errors);
     }
 
+    [Fact]
+    public async Task AddToCartAsync_ExceedsStock_ReturnsInsufficientStock()
+    {
+        // Arrange
+        var command = new AddToCartCommand
+        {
+            BuyerId = TestBuyerId,
+            ProductId = TestProductId,
+            Quantity = 10
+        };
+
+        var product = CreateTestProduct();
+        product.Stock = 5;
+
+        _mockCartRepository.Setup(r => r.GetByBuyerIdAsync(TestBuyerId))
+            .ReturnsAsync((CartEntity?)null);
+
+        _mockCartRepository.Setup(r => r.AddAsync(It.IsAny<CartEntity>()))
+            .ReturnsAsync((CartEntity c) => c);
+
+        _mockCartRepository.Setup(r => r.GetItemByProductIdAsync(It.IsAny<Guid>(), TestProductId))
+            .ReturnsAsync((CartItemEntity?)null);
+
+        _mockProductService.Setup(s => s.GetProductByIdAsync(TestProductId))
+            .ReturnsAsync(product);
+
+        // Act
+        var result = await _service.AddToCartAsync(command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Equal(5, result.AvailableStock);
+        Assert.Contains("Only 5 item(s) available", result.Errors[0]);
+    }
+
+    [Fact]
+    public async Task AddToCartAsync_ExistingItem_ExceedsTotalStock_ReturnsInsufficientStock()
+    {
+        // Arrange
+        var command = new AddToCartCommand
+        {
+            BuyerId = TestBuyerId,
+            ProductId = TestProductId,
+            Quantity = 5
+        };
+
+        var existingCart = CreateTestCart();
+        var existingItem = new CartItemEntity
+        {
+            Id = TestCartItemId,
+            CartId = TestCartId,
+            ProductId = TestProductId,
+            StoreId = TestStoreId,
+            Quantity = 3,
+            ProductTitle = "Test Product",
+            ProductPrice = 29.99m,
+            StoreName = "Test Store",
+            CreatedAt = DateTimeOffset.UtcNow,
+            LastUpdatedAt = DateTimeOffset.UtcNow
+        };
+
+        var product = CreateTestProduct();
+        product.Stock = 6; // Adding 5 to existing 3 = 8, which exceeds stock of 6
+
+        _mockCartRepository.Setup(r => r.GetByBuyerIdAsync(TestBuyerId))
+            .ReturnsAsync(existingCart);
+
+        _mockCartRepository.Setup(r => r.GetItemByProductIdAsync(TestCartId, TestProductId))
+            .ReturnsAsync(existingItem);
+
+        _mockProductService.Setup(s => s.GetProductByIdAsync(TestProductId))
+            .ReturnsAsync(product);
+
+        // Act
+        var result = await _service.AddToCartAsync(command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Equal(6, result.AvailableStock);
+        Assert.Contains("Only 6 item(s) available", result.Errors[0]);
+    }
+
     #endregion
 
     #region GetCartAsync Tests
@@ -368,8 +456,14 @@ public class CartServiceTests
             Cart = cart
         };
 
+        var product = CreateTestProduct();
+        product.Stock = 100;
+
         _mockCartRepository.Setup(r => r.GetItemByIdAsync(TestCartItemId))
             .ReturnsAsync(cartItem);
+
+        _mockProductService.Setup(s => s.GetProductByIdAsync(TestProductId))
+            .ReturnsAsync(product);
 
         _mockCartRepository.Setup(r => r.UpdateItemAsync(It.IsAny<CartItemEntity>()))
             .Returns(Task.CompletedTask);
@@ -475,6 +569,136 @@ public class CartServiceTests
         // Assert
         Assert.False(result.Succeeded);
         Assert.True(result.IsNotAuthorized);
+    }
+
+    [Fact]
+    public async Task UpdateQuantityAsync_ExceedsStock_ReturnsInsufficientStock()
+    {
+        // Arrange
+        var command = new UpdateCartItemQuantityCommand
+        {
+            BuyerId = TestBuyerId,
+            CartItemId = TestCartItemId,
+            Quantity = 10
+        };
+
+        var cart = CreateTestCart();
+        var cartItem = new CartItemEntity
+        {
+            Id = TestCartItemId,
+            CartId = TestCartId,
+            ProductId = TestProductId,
+            StoreId = TestStoreId,
+            Quantity = 2,
+            ProductTitle = "Test Product",
+            ProductPrice = 29.99m,
+            StoreName = "Test Store",
+            CreatedAt = DateTimeOffset.UtcNow,
+            LastUpdatedAt = DateTimeOffset.UtcNow,
+            Cart = cart
+        };
+
+        var product = CreateTestProduct();
+        product.Stock = 5;
+
+        _mockCartRepository.Setup(r => r.GetItemByIdAsync(TestCartItemId))
+            .ReturnsAsync(cartItem);
+
+        _mockProductService.Setup(s => s.GetProductByIdAsync(TestProductId))
+            .ReturnsAsync(product);
+
+        // Act
+        var result = await _service.UpdateQuantityAsync(command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Equal(5, result.AvailableStock);
+        Assert.Contains("Only 5 item(s) available", result.Errors[0]);
+    }
+
+    [Fact]
+    public async Task UpdateQuantityAsync_ProductNotFound_ReturnsFailure()
+    {
+        // Arrange
+        var command = new UpdateCartItemQuantityCommand
+        {
+            BuyerId = TestBuyerId,
+            CartItemId = TestCartItemId,
+            Quantity = 5
+        };
+
+        var cart = CreateTestCart();
+        var cartItem = new CartItemEntity
+        {
+            Id = TestCartItemId,
+            CartId = TestCartId,
+            ProductId = TestProductId,
+            StoreId = TestStoreId,
+            Quantity = 2,
+            ProductTitle = "Test Product",
+            ProductPrice = 29.99m,
+            StoreName = "Test Store",
+            CreatedAt = DateTimeOffset.UtcNow,
+            LastUpdatedAt = DateTimeOffset.UtcNow,
+            Cart = cart
+        };
+
+        _mockCartRepository.Setup(r => r.GetItemByIdAsync(TestCartItemId))
+            .ReturnsAsync(cartItem);
+
+        _mockProductService.Setup(s => s.GetProductByIdAsync(TestProductId))
+            .ReturnsAsync((ProductEntity?)null);
+
+        // Act
+        var result = await _service.UpdateQuantityAsync(command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains("Product is no longer available.", result.Errors);
+    }
+
+    [Fact]
+    public async Task UpdateQuantityAsync_ProductNotActive_ReturnsFailure()
+    {
+        // Arrange
+        var command = new UpdateCartItemQuantityCommand
+        {
+            BuyerId = TestBuyerId,
+            CartItemId = TestCartItemId,
+            Quantity = 5
+        };
+
+        var cart = CreateTestCart();
+        var cartItem = new CartItemEntity
+        {
+            Id = TestCartItemId,
+            CartId = TestCartId,
+            ProductId = TestProductId,
+            StoreId = TestStoreId,
+            Quantity = 2,
+            ProductTitle = "Test Product",
+            ProductPrice = 29.99m,
+            StoreName = "Test Store",
+            CreatedAt = DateTimeOffset.UtcNow,
+            LastUpdatedAt = DateTimeOffset.UtcNow,
+            Cart = cart
+        };
+
+        var product = CreateTestProduct();
+        product.Status = ProductStatus.Draft;
+
+        _mockCartRepository.Setup(r => r.GetItemByIdAsync(TestCartItemId))
+            .ReturnsAsync(cartItem);
+
+        _mockProductService.Setup(s => s.GetProductByIdAsync(TestProductId))
+            .ReturnsAsync(product);
+
+        // Act
+        var result = await _service.UpdateQuantityAsync(command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains("Product is no longer available for purchase.", result.Errors);
     }
 
     #endregion
