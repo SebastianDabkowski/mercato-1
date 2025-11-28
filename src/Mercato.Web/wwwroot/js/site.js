@@ -10,6 +10,13 @@
         suggestionsUrl: '/Product/SearchSuggestions'
     };
 
+    // Recently viewed products configuration
+    const RECENTLY_VIEWED_CONFIG = {
+        storageKey: 'mercato_recently_viewed',
+        maxItems: 10,
+        apiUrl: '/Buyer/RecentlyViewed'
+    };
+
     // Debounce utility function
     function debounce(func, wait) {
         let timeout;
@@ -178,10 +185,207 @@
         });
     }
 
+    // ============================================
+    // Recently Viewed Products Module
+    // ============================================
+
+    // Validate if a string is a valid GUID format
+    function isValidGuid(str) {
+        if (typeof str !== 'string') {
+            return false;
+        }
+        const guidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        return guidRegex.test(str);
+    }
+
+    // Get recently viewed product IDs from localStorage
+    function getRecentlyViewedIds() {
+        try {
+            const stored = localStorage.getItem(RECENTLY_VIEWED_CONFIG.storageKey);
+            if (!stored) {
+                return [];
+            }
+            const parsed = JSON.parse(stored);
+            if (!Array.isArray(parsed)) {
+                return [];
+            }
+            // Validate each ID is a valid GUID
+            return parsed.filter(id => isValidGuid(id));
+        } catch (e) {
+            console.error('Error reading recently viewed products:', e);
+            return [];
+        }
+    }
+
+    // Save recently viewed product IDs to localStorage
+    function saveRecentlyViewedIds(ids) {
+        try {
+            // Validate all IDs are valid GUIDs before saving
+            const validIds = ids.filter(id => isValidGuid(id));
+            localStorage.setItem(RECENTLY_VIEWED_CONFIG.storageKey, JSON.stringify(validIds));
+        } catch (e) {
+            console.error('Error saving recently viewed products:', e);
+        }
+    }
+
+    // Add a product to recently viewed list
+    function addToRecentlyViewed(productId) {
+        if (!productId || !isValidGuid(productId)) {
+            return;
+        }
+
+        const ids = getRecentlyViewedIds();
+
+        // Remove the product if it already exists (will be moved to front)
+        const index = ids.indexOf(productId);
+        if (index > -1) {
+            ids.splice(index, 1);
+        }
+
+        // Add to the beginning (most recent)
+        ids.unshift(productId);
+
+        // Keep only the configured maximum number of items
+        const trimmedIds = ids.slice(0, RECENTLY_VIEWED_CONFIG.maxItems);
+
+        saveRecentlyViewedIds(trimmedIds);
+    }
+
+    // Fetch recently viewed products from the server
+    async function fetchRecentlyViewedProducts(ids, maxItems) {
+        if (!ids || ids.length === 0) {
+            return { products: [] };
+        }
+
+        try {
+            const idsParam = ids.join(',');
+            const response = await fetch(
+                `${RECENTLY_VIEWED_CONFIG.apiUrl}?ids=${encodeURIComponent(idsParam)}&maxItems=${maxItems}`
+            );
+
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error('Error fetching recently viewed products:', error);
+            return { products: [] };
+        }
+    }
+
+    // Validate image URL against allowed prefixes
+    function isValidImageUrl(url) {
+        if (!url || typeof url !== 'string') {
+            return false;
+        }
+        const allowedPrefixes = ['/uploads/', '/images/'];
+        return allowedPrefixes.some(prefix => url.toLowerCase().startsWith(prefix));
+    }
+
+    // Render recently viewed products in a container
+    function renderRecentlyViewedProducts(container, products) {
+        if (!container || !products || products.length === 0) {
+            if (container) {
+                container.style.display = 'none';
+            }
+            return;
+        }
+
+        const productsHtml = products.map(product => {
+            // Image URL is already validated by isValidImageUrl(), so we can use it directly
+            // since it only allows URLs starting with /uploads/ or /images/
+            const imageHtml = product.imageUrl && isValidImageUrl(product.imageUrl)
+                ? `<img src="${product.imageUrl}" class="card-img-top" alt="${encodeHtml(product.title)}" style="height: 150px; object-fit: cover;">`
+                : `<div class="card-img-top bg-secondary d-flex align-items-center justify-content-center" style="height: 150px;"><span class="text-white">No Image</span></div>`;
+
+            const stockBadge = product.isInStock
+                ? '<span class="badge bg-success">In Stock</span>'
+                : '<span class="badge bg-secondary">Out of Stock</span>';
+
+            // For the title attribute, we HTML encode to prevent XSS
+            const encodedTitle = encodeHtml(product.title);
+
+            return `
+                <div class="col">
+                    <div class="card h-100">
+                        ${imageHtml}
+                        <div class="card-body">
+                            <h6 class="card-title text-truncate" title="${encodedTitle}">${encodedTitle}</h6>
+                            <p class="card-text mb-1">
+                                <strong class="text-primary">$${product.price.toFixed(2)}</strong>
+                            </p>
+                            ${stockBadge}
+                        </div>
+                        <div class="card-footer bg-transparent">
+                            <a href="/Product/Details/${encodeURIComponent(product.id)}" class="btn btn-outline-primary btn-sm w-100">View Details</a>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        const listContainer = container.querySelector('.recently-viewed-list');
+        if (listContainer) {
+            listContainer.innerHTML = productsHtml;
+        }
+
+        container.style.display = 'block';
+    }
+
+    // Initialize recently viewed products display
+    async function initRecentlyViewedProducts() {
+        const container = document.getElementById('recently-viewed-section');
+        if (!container) {
+            return;
+        }
+
+        const ids = getRecentlyViewedIds();
+        if (ids.length === 0) {
+            container.style.display = 'none';
+            return;
+        }
+
+        const data = await fetchRecentlyViewedProducts(ids, RECENTLY_VIEWED_CONFIG.maxItems);
+        renderRecentlyViewedProducts(container, data.products);
+    }
+
+    // Track product view on product details page
+    function trackProductView() {
+        const productIdElement = document.querySelector('[data-product-id]');
+        if (productIdElement) {
+            const productId = productIdElement.getAttribute('data-product-id');
+            addToRecentlyViewed(productId);
+        }
+    }
+
+    // Clear recently viewed products
+    function clearRecentlyViewed() {
+        try {
+            localStorage.removeItem(RECENTLY_VIEWED_CONFIG.storageKey);
+        } catch (e) {
+            console.error('Error clearing recently viewed products:', e);
+        }
+    }
+
+    // Expose functions globally for external use
+    window.MercatoRecentlyViewed = {
+        add: addToRecentlyViewed,
+        getIds: getRecentlyViewedIds,
+        clear: clearRecentlyViewed,
+        refresh: initRecentlyViewedProducts
+    };
+
     // Initialize when DOM is ready
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initSearchSuggestions);
-    } else {
+    function init() {
         initSearchSuggestions();
+        trackProductView();
+        initRecentlyViewedProducts();
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
     }
 })();
