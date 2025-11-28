@@ -32,9 +32,9 @@ public class DeliveryAddressService : IDeliveryAddressService
     };
 
     /// <summary>
-    /// Cached read-only list of allowed shipping countries.
+    /// Cached read-only list of allowed shipping countries (derived from AllowedCountries).
     /// </summary>
-    private static readonly IReadOnlyList<string> AllowedCountriesList = ["US", "CA", "GB", "DE", "FR", "IT", "ES", "NL", "PL"];
+    private static readonly IReadOnlyList<string> AllowedCountriesList = AllowedCountries.ToList().AsReadOnly();
 
     /// <inheritdoc />
     public IReadOnlyList<string> AllowedShippingCountries => AllowedCountriesList;

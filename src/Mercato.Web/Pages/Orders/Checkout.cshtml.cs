@@ -312,8 +312,8 @@ public class CheckoutModel : PageModel
 
         TempData["Success"] = "Address confirmed. Proceed to payment.";
 
-        // TODO: Navigate to payment step when implemented
-        // For now, redirect back with success message
+        // Note: Payment step implementation is out of scope for this feature.
+        // When payment page is available, redirect to: RedirectToPage("Payment")
         return RedirectToPage();
     }
 
@@ -363,8 +363,8 @@ public class CheckoutModel : PageModel
 
         TempData["Success"] = "Address confirmed. Proceed to payment.";
 
-        // TODO: Navigate to payment step when implemented
-        // For now, redirect back with success message
+        // Note: Payment step implementation is out of scope for this feature.
+        // When payment page is available, redirect to: RedirectToPage("Payment")
         return RedirectToPage();
     }
 
