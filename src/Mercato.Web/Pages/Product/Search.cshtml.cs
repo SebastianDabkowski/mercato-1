@@ -111,6 +111,11 @@ public class SearchModel : PageModel
     public int TotalProducts { get; private set; }
 
     /// <summary>
+    /// Gets the pagination information for UI rendering.
+    /// </summary>
+    public PaginationInfo Pagination { get; private set; } = PaginationInfo.Create(1, 0, 12);
+
+    /// <summary>
     /// Gets the minimum available price for the price filter range.
     /// </summary>
     public decimal? MinAvailablePrice { get; private set; }
@@ -177,6 +182,7 @@ public class SearchModel : PageModel
         Products = result.Products;
         TotalProducts = result.TotalCount;
         TotalPages = result.TotalPages;
+        Pagination = result.Pagination;
 
         return Page();
     }

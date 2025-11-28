@@ -79,6 +79,11 @@ public class CategoryModel : PageModel
     public int TotalProducts { get; private set; }
 
     /// <summary>
+    /// Gets the pagination information for UI rendering.
+    /// </summary>
+    public PaginationInfo Pagination { get; private set; } = PaginationInfo.Create(1, 0, 12);
+
+    /// <summary>
     /// Gets or sets the minimum price filter.
     /// </summary>
     [BindProperty(SupportsGet = true)]
@@ -192,6 +197,7 @@ public class CategoryModel : PageModel
         Products = result.Products;
         TotalProducts = result.TotalCount;
         TotalPages = result.TotalPages;
+        Pagination = result.Pagination;
 
         return Page();
     }
