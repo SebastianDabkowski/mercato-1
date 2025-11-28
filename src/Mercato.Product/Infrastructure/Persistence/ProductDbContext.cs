@@ -209,6 +209,8 @@ public class ProductDbContext : DbContext
             entity.Property(e => e.SuccessCount)
                 .IsRequired();
 
+            entity.Property(e => e.ImportDataJson);
+
             entity.Property(e => e.CreatedAt)
                 .IsRequired();
 

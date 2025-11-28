@@ -107,6 +107,12 @@ public class ProductImportJob
     public int SuccessCount { get; set; }
 
     /// <summary>
+    /// Gets or sets the validated import data as JSON.
+    /// This stores the parsed and validated rows for processing on confirmation.
+    /// </summary>
+    public string? ImportDataJson { get; set; }
+
+    /// <summary>
     /// Gets or sets the date and time when the job was created.
     /// </summary>
     public DateTimeOffset CreatedAt { get; set; }

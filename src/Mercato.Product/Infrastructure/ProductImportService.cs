@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text.Json;
 using ClosedXML.Excel;
 using CsvHelper;
 using CsvHelper.Configuration;
@@ -107,6 +108,22 @@ public class ProductImportService : IProductImportService
                 }
             }
 
+            // Get only valid rows for storage
+            var validRows = new List<ProductImportRow>();
+            for (var i = 0; i < rows.Count; i++)
+            {
+                var row = rows[i];
+                var rowNumber = i + 1;
+                var hasErrors = rowErrors.Any(e => e.RowNumber == rowNumber);
+                if (!hasErrors)
+                {
+                    validRows.Add(row);
+                }
+            }
+
+            // Serialize valid rows for later processing
+            var importDataJson = rowErrors.Count == 0 ? JsonSerializer.Serialize(validRows) : null;
+
             // Create import job
             var job = new ProductImportJob
             {
@@ -119,6 +136,7 @@ public class ProductImportService : IProductImportService
                 NewProductsCount = newProductsCount,
                 UpdatedProductsCount = updatedProductsCount,
                 ErrorCount = rowErrors.Count,
+                ImportDataJson = importDataJson,
                 CreatedAt = DateTimeOffset.UtcNow
             };
 
@@ -139,9 +157,6 @@ public class ProductImportService : IProductImportService
 
                 await _importRepository.AddRowErrorsAsync(errorEntities);
             }
-
-            // Store parsed data for later confirmation (in a real implementation, this would be stored in a temp table or cache)
-            // For this implementation, we'll re-parse on confirmation
 
             _logger.LogInformation(
                 "Product import file {FileName} validated for store {StoreId}: {TotalRows} rows, {NewProducts} new, {UpdatedProducts} updates, {Errors} errors",
@@ -189,29 +204,112 @@ public class ProductImportService : IProductImportService
                 return ConfirmProductImportResult.Failure($"Import job cannot be confirmed. Current status: {job.Status}");
             }
 
+            if (string.IsNullOrEmpty(job.ImportDataJson))
+            {
+                return ConfirmProductImportResult.Failure("Import data not found. Please upload the file again.");
+            }
+
             // Update job status to processing
             job.Status = ProductImportStatus.Processing;
             job.StartedAt = DateTimeOffset.UtcNow;
             await _importRepository.UpdateAsync(job);
 
-            // For a real implementation, you would retrieve the parsed data from storage
-            // Since we don't have access to the original file here, we return an error
-            // In a production system, you would either:
-            // 1. Store the parsed data in a temp table
-            // 2. Store the file content and re-parse
-            // 3. Use a background job queue
+            try
+            {
+                // Deserialize the stored import data
+                var rows = JsonSerializer.Deserialize<List<ProductImportRow>>(job.ImportDataJson) ?? [];
 
-            // Mark as completed (placeholder - actual import would happen here)
-            job.Status = ProductImportStatus.Completed;
-            job.SuccessCount = job.NewProductsCount + job.UpdatedProductsCount;
-            job.CompletedAt = DateTimeOffset.UtcNow;
-            await _importRepository.UpdateAsync(job);
+                // Get existing products for update matching
+                var skus = rows.Where(r => !string.IsNullOrWhiteSpace(r.Sku)).Select(r => r.Sku!).Distinct().ToList();
+                var existingProducts = await _importRepository.GetProductsBySkusAsync(job.StoreId, skus);
 
-            _logger.LogInformation(
-                "Product import job {JobId} completed for store {StoreId}: {Created} created, {Updated} updated",
-                job.Id, job.StoreId, job.NewProductsCount, job.UpdatedProductsCount);
+                var createdCount = 0;
+                var updatedCount = 0;
+                var now = DateTimeOffset.UtcNow;
 
-            return ConfirmProductImportResult.Success(job.NewProductsCount, job.UpdatedProductsCount, 0);
+                foreach (var row in rows)
+                {
+                    if (string.IsNullOrWhiteSpace(row.Sku))
+                    {
+                        continue;
+                    }
+
+                    if (existingProducts.TryGetValue(row.Sku, out var existingProduct))
+                    {
+                        // Update existing product
+                        existingProduct.Title = row.Title ?? existingProduct.Title;
+                        existingProduct.Description = row.Description;
+                        existingProduct.Price = row.Price;
+                        existingProduct.Stock = row.Stock;
+                        existingProduct.Category = row.Category ?? existingProduct.Category;
+                        existingProduct.Weight = row.Weight;
+                        existingProduct.Length = row.Length;
+                        existingProduct.Width = row.Width;
+                        existingProduct.Height = row.Height;
+                        existingProduct.ShippingMethods = row.ShippingMethods;
+                        existingProduct.Images = row.Images;
+                        existingProduct.LastUpdatedAt = now;
+                        existingProduct.LastUpdatedBy = command.SellerId;
+
+                        await _productRepository.UpdateAsync(existingProduct);
+                        updatedCount++;
+                    }
+                    else
+                    {
+                        // Create new product
+                        var newProduct = new Domain.Entities.Product
+                        {
+                            Id = Guid.NewGuid(),
+                            StoreId = job.StoreId,
+                            Sku = row.Sku,
+                            Title = row.Title ?? string.Empty,
+                            Description = row.Description,
+                            Price = row.Price,
+                            Stock = row.Stock,
+                            Category = row.Category ?? string.Empty,
+                            Weight = row.Weight,
+                            Length = row.Length,
+                            Width = row.Width,
+                            Height = row.Height,
+                            ShippingMethods = row.ShippingMethods,
+                            Images = row.Images,
+                            Status = ProductStatus.Draft,
+                            CreatedAt = now,
+                            LastUpdatedAt = now
+                        };
+
+                        await _productRepository.AddAsync(newProduct);
+                        createdCount++;
+                    }
+                }
+
+                // Mark job as completed
+                job.Status = ProductImportStatus.Completed;
+                job.SuccessCount = createdCount + updatedCount;
+                job.NewProductsCount = createdCount;
+                job.UpdatedProductsCount = updatedCount;
+                job.CompletedAt = DateTimeOffset.UtcNow;
+                job.ImportDataJson = null; // Clear the stored data
+                await _importRepository.UpdateAsync(job);
+
+                _logger.LogInformation(
+                    "Product import job {JobId} completed for store {StoreId}: {Created} created, {Updated} updated",
+                    job.Id, job.StoreId, createdCount, updatedCount);
+
+                return ConfirmProductImportResult.Success(createdCount, updatedCount, 0);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error processing import job {JobId}", command.ImportJobId);
+
+                // Mark job as failed
+                job.Status = ProductImportStatus.Failed;
+                job.ErrorMessage = "An error occurred while processing the import.";
+                job.CompletedAt = DateTimeOffset.UtcNow;
+                await _importRepository.UpdateAsync(job);
+
+                return ConfirmProductImportResult.Failure("An error occurred while processing the import.");
+            }
         }
         catch (Exception ex)
         {
@@ -596,7 +694,7 @@ public class ProductImportService : IProductImportService
     /// <summary>
     /// Internal class representing a row in the import file.
     /// </summary>
-    private class ProductImportRow
+    internal class ProductImportRow
     {
         public string? Sku { get; set; }
         public string? Title { get; set; }

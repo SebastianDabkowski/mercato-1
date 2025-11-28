@@ -568,14 +568,18 @@ public class ProductImportServiceTests
             SellerId = TestSellerId
         };
 
+        // Create valid import data JSON
+        var importDataJson = "[{\"Sku\":\"SKU001\",\"Title\":\"Product 1\",\"Price\":10.99,\"Stock\":50,\"Category\":\"Electronics\"},{\"Sku\":\"SKU002\",\"Title\":\"Product 2\",\"Price\":20.99,\"Stock\":100,\"Category\":\"Clothing\"}]";
+
         var job = new ProductImportJob
         {
             Id = jobId,
             StoreId = TestStoreId,
             SellerId = TestSellerId,
             Status = ProductImportStatus.AwaitingConfirmation,
-            NewProductsCount = 5,
-            UpdatedProductsCount = 3
+            NewProductsCount = 2,
+            UpdatedProductsCount = 0,
+            ImportDataJson = importDataJson
         };
 
         _mockImportRepository.Setup(r => r.GetByIdAsync(command.ImportJobId))
@@ -584,18 +588,120 @@ public class ProductImportServiceTests
         _mockImportRepository.Setup(r => r.UpdateAsync(It.IsAny<ProductImportJob>()))
             .Returns(Task.CompletedTask);
 
+        _mockImportRepository.Setup(r => r.GetProductsBySkusAsync(TestStoreId, It.IsAny<IEnumerable<string>>()))
+            .ReturnsAsync(new Dictionary<string, Mercato.Product.Domain.Entities.Product>());
+
+        _mockProductRepository.Setup(r => r.AddAsync(It.IsAny<Mercato.Product.Domain.Entities.Product>()))
+            .ReturnsAsync((Mercato.Product.Domain.Entities.Product p) => p);
+
         // Act
         var result = await _service.ConfirmImportAsync(command);
 
         // Assert
         Assert.True(result.Succeeded);
-        Assert.Equal(5, result.CreatedCount);
-        Assert.Equal(3, result.UpdatedCount);
+        Assert.Equal(2, result.CreatedCount);
+        Assert.Equal(0, result.UpdatedCount);
         Assert.Equal(0, result.FailedCount);
 
         _mockImportRepository.Verify(r => r.UpdateAsync(It.Is<ProductImportJob>(j =>
             j.Status == ProductImportStatus.Completed
         )), Times.AtLeastOnce);
+    }
+
+    [Fact]
+    public async Task ConfirmImportAsync_MissingImportData_ReturnsFailure()
+    {
+        // Arrange
+        var jobId = Guid.NewGuid();
+        var command = new ConfirmProductImportCommand
+        {
+            ImportJobId = jobId,
+            StoreId = TestStoreId,
+            SellerId = TestSellerId
+        };
+
+        var job = new ProductImportJob
+        {
+            Id = jobId,
+            StoreId = TestStoreId,
+            SellerId = TestSellerId,
+            Status = ProductImportStatus.AwaitingConfirmation,
+            ImportDataJson = null // No data
+        };
+
+        _mockImportRepository.Setup(r => r.GetByIdAsync(command.ImportJobId))
+            .ReturnsAsync(job);
+
+        // Act
+        var result = await _service.ConfirmImportAsync(command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains("Import data not found", result.Errors[0]);
+    }
+
+    [Fact]
+    public async Task ConfirmImportAsync_UpdatesExistingProducts()
+    {
+        // Arrange
+        var jobId = Guid.NewGuid();
+        var existingProductId = Guid.NewGuid();
+        var command = new ConfirmProductImportCommand
+        {
+            ImportJobId = jobId,
+            StoreId = TestStoreId,
+            SellerId = TestSellerId
+        };
+
+        var importDataJson = "[{\"Sku\":\"SKU001\",\"Title\":\"Updated Product\",\"Price\":15.99,\"Stock\":75,\"Category\":\"Electronics\"}]";
+
+        var job = new ProductImportJob
+        {
+            Id = jobId,
+            StoreId = TestStoreId,
+            SellerId = TestSellerId,
+            Status = ProductImportStatus.AwaitingConfirmation,
+            NewProductsCount = 0,
+            UpdatedProductsCount = 1,
+            ImportDataJson = importDataJson
+        };
+
+        var existingProduct = new Mercato.Product.Domain.Entities.Product
+        {
+            Id = existingProductId,
+            StoreId = TestStoreId,
+            Sku = "SKU001",
+            Title = "Old Product",
+            Price = 10.00m,
+            Stock = 50,
+            Category = "Electronics"
+        };
+
+        _mockImportRepository.Setup(r => r.GetByIdAsync(command.ImportJobId))
+            .ReturnsAsync(job);
+
+        _mockImportRepository.Setup(r => r.UpdateAsync(It.IsAny<ProductImportJob>()))
+            .Returns(Task.CompletedTask);
+
+        _mockImportRepository.Setup(r => r.GetProductsBySkusAsync(TestStoreId, It.IsAny<IEnumerable<string>>()))
+            .ReturnsAsync(new Dictionary<string, Mercato.Product.Domain.Entities.Product> { { "SKU001", existingProduct } });
+
+        _mockProductRepository.Setup(r => r.UpdateAsync(It.IsAny<Mercato.Product.Domain.Entities.Product>()))
+            .Returns(Task.CompletedTask);
+
+        // Act
+        var result = await _service.ConfirmImportAsync(command);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.Equal(0, result.CreatedCount);
+        Assert.Equal(1, result.UpdatedCount);
+
+        _mockProductRepository.Verify(r => r.UpdateAsync(It.Is<Mercato.Product.Domain.Entities.Product>(p =>
+            p.Title == "Updated Product" &&
+            p.Price == 15.99m &&
+            p.Stock == 75
+        )), Times.Once);
     }
 
     #endregion
