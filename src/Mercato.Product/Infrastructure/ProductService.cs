@@ -1,3 +1,7 @@
+using System.Globalization;
+using ClosedXML.Excel;
+using CsvHelper;
+using CsvHelper.Configuration;
 using Mercato.Product.Application.Commands;
 using Mercato.Product.Application.Services;
 using Mercato.Product.Domain;
@@ -794,5 +798,209 @@ public class ProductService : IProductService
             BulkStockUpdateType.Decrease => currentStock - stockUpdate.Value,
             _ => currentStock
         };
+    }
+
+    /// <inheritdoc />
+    public async Task<ExportProductCatalogResult> ExportProductCatalogAsync(ExportProductCatalogCommand command)
+    {
+        var validationErrors = ValidateExportCommand(command);
+        if (validationErrors.Count > 0)
+        {
+            return ExportProductCatalogResult.Failure(validationErrors);
+        }
+
+        try
+        {
+            // Get products for the store
+            var products = await _repository.GetActiveByStoreIdAsync(command.StoreId);
+
+            // Apply filters if requested
+            if (command.ApplyFilters)
+            {
+                products = ApplyExportFilters(products, command);
+            }
+
+            // Generate the export file
+            byte[] fileContent;
+            string fileName;
+            string contentType;
+
+            if (command.Format == ExportFormat.Excel)
+            {
+                fileContent = GenerateExcelExport(products);
+                fileName = $"products_export_{DateTimeOffset.UtcNow:yyyyMMdd_HHmmss}.xlsx";
+                contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+            }
+            else
+            {
+                fileContent = GenerateCsvExport(products);
+                fileName = $"products_export_{DateTimeOffset.UtcNow:yyyyMMdd_HHmmss}.csv";
+                contentType = "text/csv";
+            }
+
+            _logger.LogInformation(
+                "Product catalog exported for store {StoreId}: {Count} products, format {Format}",
+                command.StoreId,
+                products.Count,
+                command.Format);
+
+            return ExportProductCatalogResult.Success(fileContent, fileName, contentType, products.Count);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error exporting product catalog for store {StoreId}", command.StoreId);
+            return ExportProductCatalogResult.Failure("An error occurred while exporting the product catalog.");
+        }
+    }
+
+    private static List<string> ValidateExportCommand(ExportProductCatalogCommand command)
+    {
+        var errors = new List<string>();
+
+        if (command.StoreId == Guid.Empty)
+        {
+            errors.Add("Store ID is required.");
+        }
+
+        if (string.IsNullOrWhiteSpace(command.SellerId))
+        {
+            errors.Add("Seller ID is required.");
+        }
+
+        return errors;
+    }
+
+    private static IReadOnlyList<Domain.Entities.Product> ApplyExportFilters(
+        IReadOnlyList<Domain.Entities.Product> products,
+        ExportProductCatalogCommand command)
+    {
+        var filtered = products.AsEnumerable();
+
+        // Apply search query filter (searches in title and description)
+        if (!string.IsNullOrWhiteSpace(command.SearchQuery))
+        {
+            var query = command.SearchQuery.ToLowerInvariant();
+            filtered = filtered.Where(p =>
+                p.Title.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+                (p.Description != null && p.Description.Contains(query, StringComparison.OrdinalIgnoreCase)));
+        }
+
+        // Apply category filter
+        if (!string.IsNullOrWhiteSpace(command.CategoryFilter))
+        {
+            filtered = filtered.Where(p =>
+                p.Category.Equals(command.CategoryFilter, StringComparison.OrdinalIgnoreCase));
+        }
+
+        // Apply status filter
+        if (command.StatusFilter.HasValue)
+        {
+            filtered = filtered.Where(p => p.Status == command.StatusFilter.Value);
+        }
+
+        return filtered.ToList();
+    }
+
+    private static byte[] GenerateCsvExport(IReadOnlyList<Domain.Entities.Product> products)
+    {
+        using var memoryStream = new MemoryStream();
+        using var writer = new StreamWriter(memoryStream, System.Text.Encoding.UTF8);
+        var config = new CsvConfiguration(CultureInfo.InvariantCulture)
+        {
+            HasHeaderRecord = true
+        };
+        using var csv = new CsvWriter(writer, config);
+
+        // Write header
+        csv.WriteField("SKU");
+        csv.WriteField("Title");
+        csv.WriteField("Description");
+        csv.WriteField("Price");
+        csv.WriteField("Stock");
+        csv.WriteField("Category");
+        csv.WriteField("Status");
+        csv.WriteField("Weight");
+        csv.WriteField("Length");
+        csv.WriteField("Width");
+        csv.WriteField("Height");
+        csv.WriteField("ShippingMethods");
+        csv.WriteField("Images");
+        csv.NextRecord();
+
+        // Write data rows
+        foreach (var product in products)
+        {
+            csv.WriteField(product.Sku ?? string.Empty);
+            csv.WriteField(product.Title);
+            csv.WriteField(product.Description ?? string.Empty);
+            csv.WriteField(product.Price.ToString(CultureInfo.InvariantCulture));
+            csv.WriteField(product.Stock.ToString(CultureInfo.InvariantCulture));
+            csv.WriteField(product.Category);
+            csv.WriteField(product.Status.ToString());
+            csv.WriteField(product.Weight?.ToString(CultureInfo.InvariantCulture) ?? string.Empty);
+            csv.WriteField(product.Length?.ToString(CultureInfo.InvariantCulture) ?? string.Empty);
+            csv.WriteField(product.Width?.ToString(CultureInfo.InvariantCulture) ?? string.Empty);
+            csv.WriteField(product.Height?.ToString(CultureInfo.InvariantCulture) ?? string.Empty);
+            csv.WriteField(product.ShippingMethods ?? string.Empty);
+            csv.WriteField(product.Images ?? string.Empty);
+            csv.NextRecord();
+        }
+
+        writer.Flush();
+        return memoryStream.ToArray();
+    }
+
+    private static byte[] GenerateExcelExport(IReadOnlyList<Domain.Entities.Product> products)
+    {
+        using var workbook = new XLWorkbook();
+        var worksheet = workbook.Worksheets.Add("Products");
+
+        // Write header row
+        var headers = new[]
+        {
+            "SKU", "Title", "Description", "Price", "Stock", "Category", "Status",
+            "Weight", "Length", "Width", "Height", "ShippingMethods", "Images"
+        };
+
+        for (var col = 0; col < headers.Length; col++)
+        {
+            worksheet.Cell(1, col + 1).Value = headers[col];
+            worksheet.Cell(1, col + 1).Style.Font.Bold = true;
+        }
+
+        // Write data rows
+        for (var row = 0; row < products.Count; row++)
+        {
+            var product = products[row];
+            var excelRow = row + 2; // Start from row 2 (after header)
+
+            worksheet.Cell(excelRow, 1).Value = product.Sku ?? string.Empty;
+            worksheet.Cell(excelRow, 2).Value = product.Title;
+            worksheet.Cell(excelRow, 3).Value = product.Description ?? string.Empty;
+            worksheet.Cell(excelRow, 4).Value = (double)product.Price;
+            worksheet.Cell(excelRow, 5).Value = product.Stock;
+            worksheet.Cell(excelRow, 6).Value = product.Category;
+            worksheet.Cell(excelRow, 7).Value = product.Status.ToString();
+
+            // Handle nullable numeric fields - leave cell empty (Blank) if no value
+            if (product.Weight.HasValue)
+                worksheet.Cell(excelRow, 8).Value = (double)product.Weight.Value;
+            if (product.Length.HasValue)
+                worksheet.Cell(excelRow, 9).Value = (double)product.Length.Value;
+            if (product.Width.HasValue)
+                worksheet.Cell(excelRow, 10).Value = (double)product.Width.Value;
+            if (product.Height.HasValue)
+                worksheet.Cell(excelRow, 11).Value = (double)product.Height.Value;
+
+            worksheet.Cell(excelRow, 12).Value = product.ShippingMethods ?? string.Empty;
+            worksheet.Cell(excelRow, 13).Value = product.Images ?? string.Empty;
+        }
+
+        // Auto-fit columns for better readability
+        worksheet.Columns().AdjustToContents();
+
+        using var memoryStream = new MemoryStream();
+        workbook.SaveAs(memoryStream);
+        return memoryStream.ToArray();
     }
 }

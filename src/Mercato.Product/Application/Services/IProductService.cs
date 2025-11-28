@@ -63,4 +63,11 @@ public interface IProductService
     /// <param name="command">The bulk update command.</param>
     /// <returns>The result of the bulk update operation.</returns>
     Task<BulkUpdatePriceStockResult> BulkUpdatePriceStockAsync(BulkUpdatePriceStockCommand command);
+
+    /// <summary>
+    /// Exports the product catalog to CSV or Excel format.
+    /// </summary>
+    /// <param name="command">The export command.</param>
+    /// <returns>The result of the export operation containing the file content.</returns>
+    Task<ExportProductCatalogResult> ExportProductCatalogAsync(ExportProductCatalogCommand command);
 }
