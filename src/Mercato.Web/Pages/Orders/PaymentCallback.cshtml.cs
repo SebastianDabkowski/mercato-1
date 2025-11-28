@@ -145,8 +145,15 @@ public class PaymentCallbackModel : PageModel
             // Clear the buyer's cart after successful order creation
             await ClearCartAsync(buyerId);
 
+            // Load items for confirmation data
+            var validatedItems = LoadValidatedItems();
+
             // Store order confirmation data
-            StoreOrderConfirmationData(orderResult.OrderNumber ?? "", orderResult.OrderId ?? Guid.Empty);
+            await StoreOrderConfirmationDataAsync(
+                buyerId,
+                orderResult.OrderNumber ?? "",
+                orderResult.OrderId ?? Guid.Empty,
+                validatedItems);
 
             // Clear checkout data
             TempData.Remove("CheckoutAddress");
@@ -154,7 +161,7 @@ public class PaymentCallbackModel : PageModel
             TempData.Remove("PaymentTransactionId");
             TempData.Remove("ValidatedItems");
 
-            return RedirectToPage("Confirmation", new { transactionId = Transaction?.Id });
+            return RedirectToPage("Confirmation", new { orderId = orderResult.OrderId });
         }
         else
         {
@@ -252,20 +259,56 @@ public class PaymentCallbackModel : PageModel
         }
     }
 
-    private void StoreOrderConfirmationData(string orderNumber, Guid orderId)
+    private async Task StoreOrderConfirmationDataAsync(
+        string buyerId,
+        string orderNumber,
+        Guid orderId,
+        List<CreateOrderItem>? validatedItems)
     {
         if (Transaction == null) return;
+
+        // Calculate items subtotal
+        var itemsSubtotal = validatedItems?.Sum(i => i.UnitPrice * i.Quantity) ?? 0;
 
         var confirmationData = new OrderConfirmationData
         {
             TransactionId = Transaction.Id,
+            OrderId = orderId,
             OrderNumber = orderNumber,
             Amount = Transaction.Amount,
+            ItemsSubtotal = itemsSubtotal,
             PaymentMethod = Transaction.PaymentMethodId,
             CompletedAt = Transaction.CompletedAt ?? Transaction.CreatedAt,
             DeliveryAddress = DeliveryAddress,
-            ShippingData = ShippingData
+            ShippingData = ShippingData,
+            Items = validatedItems?.Select(i => new OrderItemData
+            {
+                ProductId = i.ProductId,
+                ProductTitle = i.ProductTitle,
+                StoreName = i.StoreName,
+                UnitPrice = i.UnitPrice,
+                Quantity = i.Quantity
+            }).ToList() ?? []
         };
+
+        // Send confirmation email
+        var buyerEmail = User.FindFirstValue(ClaimTypes.Email);
+        if (!string.IsNullOrEmpty(buyerEmail))
+        {
+            var emailResult = await _orderService.SendOrderConfirmationEmailAsync(orderId, buyerEmail);
+            confirmationData.EmailSent = emailResult.Succeeded;
+
+            if (!emailResult.Succeeded)
+            {
+                _logger.LogWarning(
+                    "Failed to send confirmation email for order {OrderNumber}: {Errors}",
+                    orderNumber, string.Join(", ", emailResult.Errors));
+            }
+        }
+        else
+        {
+            _logger.LogWarning("No email address found for buyer {BuyerId}, skipping confirmation email", buyerId);
+        }
 
         TempData["OrderConfirmation"] = JsonSerializer.Serialize(confirmationData);
     }
@@ -358,6 +401,11 @@ public class OrderConfirmationData
     public Guid TransactionId { get; set; }
 
     /// <summary>
+    /// Gets or sets the order ID.
+    /// </summary>
+    public Guid OrderId { get; set; }
+
+    /// <summary>
     /// Gets or sets the order number.
     /// </summary>
     public string OrderNumber { get; set; } = string.Empty;
@@ -366,6 +414,11 @@ public class OrderConfirmationData
     /// Gets or sets the total amount.
     /// </summary>
     public decimal Amount { get; set; }
+
+    /// <summary>
+    /// Gets or sets the items subtotal.
+    /// </summary>
+    public decimal ItemsSubtotal { get; set; }
 
     /// <summary>
     /// Gets or sets the payment method used.
@@ -386,4 +439,50 @@ public class OrderConfirmationData
     /// Gets or sets the shipping data.
     /// </summary>
     public CheckoutShippingData? ShippingData { get; set; }
+
+    /// <summary>
+    /// Gets or sets the ordered items.
+    /// </summary>
+    public List<OrderItemData> Items { get; set; } = [];
+
+    /// <summary>
+    /// Gets or sets a value indicating whether a confirmation email was sent.
+    /// </summary>
+    public bool EmailSent { get; set; }
+}
+
+/// <summary>
+/// Data class for an ordered item stored in TempData.
+/// </summary>
+public class OrderItemData
+{
+    /// <summary>
+    /// Gets or sets the product ID.
+    /// </summary>
+    public Guid ProductId { get; set; }
+
+    /// <summary>
+    /// Gets or sets the product title.
+    /// </summary>
+    public string ProductTitle { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the store name.
+    /// </summary>
+    public string StoreName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the unit price.
+    /// </summary>
+    public decimal UnitPrice { get; set; }
+
+    /// <summary>
+    /// Gets or sets the quantity.
+    /// </summary>
+    public int Quantity { get; set; }
+
+    /// <summary>
+    /// Gets the total price for this item.
+    /// </summary>
+    public decimal TotalPrice => UnitPrice * Quantity;
 }

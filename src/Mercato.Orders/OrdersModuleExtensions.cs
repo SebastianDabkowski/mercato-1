@@ -9,8 +9,17 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Mercato.Orders;
 
+/// <summary>
+/// Extension methods for registering Orders module services.
+/// </summary>
 public static class OrdersModuleExtensions
 {
+    /// <summary>
+    /// Adds the Orders module services to the DI container.
+    /// </summary>
+    /// <param name="services">The service collection.</param>
+    /// <param name="configuration">The configuration.</param>
+    /// <returns>The service collection for chaining.</returns>
     public static IServiceCollection AddOrdersModule(this IServiceCollection services, IConfiguration configuration)
     {
         // Register OrderDbContext with SQL Server
@@ -23,7 +32,11 @@ public static class OrdersModuleExtensions
         // Register repositories
         services.AddScoped<IOrderRepository, OrderRepository>();
 
+        // Configure email settings
+        services.Configure<EmailSettings>(configuration.GetSection("Email"));
+
         // Register services
+        services.AddScoped<IOrderConfirmationEmailService, OrderConfirmationEmailService>();
         services.AddScoped<IOrderService, OrderService>();
 
         return services;

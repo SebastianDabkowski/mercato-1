@@ -37,4 +37,19 @@ public interface IOrderService
     /// <param name="isPaymentSuccessful">Whether the payment was successful.</param>
     /// <returns>The result of the update operation.</returns>
     Task<UpdateOrderStatusResult> UpdateOrderStatusAsync(Guid orderId, bool isPaymentSuccessful);
+
+    /// <summary>
+    /// Gets all orders for a specific buyer.
+    /// </summary>
+    /// <param name="buyerId">The buyer ID.</param>
+    /// <returns>The result containing the buyer's orders.</returns>
+    Task<GetOrdersResult> GetOrdersForBuyerAsync(string buyerId);
+
+    /// <summary>
+    /// Sends a confirmation email for an order.
+    /// </summary>
+    /// <param name="orderId">The order ID.</param>
+    /// <param name="buyerEmail">The buyer's email address.</param>
+    /// <returns>The result of the send operation.</returns>
+    Task<SendEmailResult> SendOrderConfirmationEmailAsync(Guid orderId, string buyerEmail);
 }
