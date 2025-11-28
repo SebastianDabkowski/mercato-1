@@ -15,6 +15,7 @@ public class SearchModel : PageModel
     private readonly ICategoryService _categoryService;
     private readonly IStoreProfileService _storeProfileService;
     private const int DefaultPageSize = 12;
+    private const string SearchPageBasePath = "/Product/Search";
 
     /// <summary>
     /// Maximum length for search queries to prevent abuse.
@@ -194,6 +195,56 @@ public class SearchModel : PageModel
     public IActionResult OnPostClearFilters()
     {
         return RedirectToPage(new { Query, SortBy });
+    }
+
+    /// <summary>
+    /// Generates a return URL that includes the current search parameters for navigation back to this page.
+    /// </summary>
+    /// <returns>The return URL with all current filter and pagination parameters.</returns>
+    public string GetReturnUrl()
+    {
+        var queryParams = new List<string>();
+        
+        if (!string.IsNullOrWhiteSpace(Query))
+        {
+            queryParams.Add($"query={Uri.EscapeDataString(Query)}");
+        }
+        if (!string.IsNullOrWhiteSpace(Category))
+        {
+            queryParams.Add($"category={Uri.EscapeDataString(Category)}");
+        }
+        if (MinPrice.HasValue)
+        {
+            queryParams.Add($"minPrice={MinPrice.Value}");
+        }
+        if (MaxPrice.HasValue)
+        {
+            queryParams.Add($"maxPrice={MaxPrice.Value}");
+        }
+        if (!string.IsNullOrWhiteSpace(Condition))
+        {
+            queryParams.Add($"condition={Uri.EscapeDataString(Condition)}");
+        }
+        if (StoreId.HasValue)
+        {
+            queryParams.Add($"storeId={StoreId.Value}");
+        }
+        if (SortBy != ProductSortOption.Relevance)
+        {
+            queryParams.Add($"sortBy={SortBy}");
+        }
+        if (CurrentPage > 1)
+        {
+            queryParams.Add($"page={CurrentPage}");
+        }
+
+        var returnUrl = SearchPageBasePath;
+        if (queryParams.Count > 0)
+        {
+            returnUrl += "?" + string.Join("&", queryParams);
+        }
+
+        return returnUrl;
     }
 
     /// <summary>

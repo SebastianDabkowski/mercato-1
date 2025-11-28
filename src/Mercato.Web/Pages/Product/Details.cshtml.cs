@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Mercato.Product.Application.Services;
 using Mercato.Product.Domain.Entities;
+using Mercato.Seller.Application.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
@@ -12,6 +13,8 @@ namespace Mercato.Web.Pages.Product;
 public class DetailsModel : PageModel
 {
     private readonly IProductService _productService;
+    private readonly ICategoryService _categoryService;
+    private readonly IStoreProfileService _storeProfileService;
     private readonly ILogger<DetailsModel> _logger;
 
     private const string PlaceholderImage = "/images/placeholder.png";
@@ -21,10 +24,18 @@ public class DetailsModel : PageModel
     /// Initializes a new instance of the <see cref="DetailsModel"/> class.
     /// </summary>
     /// <param name="productService">The product service.</param>
+    /// <param name="categoryService">The category service.</param>
+    /// <param name="storeProfileService">The store profile service.</param>
     /// <param name="logger">The logger.</param>
-    public DetailsModel(IProductService productService, ILogger<DetailsModel> logger)
+    public DetailsModel(
+        IProductService productService,
+        ICategoryService categoryService,
+        IStoreProfileService storeProfileService,
+        ILogger<DetailsModel> logger)
     {
         _productService = productService;
+        _categoryService = categoryService;
+        _storeProfileService = storeProfileService;
         _logger = logger;
     }
 
@@ -32,6 +43,22 @@ public class DetailsModel : PageModel
     /// Gets the product being viewed.
     /// </summary>
     public Mercato.Product.Domain.Entities.Product? Product { get; private set; }
+
+    /// <summary>
+    /// Gets the category for the product.
+    /// </summary>
+    public Category? ProductCategory { get; private set; }
+
+    /// <summary>
+    /// Gets the store that sells the product.
+    /// </summary>
+    public Mercato.Seller.Domain.Entities.Store? Store { get; private set; }
+
+    /// <summary>
+    /// Gets or sets the referrer URL for "Back to results" navigation.
+    /// </summary>
+    [BindProperty(SupportsGet = true)]
+    public string? ReturnUrl { get; set; }
 
     /// <summary>
     /// Handles GET requests for the product details page.
@@ -49,6 +76,15 @@ public class DetailsModel : PageModel
             Product = null;
             return Page();
         }
+
+        // Load category if the product has a category assigned
+        if (!string.IsNullOrEmpty(Product.Category))
+        {
+            ProductCategory = await _categoryService.GetCategoryByNameAsync(Product.Category);
+        }
+
+        // Load store information
+        Store = await _storeProfileService.GetStoreByIdAsync(Product.StoreId);
 
         return Page();
     }

@@ -16,6 +16,7 @@ public class CategoryModel : PageModel
     private readonly IProductService _productService;
     private readonly IStoreProfileService _storeProfileService;
     private const int DefaultPageSize = 12;
+    private const string CategoryPageBasePath = "/Product/Category";
 
     /// <summary>
     /// Initializes a new instance of the <see cref="CategoryModel"/> class.
@@ -210,6 +211,53 @@ public class CategoryModel : PageModel
     public IActionResult OnPostClearFilters(Guid? id)
     {
         return RedirectToPage(new { id, SortBy });
+    }
+
+    /// <summary>
+    /// Generates a return URL that includes the current filter parameters for navigation back to this page.
+    /// </summary>
+    /// <returns>The return URL with all current filter and pagination parameters.</returns>
+    public string GetReturnUrl()
+    {
+        if (Category == null)
+        {
+            return CategoryPageBasePath;
+        }
+
+        var queryParams = new List<string>();
+        
+        if (MinPrice.HasValue)
+        {
+            queryParams.Add($"minPrice={MinPrice.Value}");
+        }
+        if (MaxPrice.HasValue)
+        {
+            queryParams.Add($"maxPrice={MaxPrice.Value}");
+        }
+        if (!string.IsNullOrWhiteSpace(Condition))
+        {
+            queryParams.Add($"condition={Uri.EscapeDataString(Condition)}");
+        }
+        if (StoreId.HasValue)
+        {
+            queryParams.Add($"storeId={StoreId.Value}");
+        }
+        if (SortBy != ProductSortOption.Newest)
+        {
+            queryParams.Add($"sortBy={SortBy}");
+        }
+        if (CurrentPage > 1)
+        {
+            queryParams.Add($"page={CurrentPage}");
+        }
+
+        var returnUrl = $"{CategoryPageBasePath}/{Category.Id}";
+        if (queryParams.Count > 0)
+        {
+            returnUrl += "?" + string.Join("&", queryParams);
+        }
+
+        return returnUrl;
     }
 
     /// <summary>

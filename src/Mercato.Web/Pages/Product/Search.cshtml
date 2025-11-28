@@ -275,7 +275,7 @@
                                         }
                                     </div>
                                     <div class="card-footer bg-transparent">
-                                        <a asp-page="Details" asp-route-id="@product.Id" class="btn btn-outline-primary btn-sm w-100">
+                                        <a asp-page="Details" asp-route-id="@product.Id" asp-route-returnUrl="@Model.GetReturnUrl()" class="btn btn-outline-primary btn-sm w-100">
                                             View Details
                                         </a>
                                     </div>
