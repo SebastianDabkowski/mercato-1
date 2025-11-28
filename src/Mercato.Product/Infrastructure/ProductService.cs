@@ -549,7 +549,7 @@ public class ProductService : IProductService
             errors.Add("Price must be greater than 0 to set product to Active.");
         }
 
-        // Stock must be at least 0 (but typically we want positive stock)
+        // Stock must not be negative
         if (product.Stock < 0)
         {
             errors.Add("Stock cannot be negative to set product to Active.");
