@@ -174,6 +174,16 @@ public class PaginationInfoTests
     }
 
     [Fact]
+    public void NextPage_WhenNoItems_ReturnsOne()
+    {
+        // Arrange - 0 items means 0 pages
+        var pagination = PaginationInfo.Create(1, 0, 10);
+
+        // Act & Assert - should return 1 to avoid invalid page 0
+        Assert.Equal(1, pagination.NextPage);
+    }
+
+    [Fact]
     public void GetVisiblePageNumbers_SmallPageCount_ReturnsAllPages()
     {
         // Arrange - 5 pages, which is less than max visible (7)
@@ -251,5 +261,33 @@ public class PaginationInfoTests
         Assert.Equal(7, visiblePages.Count);
         Assert.DoesNotContain(null, visiblePages);
         Assert.Equal([1, 2, 3, 4, 5, 6, 7], visiblePages.Cast<int?>().ToArray());
+    }
+
+    [Fact]
+    public void GetVisiblePageNumbers_NoDuplicatePages()
+    {
+        // Test case: when on page 2 of 20 pages, page 2 is in the window and should not duplicate
+        var pagination = PaginationInfo.Create(2, 200, 10);
+
+        // Act
+        var visiblePages = pagination.GetVisiblePageNumbers();
+
+        // Assert - should not have duplicate page numbers
+        var pageNumbers = visiblePages.Where(p => p.HasValue).Select(p => p!.Value).ToList();
+        Assert.Equal(pageNumbers.Distinct().Count(), pageNumbers.Count);
+    }
+
+    [Fact]
+    public void GetVisiblePageNumbers_WhenOnSecondToLastPage_NoDuplicateLastPage()
+    {
+        // Test case: when on page 19 of 20 pages, page 20 is in the window and should not duplicate
+        var pagination = PaginationInfo.Create(19, 200, 10);
+
+        // Act
+        var visiblePages = pagination.GetVisiblePageNumbers();
+
+        // Assert - should not have duplicate page numbers
+        var pageNumbers = visiblePages.Where(p => p.HasValue).Select(p => p!.Value).ToList();
+        Assert.Equal(pageNumbers.Distinct().Count(), pageNumbers.Count);
     }
 }

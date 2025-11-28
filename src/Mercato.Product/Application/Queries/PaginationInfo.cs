@@ -51,9 +51,9 @@ public class PaginationInfo
     public int PreviousPage => CurrentPage > 1 ? CurrentPage - 1 : 1;
 
     /// <summary>
-    /// Gets the next page number (or last page if on last page).
+    /// Gets the next page number (or current page if on last page or no pages exist).
     /// </summary>
-    public int NextPage => CurrentPage < TotalPages ? CurrentPage + 1 : TotalPages;
+    public int NextPage => TotalPages == 0 ? 1 : (CurrentPage < TotalPages ? CurrentPage + 1 : TotalPages);
 
     /// <summary>
     /// Gets the 1-based index of the first item on the current page.
@@ -94,26 +94,32 @@ public class PaginationInfo
         int windowStart = Math.Max(2, CurrentPage - 1);
         int windowEnd = Math.Min(TotalPages - 1, CurrentPage + 1);
 
-        // Adjust window to ensure we have enough visible pages
+        // Add ellipsis after first page if there's a gap
         if (windowStart > 2)
         {
             pages.Add(null); // Ellipsis after first page
         }
 
-        // Add pages in the window
+        // Add pages in the window (skip if already added as first page)
         for (int i = windowStart; i <= windowEnd; i++)
         {
-            pages.Add(i);
+            if (!pages.Contains(i))
+            {
+                pages.Add(i);
+            }
         }
 
-        // Add ellipsis before last page if needed
+        // Add ellipsis before last page if there's a gap
         if (windowEnd < TotalPages - 1)
         {
             pages.Add(null); // Ellipsis before last page
         }
 
-        // Always show last page
-        pages.Add(TotalPages);
+        // Always show last page (if not already added)
+        if (!pages.Contains(TotalPages))
+        {
+            pages.Add(TotalPages);
+        }
 
         return pages;
     }
