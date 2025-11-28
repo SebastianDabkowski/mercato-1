@@ -48,4 +48,18 @@ public interface IProductRepository
     /// <param name="storeId">The store ID.</param>
     /// <returns>A list of active products belonging to the store.</returns>
     Task<IReadOnlyList<Entities.Product>> GetActiveByStoreIdAsync(Guid storeId);
+
+    /// <summary>
+    /// Gets multiple products by their unique identifiers.
+    /// </summary>
+    /// <param name="ids">The product IDs.</param>
+    /// <returns>A list of products found.</returns>
+    Task<IReadOnlyList<Entities.Product>> GetByIdsAsync(IEnumerable<Guid> ids);
+
+    /// <summary>
+    /// Updates multiple products in a single transaction.
+    /// </summary>
+    /// <param name="products">The products to update.</param>
+    /// <returns>A task representing the asynchronous operation.</returns>
+    Task UpdateManyAsync(IEnumerable<Entities.Product> products);
 }

@@ -1456,4 +1456,763 @@ public class ProductServiceTests
     }
 
     #endregion
+
+    #region BulkUpdatePriceStockAsync Tests
+
+    [Fact]
+    public async Task BulkUpdatePriceStockAsync_FixedPrice_UpdatesAllProducts()
+    {
+        // Arrange
+        var productId1 = Guid.NewGuid();
+        var productId2 = Guid.NewGuid();
+        var products = new List<Mercato.Product.Domain.Entities.Product>
+        {
+            CreateTestProduct(productId1),
+            CreateTestProduct(productId2)
+        };
+        products[0].Price = 50.00m;
+        products[1].Price = 75.00m;
+
+        var command = new BulkUpdatePriceStockCommand
+        {
+            SellerId = TestSellerId,
+            StoreId = TestStoreId,
+            ProductIds = [productId1, productId2],
+            PriceUpdate = new BulkPriceUpdate
+            {
+                UpdateType = BulkPriceUpdateType.Fixed,
+                Value = 100.00m
+            }
+        };
+
+        _mockRepository.Setup(r => r.GetByIdsAsync(It.IsAny<IEnumerable<Guid>>()))
+            .ReturnsAsync(products);
+        _mockRepository.Setup(r => r.UpdateManyAsync(It.IsAny<IEnumerable<Mercato.Product.Domain.Entities.Product>>()))
+            .Returns(Task.CompletedTask);
+
+        // Act
+        var result = await _service.BulkUpdatePriceStockAsync(command);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.Equal(2, result.SuccessCount);
+        Assert.Equal(0, result.FailureCount);
+        Assert.All(products, p => Assert.Equal(100.00m, p.Price));
+    }
+
+    [Fact]
+    public async Task BulkUpdatePriceStockAsync_PercentageIncrease_UpdatesAllProducts()
+    {
+        // Arrange
+        var productId1 = Guid.NewGuid();
+        var products = new List<Mercato.Product.Domain.Entities.Product>
+        {
+            CreateTestProduct(productId1)
+        };
+        products[0].Price = 100.00m;
+
+        var command = new BulkUpdatePriceStockCommand
+        {
+            SellerId = TestSellerId,
+            StoreId = TestStoreId,
+            ProductIds = [productId1],
+            PriceUpdate = new BulkPriceUpdate
+            {
+                UpdateType = BulkPriceUpdateType.PercentageIncrease,
+                Value = 10
+            }
+        };
+
+        _mockRepository.Setup(r => r.GetByIdsAsync(It.IsAny<IEnumerable<Guid>>()))
+            .ReturnsAsync(products);
+        _mockRepository.Setup(r => r.UpdateManyAsync(It.IsAny<IEnumerable<Mercato.Product.Domain.Entities.Product>>()))
+            .Returns(Task.CompletedTask);
+
+        // Act
+        var result = await _service.BulkUpdatePriceStockAsync(command);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.Equal(110.00m, products[0].Price);
+    }
+
+    [Fact]
+    public async Task BulkUpdatePriceStockAsync_PercentageDecrease_UpdatesAllProducts()
+    {
+        // Arrange
+        var productId1 = Guid.NewGuid();
+        var products = new List<Mercato.Product.Domain.Entities.Product>
+        {
+            CreateTestProduct(productId1)
+        };
+        products[0].Price = 100.00m;
+
+        var command = new BulkUpdatePriceStockCommand
+        {
+            SellerId = TestSellerId,
+            StoreId = TestStoreId,
+            ProductIds = [productId1],
+            PriceUpdate = new BulkPriceUpdate
+            {
+                UpdateType = BulkPriceUpdateType.PercentageDecrease,
+                Value = 20
+            }
+        };
+
+        _mockRepository.Setup(r => r.GetByIdsAsync(It.IsAny<IEnumerable<Guid>>()))
+            .ReturnsAsync(products);
+        _mockRepository.Setup(r => r.UpdateManyAsync(It.IsAny<IEnumerable<Mercato.Product.Domain.Entities.Product>>()))
+            .Returns(Task.CompletedTask);
+
+        // Act
+        var result = await _service.BulkUpdatePriceStockAsync(command);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.Equal(80.00m, products[0].Price);
+    }
+
+    [Fact]
+    public async Task BulkUpdatePriceStockAsync_FixedStock_UpdatesAllProducts()
+    {
+        // Arrange
+        var productId1 = Guid.NewGuid();
+        var products = new List<Mercato.Product.Domain.Entities.Product>
+        {
+            CreateTestProduct(productId1)
+        };
+        products[0].Stock = 50;
+
+        var command = new BulkUpdatePriceStockCommand
+        {
+            SellerId = TestSellerId,
+            StoreId = TestStoreId,
+            ProductIds = [productId1],
+            StockUpdate = new BulkStockUpdate
+            {
+                UpdateType = BulkStockUpdateType.Fixed,
+                Value = 100
+            }
+        };
+
+        _mockRepository.Setup(r => r.GetByIdsAsync(It.IsAny<IEnumerable<Guid>>()))
+            .ReturnsAsync(products);
+        _mockRepository.Setup(r => r.UpdateManyAsync(It.IsAny<IEnumerable<Mercato.Product.Domain.Entities.Product>>()))
+            .Returns(Task.CompletedTask);
+
+        // Act
+        var result = await _service.BulkUpdatePriceStockAsync(command);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.Equal(100, products[0].Stock);
+    }
+
+    [Fact]
+    public async Task BulkUpdatePriceStockAsync_IncreaseStock_UpdatesAllProducts()
+    {
+        // Arrange
+        var productId1 = Guid.NewGuid();
+        var products = new List<Mercato.Product.Domain.Entities.Product>
+        {
+            CreateTestProduct(productId1)
+        };
+        products[0].Stock = 50;
+
+        var command = new BulkUpdatePriceStockCommand
+        {
+            SellerId = TestSellerId,
+            StoreId = TestStoreId,
+            ProductIds = [productId1],
+            StockUpdate = new BulkStockUpdate
+            {
+                UpdateType = BulkStockUpdateType.Increase,
+                Value = 25
+            }
+        };
+
+        _mockRepository.Setup(r => r.GetByIdsAsync(It.IsAny<IEnumerable<Guid>>()))
+            .ReturnsAsync(products);
+        _mockRepository.Setup(r => r.UpdateManyAsync(It.IsAny<IEnumerable<Mercato.Product.Domain.Entities.Product>>()))
+            .Returns(Task.CompletedTask);
+
+        // Act
+        var result = await _service.BulkUpdatePriceStockAsync(command);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.Equal(75, products[0].Stock);
+    }
+
+    [Fact]
+    public async Task BulkUpdatePriceStockAsync_DecreaseStock_UpdatesAllProducts()
+    {
+        // Arrange
+        var productId1 = Guid.NewGuid();
+        var products = new List<Mercato.Product.Domain.Entities.Product>
+        {
+            CreateTestProduct(productId1)
+        };
+        products[0].Stock = 50;
+
+        var command = new BulkUpdatePriceStockCommand
+        {
+            SellerId = TestSellerId,
+            StoreId = TestStoreId,
+            ProductIds = [productId1],
+            StockUpdate = new BulkStockUpdate
+            {
+                UpdateType = BulkStockUpdateType.Decrease,
+                Value = 20
+            }
+        };
+
+        _mockRepository.Setup(r => r.GetByIdsAsync(It.IsAny<IEnumerable<Guid>>()))
+            .ReturnsAsync(products);
+        _mockRepository.Setup(r => r.UpdateManyAsync(It.IsAny<IEnumerable<Mercato.Product.Domain.Entities.Product>>()))
+            .Returns(Task.CompletedTask);
+
+        // Act
+        var result = await _service.BulkUpdatePriceStockAsync(command);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.Equal(30, products[0].Stock);
+    }
+
+    [Fact]
+    public async Task BulkUpdatePriceStockAsync_BothPriceAndStock_UpdatesAllProducts()
+    {
+        // Arrange
+        var productId1 = Guid.NewGuid();
+        var products = new List<Mercato.Product.Domain.Entities.Product>
+        {
+            CreateTestProduct(productId1)
+        };
+        products[0].Price = 100.00m;
+        products[0].Stock = 50;
+
+        var command = new BulkUpdatePriceStockCommand
+        {
+            SellerId = TestSellerId,
+            StoreId = TestStoreId,
+            ProductIds = [productId1],
+            PriceUpdate = new BulkPriceUpdate
+            {
+                UpdateType = BulkPriceUpdateType.Fixed,
+                Value = 200.00m
+            },
+            StockUpdate = new BulkStockUpdate
+            {
+                UpdateType = BulkStockUpdateType.Fixed,
+                Value = 100
+            }
+        };
+
+        _mockRepository.Setup(r => r.GetByIdsAsync(It.IsAny<IEnumerable<Guid>>()))
+            .ReturnsAsync(products);
+        _mockRepository.Setup(r => r.UpdateManyAsync(It.IsAny<IEnumerable<Mercato.Product.Domain.Entities.Product>>()))
+            .Returns(Task.CompletedTask);
+
+        // Act
+        var result = await _service.BulkUpdatePriceStockAsync(command);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.Equal(200.00m, products[0].Price);
+        Assert.Equal(100, products[0].Stock);
+    }
+
+    [Fact]
+    public async Task BulkUpdatePriceStockAsync_NegativeResultingPrice_FailsForThatProduct()
+    {
+        // Arrange
+        var productId1 = Guid.NewGuid();
+        var products = new List<Mercato.Product.Domain.Entities.Product>
+        {
+            CreateTestProduct(productId1)
+        };
+        products[0].Price = 10.00m;
+
+        var command = new BulkUpdatePriceStockCommand
+        {
+            SellerId = TestSellerId,
+            StoreId = TestStoreId,
+            ProductIds = [productId1],
+            PriceUpdate = new BulkPriceUpdate
+            {
+                UpdateType = BulkPriceUpdateType.AmountDecrease,
+                Value = 20.00m
+            }
+        };
+
+        _mockRepository.Setup(r => r.GetByIdsAsync(It.IsAny<IEnumerable<Guid>>()))
+            .ReturnsAsync(products);
+
+        // Act
+        var result = await _service.BulkUpdatePriceStockAsync(command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Equal(0, result.SuccessCount);
+        Assert.Equal(1, result.FailureCount);
+        Assert.Contains(result.FailedProducts, f => f.Error.Contains("zero or negative"));
+    }
+
+    [Fact]
+    public async Task BulkUpdatePriceStockAsync_NegativeResultingStock_FailsForThatProduct()
+    {
+        // Arrange
+        var productId1 = Guid.NewGuid();
+        var products = new List<Mercato.Product.Domain.Entities.Product>
+        {
+            CreateTestProduct(productId1)
+        };
+        products[0].Stock = 10;
+
+        var command = new BulkUpdatePriceStockCommand
+        {
+            SellerId = TestSellerId,
+            StoreId = TestStoreId,
+            ProductIds = [productId1],
+            StockUpdate = new BulkStockUpdate
+            {
+                UpdateType = BulkStockUpdateType.Decrease,
+                Value = 20
+            }
+        };
+
+        _mockRepository.Setup(r => r.GetByIdsAsync(It.IsAny<IEnumerable<Guid>>()))
+            .ReturnsAsync(products);
+
+        // Act
+        var result = await _service.BulkUpdatePriceStockAsync(command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Equal(0, result.SuccessCount);
+        Assert.Equal(1, result.FailureCount);
+        Assert.Contains(result.FailedProducts, f => f.Error.Contains("negative"));
+    }
+
+    [Fact]
+    public async Task BulkUpdatePriceStockAsync_ArchivedProduct_FailsForThatProduct()
+    {
+        // Arrange
+        var productId1 = Guid.NewGuid();
+        var productId2 = Guid.NewGuid();
+        var products = new List<Mercato.Product.Domain.Entities.Product>
+        {
+            CreateTestProduct(productId1),
+            CreateTestProduct(productId2)
+        };
+        products[0].Status = ProductStatus.Archived;
+
+        var command = new BulkUpdatePriceStockCommand
+        {
+            SellerId = TestSellerId,
+            StoreId = TestStoreId,
+            ProductIds = [productId1, productId2],
+            PriceUpdate = new BulkPriceUpdate
+            {
+                UpdateType = BulkPriceUpdateType.Fixed,
+                Value = 100.00m
+            }
+        };
+
+        _mockRepository.Setup(r => r.GetByIdsAsync(It.IsAny<IEnumerable<Guid>>()))
+            .ReturnsAsync(products);
+        _mockRepository.Setup(r => r.UpdateManyAsync(It.IsAny<IEnumerable<Mercato.Product.Domain.Entities.Product>>()))
+            .Returns(Task.CompletedTask);
+
+        // Act
+        var result = await _service.BulkUpdatePriceStockAsync(command);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.Equal(1, result.SuccessCount);
+        Assert.Equal(1, result.FailureCount);
+        Assert.Contains(result.FailedProducts, f => f.ProductId == productId1 && f.Error.Contains("archived"));
+    }
+
+    [Fact]
+    public async Task BulkUpdatePriceStockAsync_WrongStoreId_FailsForThatProduct()
+    {
+        // Arrange
+        var productId1 = Guid.NewGuid();
+        var products = new List<Mercato.Product.Domain.Entities.Product>
+        {
+            CreateTestProduct(productId1)
+        };
+        products[0].StoreId = Guid.NewGuid(); // Different store
+
+        var command = new BulkUpdatePriceStockCommand
+        {
+            SellerId = TestSellerId,
+            StoreId = TestStoreId,
+            ProductIds = [productId1],
+            PriceUpdate = new BulkPriceUpdate
+            {
+                UpdateType = BulkPriceUpdateType.Fixed,
+                Value = 100.00m
+            }
+        };
+
+        _mockRepository.Setup(r => r.GetByIdsAsync(It.IsAny<IEnumerable<Guid>>()))
+            .ReturnsAsync(products);
+
+        // Act
+        var result = await _service.BulkUpdatePriceStockAsync(command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Equal(0, result.SuccessCount);
+        Assert.Equal(1, result.FailureCount);
+        Assert.Contains(result.FailedProducts, f => f.Error.Contains("not authorized"));
+    }
+
+    [Fact]
+    public async Task BulkUpdatePriceStockAsync_EmptyProductIds_ReturnsValidationError()
+    {
+        // Arrange
+        var command = new BulkUpdatePriceStockCommand
+        {
+            SellerId = TestSellerId,
+            StoreId = TestStoreId,
+            ProductIds = [],
+            PriceUpdate = new BulkPriceUpdate
+            {
+                UpdateType = BulkPriceUpdateType.Fixed,
+                Value = 100.00m
+            }
+        };
+
+        // Act
+        var result = await _service.BulkUpdatePriceStockAsync(command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains("At least one product ID is required.", result.Errors);
+    }
+
+    [Fact]
+    public async Task BulkUpdatePriceStockAsync_NoUpdateSpecified_ReturnsValidationError()
+    {
+        // Arrange
+        var command = new BulkUpdatePriceStockCommand
+        {
+            SellerId = TestSellerId,
+            StoreId = TestStoreId,
+            ProductIds = [Guid.NewGuid()],
+            PriceUpdate = null,
+            StockUpdate = null
+        };
+
+        // Act
+        var result = await _service.BulkUpdatePriceStockAsync(command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains("At least one update (price or stock) must be specified.", result.Errors);
+    }
+
+    [Fact]
+    public async Task BulkUpdatePriceStockAsync_EmptyStoreId_ReturnsValidationError()
+    {
+        // Arrange
+        var command = new BulkUpdatePriceStockCommand
+        {
+            SellerId = TestSellerId,
+            StoreId = Guid.Empty,
+            ProductIds = [Guid.NewGuid()],
+            PriceUpdate = new BulkPriceUpdate
+            {
+                UpdateType = BulkPriceUpdateType.Fixed,
+                Value = 100.00m
+            }
+        };
+
+        // Act
+        var result = await _service.BulkUpdatePriceStockAsync(command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains("Store ID is required.", result.Errors);
+    }
+
+    [Fact]
+    public async Task BulkUpdatePriceStockAsync_EmptySellerId_ReturnsValidationError()
+    {
+        // Arrange
+        var command = new BulkUpdatePriceStockCommand
+        {
+            SellerId = string.Empty,
+            StoreId = TestStoreId,
+            ProductIds = [Guid.NewGuid()],
+            PriceUpdate = new BulkPriceUpdate
+            {
+                UpdateType = BulkPriceUpdateType.Fixed,
+                Value = 100.00m
+            }
+        };
+
+        // Act
+        var result = await _service.BulkUpdatePriceStockAsync(command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains("Seller ID is required.", result.Errors);
+    }
+
+    [Fact]
+    public async Task BulkUpdatePriceStockAsync_NoProductsFound_ReturnsFailure()
+    {
+        // Arrange
+        var command = new BulkUpdatePriceStockCommand
+        {
+            SellerId = TestSellerId,
+            StoreId = TestStoreId,
+            ProductIds = [Guid.NewGuid()],
+            PriceUpdate = new BulkPriceUpdate
+            {
+                UpdateType = BulkPriceUpdateType.Fixed,
+                Value = 100.00m
+            }
+        };
+
+        _mockRepository.Setup(r => r.GetByIdsAsync(It.IsAny<IEnumerable<Guid>>()))
+            .ReturnsAsync(new List<Mercato.Product.Domain.Entities.Product>());
+
+        // Act
+        var result = await _service.BulkUpdatePriceStockAsync(command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains("No products found with the specified IDs.", result.Errors);
+    }
+
+    [Fact]
+    public async Task BulkUpdatePriceStockAsync_FixedPriceZero_ReturnsValidationError()
+    {
+        // Arrange
+        var command = new BulkUpdatePriceStockCommand
+        {
+            SellerId = TestSellerId,
+            StoreId = TestStoreId,
+            ProductIds = [Guid.NewGuid()],
+            PriceUpdate = new BulkPriceUpdate
+            {
+                UpdateType = BulkPriceUpdateType.Fixed,
+                Value = 0
+            }
+        };
+
+        // Act
+        var result = await _service.BulkUpdatePriceStockAsync(command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains("Fixed price must be greater than 0.", result.Errors);
+    }
+
+    [Fact]
+    public async Task BulkUpdatePriceStockAsync_NegativeFixedStock_ReturnsValidationError()
+    {
+        // Arrange
+        var command = new BulkUpdatePriceStockCommand
+        {
+            SellerId = TestSellerId,
+            StoreId = TestStoreId,
+            ProductIds = [Guid.NewGuid()],
+            StockUpdate = new BulkStockUpdate
+            {
+                UpdateType = BulkStockUpdateType.Fixed,
+                Value = -1
+            }
+        };
+
+        // Act
+        var result = await _service.BulkUpdatePriceStockAsync(command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains("Fixed stock cannot be negative.", result.Errors);
+    }
+
+    [Fact]
+    public async Task BulkUpdatePriceStockAsync_PercentageDecreaseOver100_ReturnsValidationError()
+    {
+        // Arrange
+        var command = new BulkUpdatePriceStockCommand
+        {
+            SellerId = TestSellerId,
+            StoreId = TestStoreId,
+            ProductIds = [Guid.NewGuid()],
+            PriceUpdate = new BulkPriceUpdate
+            {
+                UpdateType = BulkPriceUpdateType.PercentageDecrease,
+                Value = 150
+            }
+        };
+
+        // Act
+        var result = await _service.BulkUpdatePriceStockAsync(command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains("Percentage decrease cannot exceed 100%.", result.Errors);
+    }
+
+    [Fact]
+    public async Task BulkUpdatePriceStockAsync_UpdatesLastUpdatedFields()
+    {
+        // Arrange
+        var productId1 = Guid.NewGuid();
+        var products = new List<Mercato.Product.Domain.Entities.Product>
+        {
+            CreateTestProduct(productId1)
+        };
+        var originalUpdatedAt = products[0].LastUpdatedAt;
+
+        var command = new BulkUpdatePriceStockCommand
+        {
+            SellerId = TestSellerId,
+            StoreId = TestStoreId,
+            ProductIds = [productId1],
+            PriceUpdate = new BulkPriceUpdate
+            {
+                UpdateType = BulkPriceUpdateType.Fixed,
+                Value = 100.00m
+            }
+        };
+
+        _mockRepository.Setup(r => r.GetByIdsAsync(It.IsAny<IEnumerable<Guid>>()))
+            .ReturnsAsync(products);
+        _mockRepository.Setup(r => r.UpdateManyAsync(It.IsAny<IEnumerable<Mercato.Product.Domain.Entities.Product>>()))
+            .Returns(Task.CompletedTask);
+
+        // Act
+        var result = await _service.BulkUpdatePriceStockAsync(command);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.Equal(TestSellerId, products[0].LastUpdatedBy);
+        Assert.True(products[0].LastUpdatedAt >= originalUpdatedAt);
+    }
+
+    [Fact]
+    public async Task BulkUpdatePriceStockAsync_AmountIncrease_UpdatesPrice()
+    {
+        // Arrange
+        var productId1 = Guid.NewGuid();
+        var products = new List<Mercato.Product.Domain.Entities.Product>
+        {
+            CreateTestProduct(productId1)
+        };
+        products[0].Price = 100.00m;
+
+        var command = new BulkUpdatePriceStockCommand
+        {
+            SellerId = TestSellerId,
+            StoreId = TestStoreId,
+            ProductIds = [productId1],
+            PriceUpdate = new BulkPriceUpdate
+            {
+                UpdateType = BulkPriceUpdateType.AmountIncrease,
+                Value = 25.00m
+            }
+        };
+
+        _mockRepository.Setup(r => r.GetByIdsAsync(It.IsAny<IEnumerable<Guid>>()))
+            .ReturnsAsync(products);
+        _mockRepository.Setup(r => r.UpdateManyAsync(It.IsAny<IEnumerable<Mercato.Product.Domain.Entities.Product>>()))
+            .Returns(Task.CompletedTask);
+
+        // Act
+        var result = await _service.BulkUpdatePriceStockAsync(command);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.Equal(125.00m, products[0].Price);
+    }
+
+    [Fact]
+    public async Task BulkUpdatePriceStockAsync_AmountDecrease_UpdatesPrice()
+    {
+        // Arrange
+        var productId1 = Guid.NewGuid();
+        var products = new List<Mercato.Product.Domain.Entities.Product>
+        {
+            CreateTestProduct(productId1)
+        };
+        products[0].Price = 100.00m;
+
+        var command = new BulkUpdatePriceStockCommand
+        {
+            SellerId = TestSellerId,
+            StoreId = TestStoreId,
+            ProductIds = [productId1],
+            PriceUpdate = new BulkPriceUpdate
+            {
+                UpdateType = BulkPriceUpdateType.AmountDecrease,
+                Value = 25.00m
+            }
+        };
+
+        _mockRepository.Setup(r => r.GetByIdsAsync(It.IsAny<IEnumerable<Guid>>()))
+            .ReturnsAsync(products);
+        _mockRepository.Setup(r => r.UpdateManyAsync(It.IsAny<IEnumerable<Mercato.Product.Domain.Entities.Product>>()))
+            .Returns(Task.CompletedTask);
+
+        // Act
+        var result = await _service.BulkUpdatePriceStockAsync(command);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.Equal(75.00m, products[0].Price);
+    }
+
+    [Fact]
+    public async Task BulkUpdatePriceStockAsync_PartialSuccess_ReturnsSuccessWithFailures()
+    {
+        // Arrange
+        var productId1 = Guid.NewGuid();
+        var productId2 = Guid.NewGuid();
+        var products = new List<Mercato.Product.Domain.Entities.Product>
+        {
+            CreateTestProduct(productId1),
+            CreateTestProduct(productId2)
+        };
+        products[0].Price = 100.00m;
+        products[1].Price = 10.00m; // This will result in negative price
+
+        var command = new BulkUpdatePriceStockCommand
+        {
+            SellerId = TestSellerId,
+            StoreId = TestStoreId,
+            ProductIds = [productId1, productId2],
+            PriceUpdate = new BulkPriceUpdate
+            {
+                UpdateType = BulkPriceUpdateType.AmountDecrease,
+                Value = 50.00m
+            }
+        };
+
+        _mockRepository.Setup(r => r.GetByIdsAsync(It.IsAny<IEnumerable<Guid>>()))
+            .ReturnsAsync(products);
+        _mockRepository.Setup(r => r.UpdateManyAsync(It.IsAny<IEnumerable<Mercato.Product.Domain.Entities.Product>>()))
+            .Returns(Task.CompletedTask);
+
+        // Act
+        var result = await _service.BulkUpdatePriceStockAsync(command);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.Equal(1, result.SuccessCount);
+        Assert.Equal(1, result.FailureCount);
+        Assert.Equal(50.00m, products[0].Price);
+        Assert.Contains(result.FailedProducts, f => f.ProductId == productId2);
+    }
+
+    #endregion
 }
