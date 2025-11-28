@@ -48,4 +48,11 @@ public interface ICategoryService
     /// <param name="parentId">The parent category ID. Use null to get root categories.</param>
     /// <returns>A list of child categories.</returns>
     Task<IReadOnlyList<Category>> GetCategoriesByParentIdAsync(Guid? parentId);
+
+    /// <summary>
+    /// Gets active categories by parent ID.
+    /// </summary>
+    /// <param name="parentId">The parent category ID. Use null to get root categories.</param>
+    /// <returns>A list of active child categories.</returns>
+    Task<IReadOnlyList<Category>> GetActiveCategoriesByParentIdAsync(Guid? parentId);
 }

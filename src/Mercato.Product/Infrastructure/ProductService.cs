@@ -1003,4 +1003,10 @@ public class ProductService : IProductService
         workbook.SaveAs(memoryStream);
         return memoryStream.ToArray();
     }
+
+    /// <inheritdoc />
+    public async Task<(IReadOnlyList<Domain.Entities.Product> Products, int TotalCount)> GetProductsByCategoryAsync(string categoryName, int page, int pageSize)
+    {
+        return await _repository.GetActiveByCategoryAsync(categoryName, page, pageSize);
+    }
 }

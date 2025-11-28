@@ -62,4 +62,14 @@ public interface IProductRepository
     /// <param name="products">The products to update.</param>
     /// <returns>A task representing the asynchronous operation.</returns>
     Task UpdateManyAsync(IEnumerable<Entities.Product> products);
+
+    /// <summary>
+    /// Gets active products by category name with pagination support.
+    /// Only products with Active status are returned.
+    /// </summary>
+    /// <param name="categoryName">The category name to filter by.</param>
+    /// <param name="page">The page number (1-based).</param>
+    /// <param name="pageSize">The number of items per page.</param>
+    /// <returns>A tuple containing the list of products and total count.</returns>
+    Task<(IReadOnlyList<Entities.Product> Products, int TotalCount)> GetActiveByCategoryAsync(string categoryName, int page, int pageSize);
 }

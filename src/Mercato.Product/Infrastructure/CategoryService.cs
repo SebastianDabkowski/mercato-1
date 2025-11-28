@@ -178,6 +178,12 @@ public class CategoryService : ICategoryService
         return await _repository.GetByParentIdAsync(parentId);
     }
 
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<Category>> GetActiveCategoriesByParentIdAsync(Guid? parentId)
+    {
+        return await _repository.GetActiveByParentIdAsync(parentId);
+    }
+
     private async Task<List<string>> ValidateCreateCommandAsync(CreateCategoryCommand command)
     {
         var errors = new List<string>();

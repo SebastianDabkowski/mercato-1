@@ -82,4 +82,21 @@ public class ProductRepository : IProductRepository
         _context.Products.UpdateRange(products);
         await _context.SaveChangesAsync();
     }
+
+    /// <inheritdoc />
+    public async Task<(IReadOnlyList<Domain.Entities.Product> Products, int TotalCount)> GetActiveByCategoryAsync(string categoryName, int page, int pageSize)
+    {
+        var query = _context.Products
+            .Where(p => p.Category == categoryName && p.Status == ProductStatus.Active);
+
+        var totalCount = await query.CountAsync();
+
+        var products = await query
+            .OrderByDescending(p => p.CreatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        return (products, totalCount);
+    }
 }

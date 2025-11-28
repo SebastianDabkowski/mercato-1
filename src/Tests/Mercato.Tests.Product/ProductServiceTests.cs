@@ -2550,4 +2550,80 @@ public class ProductServiceTests
     }
 
     #endregion
+
+    #region GetProductsByCategoryAsync Tests
+
+    [Fact]
+    public async Task GetProductsByCategoryAsync_ReturnsProductsForCategory()
+    {
+        // Arrange
+        var categoryName = "Electronics";
+        var products = new List<Mercato.Product.Domain.Entities.Product>
+        {
+            CreateTestProduct(Guid.NewGuid()),
+            CreateTestProduct(Guid.NewGuid())
+        };
+        products[0].Category = categoryName;
+        products[0].Status = ProductStatus.Active;
+        products[1].Category = categoryName;
+        products[1].Status = ProductStatus.Active;
+
+        _mockRepository.Setup(r => r.GetActiveByCategoryAsync(categoryName, 1, 12))
+            .ReturnsAsync((products, 2));
+
+        // Act
+        var (resultProducts, totalCount) = await _service.GetProductsByCategoryAsync(categoryName, 1, 12);
+
+        // Assert
+        Assert.NotNull(resultProducts);
+        Assert.Equal(2, resultProducts.Count);
+        Assert.Equal(2, totalCount);
+        _mockRepository.Verify(r => r.GetActiveByCategoryAsync(categoryName, 1, 12), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetProductsByCategoryAsync_WhenNoProducts_ReturnsEmptyList()
+    {
+        // Arrange
+        var categoryName = "EmptyCategory";
+
+        _mockRepository.Setup(r => r.GetActiveByCategoryAsync(categoryName, 1, 12))
+            .ReturnsAsync((new List<Mercato.Product.Domain.Entities.Product>(), 0));
+
+        // Act
+        var (resultProducts, totalCount) = await _service.GetProductsByCategoryAsync(categoryName, 1, 12);
+
+        // Assert
+        Assert.NotNull(resultProducts);
+        Assert.Empty(resultProducts);
+        Assert.Equal(0, totalCount);
+        _mockRepository.Verify(r => r.GetActiveByCategoryAsync(categoryName, 1, 12), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetProductsByCategoryAsync_WithPagination_ReturnsCorrectPage()
+    {
+        // Arrange
+        var categoryName = "Electronics";
+        var products = new List<Mercato.Product.Domain.Entities.Product>
+        {
+            CreateTestProduct(Guid.NewGuid())
+        };
+        products[0].Category = categoryName;
+        products[0].Status = ProductStatus.Active;
+
+        _mockRepository.Setup(r => r.GetActiveByCategoryAsync(categoryName, 2, 10))
+            .ReturnsAsync((products, 15));
+
+        // Act
+        var (resultProducts, totalCount) = await _service.GetProductsByCategoryAsync(categoryName, 2, 10);
+
+        // Assert
+        Assert.NotNull(resultProducts);
+        Assert.Single(resultProducts);
+        Assert.Equal(15, totalCount);
+        _mockRepository.Verify(r => r.GetActiveByCategoryAsync(categoryName, 2, 10), Times.Once);
+    }
+
+    #endregion
 }
