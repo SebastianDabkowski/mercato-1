@@ -310,11 +310,9 @@ public class CheckoutModel : PageModel
             NewAddress.Country,
             NewAddress.PhoneNumber);
 
-        TempData["Success"] = "Address confirmed. Proceed to payment.";
+        TempData["Success"] = "Address confirmed. Proceed to shipping.";
 
-        // Note: Payment step implementation is out of scope for this feature.
-        // When payment page is available, redirect to: RedirectToPage("Payment")
-        return RedirectToPage();
+        return RedirectToPage("Shipping");
     }
 
     private async Task<IActionResult> HandleSelectedAddressAsync(string buyerId)
@@ -361,11 +359,9 @@ public class CheckoutModel : PageModel
             selectedAddress.Country,
             selectedAddress.PhoneNumber);
 
-        TempData["Success"] = "Address confirmed. Proceed to payment.";
+        TempData["Success"] = "Address confirmed. Proceed to shipping.";
 
-        // Note: Payment step implementation is out of scope for this feature.
-        // When payment page is available, redirect to: RedirectToPage("Payment")
-        return RedirectToPage();
+        return RedirectToPage("Shipping");
     }
 
     private void StoreAddressInTempData(

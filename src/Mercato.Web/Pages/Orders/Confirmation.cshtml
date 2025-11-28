@@ -1,0 +1,137 @@
+@page
+@model Mercato.Web.Pages.Orders.ConfirmationModel
+@{
+    ViewData["Title"] = "Order Confirmation";
+}
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+            {
+                <div class="alert alert-danger">@Model.ErrorMessage</div>
+            }
+            else if (Model.ConfirmationData != null)
+            {
+                <div class="card border-success">
+                    <div class="card-body text-center py-5">
+                        <div class="mb-4">
+                            <i class="bi bi-check-circle-fill text-success" style="font-size: 5rem;"></i>
+                        </div>
+                        <h1 class="text-success mb-3">Thank You!</h1>
+                        <h4 class="mb-4">Your order has been placed successfully.</h4>
+                        
+                        <div class="bg-light rounded p-4 mb-4">
+                            <div class="row">
+                                <div class="col-md-6 text-md-start mb-3 mb-md-0">
+                                    <span class="text-muted">Order Number:</span>
+                                    <br>
+                                    <strong class="fs-4">@Model.ConfirmationData.OrderNumber</strong>
+                                </div>
+                                <div class="col-md-6 text-md-end">
+                                    <span class="text-muted">Total Amount:</span>
+                                    <br>
+                                    <strong class="fs-4 text-primary">@Model.ConfirmationData.Amount.ToString("C")</strong>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="text-start mb-4">
+                            <h5 class="mb-3">Order Details</h5>
+                            <table class="table">
+                                <tbody>
+                                    <tr>
+                                        <td class="text-muted">Order Date:</td>
+                                        <td class="text-end">@Model.ConfirmationData.CompletedAt.ToString("MMMM dd, yyyy 'at' h:mm tt")</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-muted">Payment Method:</td>
+                                        <td class="text-end">
+                                            @if (Model.ConfirmationData.PaymentMethod == "credit_card")
+                                            {
+                                                <i class="bi bi-credit-card me-1"></i>
+                                                <text>Credit Card</text>
+                                            }
+                                            else if (Model.ConfirmationData.PaymentMethod == "paypal")
+                                            {
+                                                <i class="bi bi-paypal me-1"></i>
+                                                <text>PayPal</text>
+                                            }
+                                            else
+                                            {
+                                                @Model.ConfirmationData.PaymentMethod
+                                            }
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-muted">Payment Status:</td>
+                                        <td class="text-end"><span class="badge bg-success">Completed</span></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        @if (Model.ConfirmationData.DeliveryAddress != null)
+                        {
+                            <div class="text-start mb-4">
+                                <h5 class="mb-3">Delivery Address</h5>
+                                <div class="bg-light rounded p-3">
+                                    <strong>@Model.ConfirmationData.DeliveryAddress.FullName</strong><br>
+                                    @Model.ConfirmationData.DeliveryAddress.AddressLine1<br>
+                                    @if (!string.IsNullOrEmpty(Model.ConfirmationData.DeliveryAddress.AddressLine2))
+                                    {
+                                        @Model.ConfirmationData.DeliveryAddress.AddressLine2<br>
+                                    }
+                                    @Model.ConfirmationData.DeliveryAddress.City,
+                                    @if (!string.IsNullOrEmpty(Model.ConfirmationData.DeliveryAddress.State))
+                                    {
+                                        @Model.ConfirmationData.DeliveryAddress.State
+                                    }
+                                    @Model.ConfirmationData.DeliveryAddress.PostalCode<br>
+                                    @Model.ConfirmationData.DeliveryAddress.Country
+                                    @if (!string.IsNullOrEmpty(Model.ConfirmationData.DeliveryAddress.PhoneNumber))
+                                    {
+                                        <br><span class="text-muted small"><i class="bi bi-telephone me-1"></i>@Model.ConfirmationData.DeliveryAddress.PhoneNumber</span>
+                                    }
+                                </div>
+                            </div>
+                        }
+
+                        @if (Model.ConfirmationData.ShippingData != null && Model.ConfirmationData.ShippingData.TotalShippingCost > 0)
+                        {
+                            <div class="text-start mb-4">
+                                <h5 class="mb-3">Shipping</h5>
+                                <div class="d-flex justify-content-between">
+                                    <span class="text-muted">Shipping Cost:</span>
+                                    <span>@Model.ConfirmationData.ShippingData.TotalShippingCost.ToString("C")</span>
+                                </div>
+                            </div>
+                        }
+
+                        <div class="alert alert-info">
+                            <i class="bi bi-envelope me-2"></i>
+                            A confirmation email will be sent to your registered email address.
+                        </div>
+
+                        <div class="d-flex justify-content-center gap-3 mt-4">
+                            <a asp-page="Index" class="btn btn-primary">
+                                <i class="bi bi-bag me-1"></i>View My Orders
+                            </a>
+                            <a asp-page="/Product/Index" class="btn btn-outline-secondary">
+                                <i class="bi bi-shop me-1"></i>Continue Shopping
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="alert alert-warning">
+                    <h5>No Order Found</h5>
+                    <p>We couldn't find your order confirmation. This might happen if you refreshed the page.</p>
+                    <a asp-page="Index" class="btn btn-primary">View My Orders</a>
+                </div>
+            }
+        </div>
+    </div>
+</div>
