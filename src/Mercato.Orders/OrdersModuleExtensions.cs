@@ -31,6 +31,7 @@ public static class OrdersModuleExtensions
 
         // Register repositories
         services.AddScoped<IOrderRepository, OrderRepository>();
+        services.AddScoped<ISellerSubOrderRepository, SellerSubOrderRepository>();
 
         // Configure email settings
         services.Configure<EmailSettings>(configuration.GetSection("Email"));

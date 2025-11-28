@@ -23,6 +23,16 @@ public class OrderDbContext : DbContext
     /// </summary>
     public DbSet<OrderItem> OrderItems { get; set; }
 
+    /// <summary>
+    /// Gets or sets the seller sub-orders DbSet.
+    /// </summary>
+    public DbSet<SellerSubOrder> SellerSubOrders { get; set; }
+
+    /// <summary>
+    /// Gets or sets the seller sub-order items DbSet.
+    /// </summary>
+    public DbSet<SellerSubOrderItem> SellerSubOrderItems { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -47,6 +57,7 @@ public class OrderDbContext : DbContext
             entity.Property(e => e.DeliveryCountry).IsRequired().HasMaxLength(2);
             entity.Property(e => e.DeliveryPhoneNumber).HasMaxLength(30);
             entity.HasMany(e => e.Items).WithOne(i => i.Order).HasForeignKey(i => i.OrderId);
+            entity.HasMany(e => e.SellerSubOrders).WithOne(s => s.Order).HasForeignKey(s => s.OrderId);
         });
 
         modelBuilder.Entity<OrderItem>(entity =>
@@ -57,6 +68,32 @@ public class OrderDbContext : DbContext
             entity.Property(e => e.StoreName).IsRequired().HasMaxLength(100);
             entity.Property(e => e.ProductImageUrl).HasMaxLength(500);
             entity.HasIndex(e => e.OrderId);
+            entity.HasIndex(e => e.ProductId);
+        });
+
+        modelBuilder.Entity<SellerSubOrder>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.SubOrderNumber).IsRequired().HasMaxLength(50);
+            entity.HasIndex(e => e.SubOrderNumber).IsUnique();
+            entity.HasIndex(e => e.OrderId);
+            entity.HasIndex(e => e.StoreId);
+            entity.Property(e => e.StoreName).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.ItemsSubtotal).HasPrecision(18, 2);
+            entity.Property(e => e.ShippingCost).HasPrecision(18, 2);
+            entity.Property(e => e.TotalAmount).HasPrecision(18, 2);
+            entity.Property(e => e.TrackingNumber).HasMaxLength(100);
+            entity.Property(e => e.ShippingCarrier).HasMaxLength(100);
+            entity.HasMany(e => e.Items).WithOne(i => i.SellerSubOrder).HasForeignKey(i => i.SellerSubOrderId);
+        });
+
+        modelBuilder.Entity<SellerSubOrderItem>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.ProductTitle).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.UnitPrice).HasPrecision(18, 2);
+            entity.Property(e => e.ProductImageUrl).HasMaxLength(500);
+            entity.HasIndex(e => e.SellerSubOrderId);
             entity.HasIndex(e => e.ProductId);
         });
     }

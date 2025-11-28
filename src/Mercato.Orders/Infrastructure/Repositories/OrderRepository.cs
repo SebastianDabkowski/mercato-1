@@ -26,6 +26,8 @@ public class OrderRepository : IOrderRepository
     {
         return await _context.Orders
             .Include(o => o.Items)
+            .Include(o => o.SellerSubOrders)
+                .ThenInclude(s => s.Items)
             .FirstOrDefaultAsync(o => o.Id == id);
     }
 
@@ -34,6 +36,8 @@ public class OrderRepository : IOrderRepository
     {
         return await _context.Orders
             .Include(o => o.Items)
+            .Include(o => o.SellerSubOrders)
+                .ThenInclude(s => s.Items)
             .FirstOrDefaultAsync(o => o.OrderNumber == orderNumber);
     }
 
@@ -42,6 +46,8 @@ public class OrderRepository : IOrderRepository
     {
         return await _context.Orders
             .Include(o => o.Items)
+            .Include(o => o.SellerSubOrders)
+                .ThenInclude(s => s.Items)
             .Where(o => o.BuyerId == buyerId)
             .OrderByDescending(o => o.CreatedAt)
             .ToListAsync();
@@ -52,6 +58,8 @@ public class OrderRepository : IOrderRepository
     {
         return await _context.Orders
             .Include(o => o.Items)
+            .Include(o => o.SellerSubOrders)
+                .ThenInclude(s => s.Items)
             .FirstOrDefaultAsync(o => o.PaymentTransactionId == transactionId);
     }
 
