@@ -34,6 +34,11 @@ public class ProductDbContext : DbContext
     /// </summary>
     public DbSet<ProductImportRowError> ProductImportRowErrors { get; set; }
 
+    /// <summary>
+    /// Gets or sets the product images DbSet.
+    /// </summary>
+    public DbSet<ProductImage> ProductImages { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -42,6 +47,7 @@ public class ProductDbContext : DbContext
         ConfigureCategory(modelBuilder);
         ConfigureProductImportJob(modelBuilder);
         ConfigureProductImportRowError(modelBuilder);
+        ConfigureProductImage(modelBuilder);
     }
 
     private static void ConfigureProduct(ModelBuilder modelBuilder)
@@ -257,6 +263,63 @@ public class ProductDbContext : DbContext
 
             // Index for querying errors by job
             entity.HasIndex(e => e.ImportJobId);
+        });
+    }
+
+    private static void ConfigureProductImage(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<ProductImage>(entity =>
+        {
+            entity.ToTable("ProductImages");
+
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.ProductId)
+                .IsRequired();
+
+            entity.Property(e => e.FileName)
+                .IsRequired()
+                .HasMaxLength(ProductImageValidationConstants.FileNameMaxLength);
+
+            entity.Property(e => e.StoragePath)
+                .IsRequired()
+                .HasMaxLength(ProductImageValidationConstants.StoragePathMaxLength);
+
+            entity.Property(e => e.ContentType)
+                .IsRequired()
+                .HasMaxLength(ProductImageValidationConstants.ContentTypeMaxLength);
+
+            entity.Property(e => e.FileSize)
+                .IsRequired();
+
+            entity.Property(e => e.IsMain)
+                .IsRequired()
+                .HasDefaultValue(false);
+
+            entity.Property(e => e.DisplayOrder)
+                .IsRequired()
+                .HasDefaultValue(0);
+
+            entity.Property(e => e.CreatedAt)
+                .IsRequired();
+
+            entity.Property(e => e.ThumbnailPath)
+                .HasMaxLength(ProductImageValidationConstants.StoragePathMaxLength);
+
+            entity.Property(e => e.OptimizedPath)
+                .HasMaxLength(ProductImageValidationConstants.StoragePathMaxLength);
+
+            // Index for querying images by product
+            entity.HasIndex(e => e.ProductId);
+
+            // Index for finding main image
+            entity.HasIndex(e => new { e.ProductId, e.IsMain });
+
+            // Relationship to product
+            entity.HasOne(e => e.Product)
+                .WithMany()
+                .HasForeignKey(e => e.ProductId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

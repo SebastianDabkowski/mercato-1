@@ -1,0 +1,336 @@
+@page "{productId:guid}"
+@model Mercato.Web.Pages.Seller.Products.ImagesModel
+@{
+    ViewData["Title"] = "Manage Product Images";
+}
+
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0"><i class="bi bi-images me-2"></i>Manage Images - @Model.ProductTitle</h4>
+                    <a asp-page="Edit" asp-route-id="@Model.ProductId" class="btn btn-light btn-sm">
+                        <i class="bi bi-arrow-left me-1"></i>Back to Product
+                    </a>
+                </div>
+                <div class="card-body">
+                    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+                    {
+                        <div class="alert alert-danger" role="alert">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>@Model.ErrorMessage
+                        </div>
+                    }
+
+                    @if (!string.IsNullOrEmpty(Model.SuccessMessage))
+                    {
+                        <div class="alert alert-success" role="alert">
+                            <i class="bi bi-check-circle-fill me-2"></i>@Model.SuccessMessage
+                        </div>
+                    }
+
+                    @if (!Model.HasAccess)
+                    {
+                        <div class="text-center py-4">
+                            <a asp-page="Index" class="btn btn-outline-secondary">
+                                <i class="bi bi-arrow-left me-1"></i>Back to Products
+                            </a>
+                        </div>
+                    }
+                    else
+                    {
+                        <!-- Upload Section -->
+                        <div class="mb-4">
+                            <h5 class="mb-3"><i class="bi bi-upload me-2"></i>Upload New Image</h5>
+                            <div class="upload-zone border border-dashed rounded p-4 text-center" id="uploadZone">
+                                <i class="bi bi-cloud-upload display-4 text-muted"></i>
+                                <p class="mt-2 mb-1">Drag and drop images here or click to browse</p>
+                                <p class="small text-muted mb-3">Supported formats: JPG, PNG, WebP. Max size: 5MB per image.</p>
+                                <input type="file" id="fileInput" class="d-none" accept=".jpg,.jpeg,.png,.webp" multiple />
+                                <button type="button" class="btn btn-primary" onclick="document.getElementById('fileInput').click()">
+                                    <i class="bi bi-folder-plus me-1"></i>Choose Files
+                                </button>
+                            </div>
+                            <div id="uploadProgress" class="mt-3 d-none">
+                                <div class="progress">
+                                    <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
+                                </div>
+                                <p class="small text-muted mt-1" id="uploadStatus">Uploading...</p>
+                            </div>
+                        </div>
+
+                        <!-- Images Grid -->
+                        <h5 class="mb-3"><i class="bi bi-grid me-2"></i>Current Images (@Model.Images.Count / 10)</h5>
+                        @if (Model.Images.Count == 0)
+                        {
+                            <div class="alert alert-info">
+                                <i class="bi bi-info-circle-fill me-2"></i>No images uploaded yet. Upload images to make your product more attractive to buyers.
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="row g-3" id="imagesGrid">
+                                @foreach (var image in Model.Images)
+                                {
+                                    <div class="col-6 col-md-4 col-lg-3" data-image-id="@image.Id">
+                                        <div class="card h-100 @(image.IsMain ? "border-primary" : "")">
+                                            <div class="position-relative">
+                                                <img src="@(image.ThumbnailPath != null ? ToWebPath(image.ThumbnailPath) : ToWebPath(image.StoragePath))"
+                                                     class="card-img-top"
+                                                     alt="@image.FileName"
+                                                     style="height: 150px; object-fit: cover;" />
+                                                @if (image.IsMain)
+                                                {
+                                                    <span class="position-absolute top-0 end-0 badge bg-primary m-1">
+                                                        <i class="bi bi-star-fill"></i> Main
+                                                    </span>
+                                                }
+                                            </div>
+                                            <div class="card-body p-2">
+                                                <p class="card-text small text-truncate mb-1" title="@image.FileName">@image.FileName</p>
+                                                <p class="card-text small text-muted mb-2">@FormatFileSize(image.FileSize)</p>
+                                                <div class="btn-group w-100" role="group">
+                                                    @if (!image.IsMain)
+                                                    {
+                                                        <button type="button" class="btn btn-outline-primary btn-sm" onclick="setMainImage('@image.Id')" title="Set as main image">
+                                                            <i class="bi bi-star"></i>
+                                                        </button>
+                                                    }
+                                                    <a href="@ToWebPath(image.StoragePath)" target="_blank" class="btn btn-outline-secondary btn-sm" title="View full size">
+                                                        <i class="bi bi-zoom-in"></i>
+                                                    </a>
+                                                    <button type="button" class="btn btn-outline-danger btn-sm" onclick="deleteImage('@image.Id')" title="Delete image">
+                                                        <i class="bi bi-trash"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
+
+                        <div class="d-flex justify-content-between mt-4">
+                            <a asp-page="Index" class="btn btn-outline-secondary">
+                                <i class="bi bi-arrow-left me-1"></i>Back to Products
+                            </a>
+                            <a asp-page="Edit" asp-route-id="@Model.ProductId" class="btn btn-primary">
+                                <i class="bi bi-pencil me-1"></i>Edit Product
+                            </a>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        const productId = '@Model.ProductId';
+        const uploadEndpoint = '@Url.Page("Images", "Upload", new { id = Model.ProductId })';
+        const uploadZone = document.getElementById('uploadZone');
+        const fileInput = document.getElementById('fileInput');
+        const uploadProgress = document.getElementById('uploadProgress');
+        const progressBar = uploadProgress?.querySelector('.progress-bar');
+        const uploadStatus = document.getElementById('uploadStatus');
+
+        // Get the anti-forgery token
+        function getAntiForgeryToken() {
+            const tokenElement = document.querySelector('input[name="__RequestVerificationToken"]');
+            if (!tokenElement || !tokenElement.value) {
+                console.error('Anti-forgery token not found');
+                return null;
+            }
+            return tokenElement.value;
+        }
+
+        // Drag and drop handlers
+        if (uploadZone) {
+            uploadZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadZone.classList.add('border-primary', 'bg-light');
+            });
+
+            uploadZone.addEventListener('dragleave', (e) => {
+                e.preventDefault();
+                uploadZone.classList.remove('border-primary', 'bg-light');
+            });
+
+            uploadZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadZone.classList.remove('border-primary', 'bg-light');
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    uploadFiles(files);
+                }
+            });
+        }
+
+        // File input change handler
+        if (fileInput) {
+            fileInput.addEventListener('change', (e) => {
+                if (e.target.files.length > 0) {
+                    uploadFiles(e.target.files);
+                }
+            });
+        }
+
+        async function uploadFiles(files) {
+            uploadProgress.classList.remove('d-none');
+            let uploaded = 0;
+
+            const token = getAntiForgeryToken();
+            if (!token) {
+                alert('Security token not found. Please refresh the page and try again.');
+                uploadProgress.classList.add('d-none');
+                return;
+            }
+
+            for (const file of files) {
+                uploadStatus.textContent = `Uploading ${file.name}...`;
+
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('setAsMain', 'false');
+
+                try {
+                    const response = await fetch(uploadEndpoint, {
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                            'RequestVerificationToken': token
+                        }
+                    });
+
+                    const result = await response.json();
+
+                    if (result.success) {
+                        uploaded++;
+                        progressBar.style.width = `${(uploaded / files.length) * 100}%`;
+                    } else {
+                        alert(`Failed to upload ${file.name}: ${result.errors?.join(', ') || result.error || 'Unknown error'}`);
+                    }
+                } catch (error) {
+                    console.error('Upload error:', error);
+                    alert(`Failed to upload ${file.name}: ${error.message}`);
+                }
+            }
+
+            uploadStatus.textContent = `Uploaded ${uploaded} of ${files.length} files`;
+
+            // Reload page to show new images (including any main image changes)
+            // Dynamic add would require duplicating the card template HTML in JS, so we reload for simplicity
+            if (uploaded > 0) {
+                uploadStatus.textContent = `Uploaded ${uploaded} of ${files.length} files. Refreshing...`;
+                setTimeout(() => location.reload(), 500);
+            } else {
+                uploadProgress.classList.add('d-none');
+            }
+        }
+
+        async function setMainImage(imageId) {
+            if (!confirm('Set this image as the main product image?')) return;
+
+            const token = getAntiForgeryToken();
+            if (!token) {
+                alert('Security token not found. Please refresh the page and try again.');
+                return;
+            }
+
+            try {
+                const formData = new FormData();
+                formData.append('imageId', imageId);
+
+                const response = await fetch(`/Seller/Products/Images/${productId}?handler=SetMain`, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'RequestVerificationToken': token
+                    }
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    location.reload();
+                } else {
+                    alert(`Failed to set main image: ${result.errors?.join(', ') || result.error || 'Unknown error'}`);
+                }
+            } catch (error) {
+                console.error('Set main error:', error);
+                alert(`Failed to set main image: ${error.message}`);
+            }
+        }
+
+        async function deleteImage(imageId) {
+            if (!confirm('Are you sure you want to delete this image? This action cannot be undone.')) return;
+
+            const token = getAntiForgeryToken();
+            if (!token) {
+                alert('Security token not found. Please refresh the page and try again.');
+                return;
+            }
+
+            try {
+                const formData = new FormData();
+                formData.append('imageId', imageId);
+
+                const response = await fetch(`/Seller/Products/Images/${productId}?handler=Delete`, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'RequestVerificationToken': token
+                    }
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    // Remove the image card from the grid
+                    const imageCard = document.querySelector(`[data-image-id="${imageId}"]`);
+                    if (imageCard) {
+                        // Check if we're deleting the main image (has the Main badge)
+                        const wasMainImage = imageCard.querySelector('.badge.bg-primary') !== null;
+
+                        imageCard.remove();
+
+                        // If we deleted the main image, reload to show the new main image
+                        if (wasMainImage) {
+                            location.reload();
+                        }
+                    } else {
+                        location.reload();
+                    }
+                } else {
+                    alert(`Failed to delete image: ${result.errors?.join(', ') || result.error || 'Unknown error'}`);
+                }
+            } catch (error) {
+                console.error('Delete error:', error);
+                alert(`Failed to delete image: ${error.message}`);
+            }
+        }
+    </script>
+    @await Html.PartialAsync("_ValidationScriptsPartial")
+    <form id="antiForgeryForm" method="post">
+        @Html.AntiForgeryToken()
+    </form>
+}
+
+@functions {
+    private static string ToWebPath(string? path)
+    {
+        if (string.IsNullOrEmpty(path))
+            return string.Empty;
+        return "/" + path.Replace("\\", "/");
+    }
+
+    private static string FormatFileSize(long bytes)
+    {
+        if (bytes < 1024)
+            return $"{bytes} B";
+        if (bytes < 1024 * 1024)
+            return $"{bytes / 1024.0:F1} KB";
+        return $"{bytes / (1024.0 * 1024.0):F1} MB";
+    }
+}

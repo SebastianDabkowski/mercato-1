@@ -75,10 +75,20 @@
                             </div>
 
                             <div class="mb-3">
-                                <label asp-for="Images" class="form-label">Images</label>
+                                <label class="form-label">Product Images</label>
+                                <div class="d-flex align-items-center gap-2">
+                                    <a asp-page="Images" asp-route-productId="@Model.Id" class="btn btn-outline-primary">
+                                        <i class="bi bi-images me-1"></i>Manage Images
+                                    </a>
+                                    <span class="text-muted small">Upload, delete, and set main image for this product.</span>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label asp-for="Images" class="form-label">Images (Legacy JSON)</label>
                                 <textarea asp-for="Images" class="form-control" rows="3" placeholder='Enter image URLs as JSON array, e.g. ["https://example.com/image1.jpg", "https://example.com/image2.jpg"]'></textarea>
                                 <span asp-validation-for="Images" class="text-danger"></span>
-                                <div class="form-text">Product image URLs as a JSON array (up to 10 images).</div>
+                                <div class="form-text">Product image URLs as a JSON array (up to 10 images). <strong>Note:</strong> Use the "Manage Images" button above for the new image upload feature.</div>
                             </div>
 
                             <hr class="my-4" />
