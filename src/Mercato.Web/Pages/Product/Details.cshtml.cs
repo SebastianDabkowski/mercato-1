@@ -111,10 +111,10 @@ public class DetailsModel : PageModel
             return RedirectToPage("/Account/Login", new { ReturnUrl = $"/Product/Details/{id}" });
         }
 
-        // Default to quantity of 1 for invalid input to provide a smooth UX
         if (quantity <= 0)
         {
-            quantity = 1;
+            TempData["CartError"] = "Quantity must be at least 1.";
+            return RedirectToPage(new { id });
         }
 
         var result = await _cartService.AddToCartAsync(new AddToCartCommand

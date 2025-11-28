@@ -361,6 +361,12 @@ public class CartService : ICartService
             return false;
         }
 
+        // Prevent path traversal attacks
+        if (url.Contains("..") || url.Contains("//") || url.Contains("\\"))
+        {
+            return false;
+        }
+
         foreach (var prefix in AllowedImagePrefixes)
         {
             if (url.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
