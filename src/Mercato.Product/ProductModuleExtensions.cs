@@ -23,10 +23,12 @@ public static class ProductModuleExtensions
         // Register repositories
         services.AddScoped<IProductRepository, ProductRepository>();
         services.AddScoped<ICategoryRepository, CategoryRepository>();
+        services.AddScoped<IProductImportRepository, ProductImportRepository>();
 
         // Register services
         services.AddScoped<IProductService, ProductService>();
         services.AddScoped<ICategoryService, CategoryService>();
+        services.AddScoped<IProductImportService, ProductImportService>();
 
         return services;
     }

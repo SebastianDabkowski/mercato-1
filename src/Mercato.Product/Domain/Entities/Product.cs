@@ -104,4 +104,10 @@ public class Product
     /// Gets or sets the product images as a JSON array of image URLs.
     /// </summary>
     public string? Images { get; set; }
+
+    /// <summary>
+    /// Gets or sets the Stock Keeping Unit (SKU) for the product.
+    /// Used as a stable key for import/update operations.
+    /// </summary>
+    public string? Sku { get; set; }
 }
