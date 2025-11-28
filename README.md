@@ -68,12 +68,12 @@ This solution uses a modular, layered architecture with a Razor Pages Web App an
    ```
 4. **Run the web application:**
    ```bash
-   cd src/Mercato.Web
+   cd Mercato.Web
    dotnet run
    ```
 5. **Run tests:**
    ```bash
-   cd src
+   cd ..
    dotnet test Mercato.sln
    ```
 
