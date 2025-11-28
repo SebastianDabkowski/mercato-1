@@ -45,7 +45,9 @@ public class CartDbContext : DbContext
             entity.HasKey(e => e.Id);
 
             entity.Property(e => e.BuyerId)
-                .IsRequired()
+                .HasMaxLength(450);
+
+            entity.Property(e => e.GuestCartId)
                 .HasMaxLength(450);
 
             entity.Property(e => e.CreatedAt)
@@ -54,8 +56,14 @@ public class CartDbContext : DbContext
             entity.Property(e => e.LastUpdatedAt)
                 .IsRequired();
 
-            // Index for querying carts by buyer
+            // Index for querying carts by buyer (now nullable and non-unique to allow guest carts)
             entity.HasIndex(e => e.BuyerId)
+                .HasFilter("[BuyerId] IS NOT NULL")
+                .IsUnique();
+
+            // Index for querying carts by guest cart ID
+            entity.HasIndex(e => e.GuestCartId)
+                .HasFilter("[GuestCartId] IS NOT NULL")
                 .IsUnique();
 
             // Relationship to cart items

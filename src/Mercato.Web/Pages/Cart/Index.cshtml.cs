@@ -1,7 +1,6 @@
 using Mercato.Cart.Application.Commands;
 using Mercato.Cart.Application.Queries;
 using Mercato.Cart.Application.Services;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using System.Security.Claims;
@@ -11,11 +10,11 @@ namespace Mercato.Web.Pages.Cart
     /// <summary>
     /// Page model for the shopping cart index page.
     /// </summary>
-    [Authorize]
     public class IndexModel : PageModel
     {
         private readonly ICartService _cartService;
         private readonly ILogger<IndexModel> _logger;
+        private const string GuestCartCookieName = "GuestCartId";
 
         /// <summary>
         /// Initializes a new instance of the <see cref="IndexModel"/> class.
@@ -34,18 +33,40 @@ namespace Mercato.Web.Pages.Cart
         public GetCartResult CartResult { get; private set; } = null!;
 
         /// <summary>
+        /// Gets a value indicating whether the user is a guest.
+        /// </summary>
+        public bool IsGuest { get; private set; }
+
+        /// <summary>
         /// Handles GET requests for the cart page.
         /// </summary>
         /// <returns>The page result.</returns>
         public async Task<IActionResult> OnGetAsync()
         {
             var buyerId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (string.IsNullOrEmpty(buyerId))
+            
+            if (!string.IsNullOrEmpty(buyerId))
             {
-                return RedirectToPage("/Account/Login");
+                // Authenticated user
+                IsGuest = false;
+                CartResult = await _cartService.GetCartAsync(new GetCartQuery { BuyerId = buyerId });
+            }
+            else
+            {
+                // Guest user
+                IsGuest = true;
+                var guestCartId = Request.Cookies[GuestCartCookieName];
+                if (!string.IsNullOrEmpty(guestCartId))
+                {
+                    CartResult = await _cartService.GetGuestCartAsync(guestCartId);
+                }
+                else
+                {
+                    // No guest cart exists
+                    CartResult = GetCartResult.Success(null);
+                }
             }
 
-            CartResult = await _cartService.GetCartAsync(new GetCartQuery { BuyerId = buyerId });
             return Page();
         }
 
@@ -58,17 +79,37 @@ namespace Mercato.Web.Pages.Cart
         public async Task<IActionResult> OnPostUpdateQuantityAsync(Guid cartItemId, int quantity)
         {
             var buyerId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (string.IsNullOrEmpty(buyerId))
-            {
-                return RedirectToPage("/Account/Login");
-            }
+            
+            UpdateCartItemQuantityResult result;
 
-            var result = await _cartService.UpdateQuantityAsync(new UpdateCartItemQuantityCommand
+            if (!string.IsNullOrEmpty(buyerId))
             {
-                BuyerId = buyerId,
-                CartItemId = cartItemId,
-                Quantity = quantity
-            });
+                // Authenticated user
+                result = await _cartService.UpdateQuantityAsync(new UpdateCartItemQuantityCommand
+                {
+                    BuyerId = buyerId,
+                    CartItemId = cartItemId,
+                    Quantity = quantity
+                });
+            }
+            else
+            {
+                // Guest user
+                var guestCartId = Request.Cookies[GuestCartCookieName];
+                if (string.IsNullOrEmpty(guestCartId))
+                {
+                    TempData["Error"] = "Cart not found.";
+                    return RedirectToPage();
+                }
+
+                result = await _cartService.UpdateGuestQuantityAsync(
+                    new UpdateCartItemQuantityCommand
+                    {
+                        CartItemId = cartItemId,
+                        Quantity = quantity
+                    },
+                    guestCartId);
+            }
 
             if (result.IsNotAuthorized)
             {
@@ -95,16 +136,35 @@ namespace Mercato.Web.Pages.Cart
         public async Task<IActionResult> OnPostRemoveItemAsync(Guid cartItemId)
         {
             var buyerId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (string.IsNullOrEmpty(buyerId))
-            {
-                return RedirectToPage("/Account/Login");
-            }
+            
+            RemoveCartItemResult result;
 
-            var result = await _cartService.RemoveItemAsync(new RemoveCartItemCommand
+            if (!string.IsNullOrEmpty(buyerId))
             {
-                BuyerId = buyerId,
-                CartItemId = cartItemId
-            });
+                // Authenticated user
+                result = await _cartService.RemoveItemAsync(new RemoveCartItemCommand
+                {
+                    BuyerId = buyerId,
+                    CartItemId = cartItemId
+                });
+            }
+            else
+            {
+                // Guest user
+                var guestCartId = Request.Cookies[GuestCartCookieName];
+                if (string.IsNullOrEmpty(guestCartId))
+                {
+                    TempData["Error"] = "Cart not found.";
+                    return RedirectToPage();
+                }
+
+                result = await _cartService.RemoveGuestItemAsync(
+                    new RemoveCartItemCommand
+                    {
+                        CartItemId = cartItemId
+                    },
+                    guestCartId);
+            }
 
             if (result.IsNotAuthorized)
             {

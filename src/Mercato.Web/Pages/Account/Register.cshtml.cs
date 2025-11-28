@@ -1,3 +1,5 @@
+using Mercato.Cart.Application.Commands;
+using Mercato.Cart.Application.Services;
 using Mercato.Identity.Application.Commands;
 using Mercato.Identity.Application.Services;
 using Microsoft.AspNetCore.Identity;
@@ -13,15 +15,19 @@ public class RegisterModel : PageModel
 {
     private readonly IBuyerRegistrationService _registrationService;
     private readonly SignInManager<IdentityUser> _signInManager;
+    private readonly ICartService _cartService;
     private readonly ILogger<RegisterModel> _logger;
+    private const string GuestCartCookieName = "GuestCartId";
 
     public RegisterModel(
         IBuyerRegistrationService registrationService,
         SignInManager<IdentityUser> signInManager,
+        ICartService cartService,
         ILogger<RegisterModel> logger)
     {
         _registrationService = registrationService;
         _signInManager = signInManager;
+        _cartService = cartService;
         _logger = logger;
     }
 
@@ -61,6 +67,9 @@ public class RegisterModel : PageModel
             if (user != null)
             {
                 await _signInManager.SignInAsync(user, isPersistent: false);
+
+                // Merge guest cart if exists
+                await MergeGuestCartAsync(user.Id);
             }
 
             return LocalRedirect(returnUrl);
@@ -73,5 +82,37 @@ public class RegisterModel : PageModel
         }
 
         return Page();
+    }
+
+    private async Task MergeGuestCartAsync(string userId)
+    {
+        var guestCartId = Request.Cookies[GuestCartCookieName];
+        if (string.IsNullOrEmpty(guestCartId))
+        {
+            return;
+        }
+
+        try
+        {
+            var mergeResult = await _cartService.MergeGuestCartAsync(new MergeGuestCartCommand
+            {
+                BuyerId = userId,
+                GuestCartId = guestCartId
+            });
+
+            if (mergeResult.Succeeded && mergeResult.GuestCartFound)
+            {
+                _logger.LogInformation(
+                    "Merged {ItemsMerged} items from guest cart to user {UserId}",
+                    mergeResult.ItemsMerged, userId);
+            }
+
+            // Clear the guest cart cookie after merge attempt
+            Response.Cookies.Delete(GuestCartCookieName);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error merging guest cart for user {UserId}", userId);
+        }
     }
 }

@@ -30,6 +30,14 @@ public class CartRepository : ICartRepository
     }
 
     /// <inheritdoc />
+    public async Task<Domain.Entities.Cart?> GetByGuestCartIdAsync(string guestCartId)
+    {
+        return await _context.Carts
+            .Include(c => c.Items)
+            .FirstOrDefaultAsync(c => c.GuestCartId == guestCartId);
+    }
+
+    /// <inheritdoc />
     public async Task<Domain.Entities.Cart?> GetByIdAsync(Guid id)
     {
         return await _context.Carts
@@ -49,6 +57,13 @@ public class CartRepository : ICartRepository
     public async Task UpdateAsync(Domain.Entities.Cart cart)
     {
         _context.Carts.Update(cart);
+        await _context.SaveChangesAsync();
+    }
+
+    /// <inheritdoc />
+    public async Task DeleteAsync(Domain.Entities.Cart cart)
+    {
+        _context.Carts.Remove(cart);
         await _context.SaveChangesAsync();
     }
 
