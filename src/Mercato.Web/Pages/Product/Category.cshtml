@@ -225,27 +225,72 @@
 </div>
 
 @functions {
+    private const string PlaceholderImage = "/images/placeholder.png";
+    private static readonly string[] AllowedImagePrefixes = ["/uploads/", "/images/"];
+
     /// <summary>
     /// Gets the first image URL from a JSON array of images.
+    /// Only returns URLs that start with trusted prefixes to prevent XSS attacks.
     /// </summary>
     /// <param name="imagesJson">The JSON string containing image URLs.</param>
-    /// <returns>The first image URL or a placeholder.</returns>
+    /// <returns>The first valid image URL or a placeholder.</returns>
     private static string GetFirstImageUrl(string? imagesJson)
     {
         if (string.IsNullOrEmpty(imagesJson) || imagesJson == "[]")
         {
-            return "/images/placeholder.png";
+            return PlaceholderImage;
         }
 
         try
         {
-            // Parse the JSON array and return the first URL
-            var images = System.Text.Json.JsonSerializer.Deserialize<string[]>(imagesJson);
-            return images?.Length > 0 ? images[0] : "/images/placeholder.png";
+            // Parse the JSON array with safe deserialization options
+            var options = new System.Text.Json.JsonSerializerOptions
+            {
+                MaxDepth = 2 // Limit depth to prevent deep nesting attacks
+            };
+            var images = System.Text.Json.JsonSerializer.Deserialize<string[]>(imagesJson, options);
+            
+            if (images == null || images.Length == 0)
+            {
+                return PlaceholderImage;
+            }
+
+            // Validate URL starts with allowed prefix
+            var imageUrl = images[0];
+            if (IsValidImageUrl(imageUrl))
+            {
+                return imageUrl;
+            }
+
+            return PlaceholderImage;
         }
         catch
         {
-            return "/images/placeholder.png";
+            return PlaceholderImage;
         }
+    }
+
+    /// <summary>
+    /// Validates that an image URL starts with an allowed prefix.
+    /// </summary>
+    /// <param name="url">The URL to validate.</param>
+    /// <returns>True if the URL is valid and trusted; otherwise, false.</returns>
+    private static bool IsValidImageUrl(string? url)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+        {
+            return false;
+        }
+
+        // Only allow relative URLs starting with trusted prefixes
+        foreach (var prefix in AllowedImagePrefixes)
+        {
+            if (url.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
