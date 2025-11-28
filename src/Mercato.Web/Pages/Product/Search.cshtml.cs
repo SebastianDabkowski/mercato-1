@@ -14,6 +14,11 @@ public class SearchModel : PageModel
     private const int DefaultPageSize = 12;
 
     /// <summary>
+    /// Maximum length for search queries to prevent abuse.
+    /// </summary>
+    public const int MaxQueryLength = 200;
+
+    /// <summary>
     /// Initializes a new instance of the <see cref="SearchModel"/> class.
     /// </summary>
     /// <param name="productService">The product service.</param>
@@ -78,9 +83,9 @@ public class SearchModel : PageModel
         }
 
         // Truncate extremely long queries to prevent abuse
-        if (Query.Length > 200)
+        if (Query.Length > MaxQueryLength)
         {
-            Query = Query[..200];
+            Query = Query[..MaxQueryLength];
         }
 
         // Search products

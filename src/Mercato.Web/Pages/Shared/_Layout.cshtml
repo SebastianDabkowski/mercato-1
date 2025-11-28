@@ -48,6 +48,7 @@
                         </li>
                     </ul>
                     <!-- Global Search Bar -->
+                    <!-- Note: maxlength="200" matches SearchModel.MaxQueryLength constant -->
                     <form class="d-flex me-3" asp-page="/Product/Search" method="get" role="search">
                         <input class="form-control me-2" type="search" name="query" placeholder="Search products..." aria-label="Search" maxlength="200">
                         <button class="btn btn-outline-primary" type="submit">Search</button>

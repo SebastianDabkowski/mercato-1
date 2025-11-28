@@ -103,12 +103,13 @@ public class ProductRepository : IProductRepository
     /// <inheritdoc />
     public async Task<(IReadOnlyList<Domain.Entities.Product> Products, int TotalCount)> SearchActiveProductsAsync(string searchQuery, int page, int pageSize)
     {
-        var normalizedQuery = searchQuery.ToLowerInvariant();
+        // Use LIKE pattern for SQL Server compatibility
+        var likePattern = $"%{searchQuery}%";
 
         var query = _context.Products
             .Where(p => p.Status == ProductStatus.Active &&
-                       (p.Title.ToLower().Contains(normalizedQuery) ||
-                        (p.Description != null && p.Description.ToLower().Contains(normalizedQuery))));
+                       (EF.Functions.Like(p.Title, likePattern) ||
+                        (p.Description != null && EF.Functions.Like(p.Description, likePattern))));
 
         var totalCount = await query.CountAsync();
 
