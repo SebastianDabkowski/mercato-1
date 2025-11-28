@@ -28,11 +28,11 @@ public class OrderConfirmationEmailService : IOrderConfirmationEmailService
     }
 
     /// <inheritdoc />
-    public async Task<SendEmailResult> SendOrderConfirmationAsync(Order order, string buyerEmail)
+    public Task<SendEmailResult> SendOrderConfirmationAsync(Order order, string buyerEmail)
     {
         if (string.IsNullOrEmpty(buyerEmail))
         {
-            return SendEmailResult.Failure("Buyer email is required.");
+            return Task.FromResult(SendEmailResult.Failure("Buyer email is required."));
         }
 
         try
@@ -44,25 +44,19 @@ public class OrderConfirmationEmailService : IOrderConfirmationEmailService
             var body = BuildEmailBody(order);
 
             // In a real implementation, this would send via SMTP, SendGrid, etc.
-            // For now, we log the email content for development purposes
+            // Configure Email:Provider and Email:SmtpSettings in appsettings.json for production.
+            // For now, we log the email content for development purposes.
             _logger.LogInformation(
-                "Sending order confirmation email to {Email} for order {OrderNumber}. Subject: {Subject}",
-                buyerEmail, order.OrderNumber, subject);
+                "Order confirmation email prepared for {Email}, Order {OrderNumber}. Subject: {Subject}. Body length: {BodyLength} chars",
+                buyerEmail, order.OrderNumber, subject, body.Length);
 
-            // Simulate async email sending
-            await Task.CompletedTask;
-
-            _logger.LogInformation(
-                "Order confirmation email sent successfully to {Email} for order {OrderNumber}",
-                buyerEmail, order.OrderNumber);
-
-            return SendEmailResult.Success();
+            return Task.FromResult(SendEmailResult.Success());
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to send order confirmation email to {Email} for order {OrderNumber}",
                 buyerEmail, order.OrderNumber);
-            return SendEmailResult.Failure("Failed to send confirmation email. Please contact support.");
+            return Task.FromResult(SendEmailResult.Failure("Failed to send confirmation email. Please contact support."));
         }
     }
 

@@ -114,6 +114,17 @@ public class ConfirmationModel : PageModel
 
         var order = orderResult.Order;
 
+        // Try to get payment method from transaction
+        string paymentMethod = "credit_card"; // Default value
+        if (order.PaymentTransactionId.HasValue && order.PaymentTransactionId.Value != Guid.Empty)
+        {
+            var transactionResult = await _paymentService.GetTransactionAsync(order.PaymentTransactionId.Value, buyerId);
+            if (transactionResult.Succeeded && transactionResult.Transaction != null)
+            {
+                paymentMethod = transactionResult.Transaction.PaymentMethodId;
+            }
+        }
+
         // Build confirmation data from order
         ConfirmationData = new OrderConfirmationData
         {
@@ -122,7 +133,7 @@ public class ConfirmationModel : PageModel
             OrderNumber = order.OrderNumber,
             Amount = order.TotalAmount,
             ItemsSubtotal = order.ItemsSubtotal,
-            PaymentMethod = "credit_card", // Default since we don't store this on Order
+            PaymentMethod = paymentMethod,
             CompletedAt = order.ConfirmedAt ?? order.CreatedAt,
             DeliveryAddress = new CheckoutAddressData
             {

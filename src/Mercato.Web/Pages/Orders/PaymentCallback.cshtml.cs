@@ -292,7 +292,7 @@ public class PaymentCallbackModel : PageModel
         };
 
         // Send confirmation email
-        var buyerEmail = User.FindFirstValue(System.Security.Claims.ClaimTypes.Email);
+        var buyerEmail = User.FindFirstValue(ClaimTypes.Email);
         if (!string.IsNullOrEmpty(buyerEmail))
         {
             var emailResult = await _orderService.SendOrderConfirmationEmailAsync(orderId, buyerEmail);
