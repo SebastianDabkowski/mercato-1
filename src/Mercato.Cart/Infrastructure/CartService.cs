@@ -20,6 +20,7 @@ public class CartService : ICartService
     private readonly IProductService _productService;
     private readonly IStoreProfileService _storeProfileService;
     private readonly IShippingCalculator _shippingCalculator;
+    private readonly IPromoCodeService _promoCodeService;
     private readonly ILogger<CartService> _logger;
 
     private const string PlaceholderImage = "/images/placeholder.png";
@@ -33,18 +34,21 @@ public class CartService : ICartService
     /// <param name="productService">The product service.</param>
     /// <param name="storeProfileService">The store profile service.</param>
     /// <param name="shippingCalculator">The shipping calculator.</param>
+    /// <param name="promoCodeService">The promo code service.</param>
     /// <param name="logger">The logger.</param>
     public CartService(
         ICartRepository cartRepository,
         IProductService productService,
         IStoreProfileService storeProfileService,
         IShippingCalculator shippingCalculator,
+        IPromoCodeService promoCodeService,
         ILogger<CartService> logger)
     {
         _cartRepository = cartRepository;
         _productService = productService;
         _storeProfileService = storeProfileService;
         _shippingCalculator = shippingCalculator;
+        _promoCodeService = promoCodeService;
         _logger = logger;
     }
 
@@ -269,7 +273,10 @@ public class CartService : ICartService
         // Calculate shipping costs
         var shippingByStore = await _shippingCalculator.CalculateShippingAsync(itemsByStore);
 
-        return GetCartResult.Success(cart, shippingByStore);
+        // Calculate promo code discount
+        var discountInfo = await _promoCodeService.CalculateDiscountAsync(cart);
+
+        return GetCartResult.Success(cart, shippingByStore, discountInfo);
     }
 
     /// <inheritdoc />

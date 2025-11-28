@@ -27,6 +27,7 @@ public class CartServiceTests
     private readonly Mock<IProductService> _mockProductService;
     private readonly Mock<IStoreProfileService> _mockStoreProfileService;
     private readonly Mock<IShippingCalculator> _mockShippingCalculator;
+    private readonly Mock<IPromoCodeService> _mockPromoCodeService;
     private readonly Mock<ILogger<CartService>> _mockLogger;
     private readonly CartService _service;
 
@@ -36,12 +37,14 @@ public class CartServiceTests
         _mockProductService = new Mock<IProductService>(MockBehavior.Strict);
         _mockStoreProfileService = new Mock<IStoreProfileService>(MockBehavior.Strict);
         _mockShippingCalculator = new Mock<IShippingCalculator>(MockBehavior.Strict);
+        _mockPromoCodeService = new Mock<IPromoCodeService>(MockBehavior.Strict);
         _mockLogger = new Mock<ILogger<CartService>>();
         _service = new CartService(
             _mockCartRepository.Object,
             _mockProductService.Object,
             _mockStoreProfileService.Object,
             _mockShippingCalculator.Object,
+            _mockPromoCodeService.Object,
             _mockLogger.Object);
     }
 
@@ -399,6 +402,9 @@ public class CartServiceTests
 
         _mockShippingCalculator.Setup(s => s.CalculateShippingAsync(It.IsAny<IReadOnlyList<CartItemsByStore>>()))
             .ReturnsAsync(shippingByStore);
+
+        _mockPromoCodeService.Setup(s => s.CalculateDiscountAsync(It.IsAny<CartEntity>()))
+            .ReturnsAsync(PromoCodeDiscountInfo.None());
 
         // Act
         var result = await _service.GetCartAsync(query);
@@ -1389,6 +1395,9 @@ public class CartServiceTests
 
         _mockShippingCalculator.Setup(s => s.CalculateShippingAsync(It.IsAny<IReadOnlyList<CartItemsByStore>>()))
             .ReturnsAsync(shippingByStore);
+
+        _mockPromoCodeService.Setup(s => s.CalculateDiscountAsync(It.IsAny<CartEntity>()))
+            .ReturnsAsync(PromoCodeDiscountInfo.None());
 
         // Act
         var result = await _service.GetGuestCartAsync(guestCartId);

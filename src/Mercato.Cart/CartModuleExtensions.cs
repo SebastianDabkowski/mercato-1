@@ -31,9 +31,11 @@ public static class CartModuleExtensions
 
         // Register repositories
         services.AddScoped<ICartRepository, CartRepository>();
+        services.AddScoped<IPromoCodeRepository, PromoCodeRepository>();
 
         // Register services
         services.AddScoped<ICartService, CartService>();
+        services.AddScoped<IPromoCodeService, PromoCodeService>();
         services.AddScoped<IShippingCalculator, ShippingCalculator>();
         services.AddScoped<ICommissionCalculator, CommissionCalculator>();
         services.AddScoped<IShippingMethodService, ShippingMethodService>();

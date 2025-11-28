@@ -38,6 +38,17 @@ public class Cart
     public ICollection<CartItem> Items { get; set; } = new List<CartItem>();
 
     /// <summary>
+    /// Gets or sets the ID of the applied promo code.
+    /// Null if no promo code is applied.
+    /// </summary>
+    public Guid? AppliedPromoCodeId { get; set; }
+
+    /// <summary>
+    /// Navigation property to the applied promo code.
+    /// </summary>
+    public PromoCode? AppliedPromoCode { get; set; }
+
+    /// <summary>
     /// Gets a value indicating whether this is a guest cart.
     /// </summary>
     public bool IsGuestCart => string.IsNullOrEmpty(BuyerId) && !string.IsNullOrEmpty(GuestCartId);
