@@ -8,7 +8,7 @@ Mercato is a multi-vendor e-commerce marketplace platform built with .NET 9, ASP
 
 ## Architecture
 
-This solution uses a modular, layered architecture with clear separation of concerns:
+This solution uses a **modular monolith architecture** with clear separation of concerns:
 
 ### Layer Responsibilities
 - **Domain**: Core entities, value objects, and repository interfaces. Business rules belong here.
@@ -18,20 +18,52 @@ This solution uses a modular, layered architecture with clear separation of conc
 
 ### Dependency Flow
 ```
-WebApp → Application (use cases) → Domain (interfaces)
-Infrastructure implements Domain interfaces and is registered in DI at startup
+Mercato.Web → Application (use cases) → Domain (interfaces)
+                                              ↑
+                              Infrastructure implements
 ```
 
 ### Project Structure
 ```
 src/
+├── Mercato.sln                  # Main solution file
+├── Mercato.Web/                 # ASP.NET Core Web App (entry point)
+│   ├── Data/                    # ApplicationDbContext for Identity
+│   ├── Filters/                 # MVC filters
+│   ├── Middleware/              # Custom middleware
+│   ├── Pages/                   # Razor Pages organized by feature
+│   └── Program.cs               # DI and startup configuration
+├── Mercato.Identity/            # Identity module
+├── Mercato.Seller/              # Seller module
+├── Mercato.Buyer/               # Buyer module
+├── Mercato.Product/             # Product module
+├── Mercato.Cart/                # Cart module
+├── Mercato.Orders/              # Orders module
+├── Mercato.Payments/            # Payments module
+├── Mercato.Admin/               # Admin module
+└── Tests/
+    ├── Mercato.Tests.Admin/     # Admin module tests
+    ├── Mercato.Tests.Identity/  # Identity module tests
+    ├── Mercato.Tests.Product/   # Product module tests
+    └── Mercato.Tests.Seller/    # Seller module tests
+```
+
+### Module Structure
+Each module follows a consistent layered architecture:
+```
+Mercato.<ModuleName>/
+├── Domain/
+│   ├── Entities/                # Core domain entities
+│   └── Interfaces/              # Repository and service interfaces
 ├── Application/
-│   └── SD.ProjectName.WebApp          # Razor Pages UI, app startup, DI, EF Core Identity
-├── Modules/
-│   └── SD.ProjectName.Modules.Products # Feature module (Domain, Application, Infrastructure)
-├── Tests/
-│   └── SD.ProjectName.Tests.Products   # Unit tests for Products module
-└── SD.ProjectNameVertical.sln          # Solution file
+│   ├── Commands/                # Command handlers (CQRS)
+│   ├── Queries/                 # Query handlers (CQRS)
+│   ├── Services/                # Service interfaces
+│   └── UseCases/                # Application use cases
+├── Infrastructure/
+│   ├── Persistence/             # DbContext, EF Core configurations
+│   └── Repositories/            # Repository implementations
+└── <ModuleName>ModuleExtensions.cs  # DI registration
 ```
 
 ## Coding Standards
@@ -50,7 +82,7 @@ src/
 - Keep EF Core and external integrations in `Infrastructure` only
 - UI (Razor Pages) calls Application services via DI
 - Avoid coupling Application to EF Core—use interfaces
-- One `DbContext` per bounded context (e.g., Identity vs Products)
+- One `DbContext` per bounded context (e.g., Identity vs Products vs Cart vs Orders)
 
 ### CQRS Patterns
 - Commands mutate state and return minimal data (often void or a result object)
@@ -63,6 +95,18 @@ src/
 - Prefer value objects for concepts with rules and validation
 - Raise domain events when something important happens in the domain
 
+### Result Pattern
+- Result classes use `IsNotAuthorized` boolean flag for explicit authorization failures
+- Result classes use empty collection initializer `[]` for `Errors` property in `Success()` methods
+- Web handlers return `Forbid()` when `IsNotAuthorized` is true
+
+### Validation Pattern
+- Service layer validation uses private static helper methods that return `List<string>` of error messages
+- Follow naming pattern `Validate[Entity/Command]` for validation methods
+
+### Documentation
+- All public classes, interfaces, properties, and methods in domain, application, and infrastructure layers use XML documentation comments
+
 ## Testing Requirements
 
 ### Testing Framework
@@ -71,15 +115,18 @@ src/
 - Follow Arrange–Act–Assert structure with clear test names
 
 ### Testing Practices
-- Write unit tests in `Tests/*` using mocks for interfaces
+- Write unit tests in `Tests/Mercato.Tests.<ModuleName>` using mocks for interfaces
 - For every significant business rule, create unit tests
 - Cover edge cases and failure scenarios, not only the happy path
 - Keep tests fast and independent from external services or databases
 - Tests reference Application and Domain, mocking repository interfaces
 
 ### Test Location
-- Add unit tests in `Tests/SD.ProjectName.Tests.Products` for Products module logic
-- Mock `IProductRepository` to verify interactions
+- Add unit tests in `Tests/Mercato.Tests.Product` for Products module logic
+- Add unit tests in `Tests/Mercato.Tests.Seller` for Seller module logic
+- Add unit tests in `Tests/Mercato.Tests.Identity` for Identity module logic
+- Add unit tests in `Tests/Mercato.Tests.Admin` for Admin module logic
+- Mock repository interfaces (e.g., `IProductRepository`, `IStoreRepository`) to verify interactions
 
 ## Build and Development Commands
 
@@ -90,36 +137,57 @@ src/
 ```bash
 # Build the solution
 cd src
-dotnet build SD.ProjectNameVertical.sln
+dotnet build Mercato.sln
 
 # Run the web application
-cd Application/SD.ProjectName.WebApp
+cd Mercato.Web
 dotnet run
 
 # Run all tests
 cd src
-dotnet test SD.ProjectNameVertical.sln
+dotnet test Mercato.sln
 ```
 
 ### Database Migrations
 ```bash
 # Add migration (from src directory)
-dotnet ef migrations add <MigrationName> -p Modules/SD.ProjectName.Modules.Products -s Application/SD.ProjectName.WebApp -c ProductDbContext
+dotnet ef migrations add <MigrationName> -p Mercato.Product -s Mercato.Web -c ProductDbContext
 
 # Update database
-dotnet ef database update -p Modules/SD.ProjectName.Modules.Products -s Application/SD.ProjectName.WebApp -c ProductDbContext
+dotnet ef database update -p Mercato.Product -s Mercato.Web -c ProductDbContext
+
+# Other DbContexts follow the same pattern:
+# ProductDbContext, CartDbContext, OrderDbContext, PaymentDbContext
 ```
 
 ## Adding New Features
 
 When adding a new feature, follow this workflow:
 
-1. **Domain**: Add entity changes, validations, and interface methods to `IProductRepository`
-2. **Infrastructure**: Implement the new method in `ProductRepository`, update `DbContext` if needed, add EF Core migration if schema changes
-3. **Application**: Create a new use case service that depends on `IProductRepository`
+1. **Domain**: Add entity changes, validations, and interface methods (e.g., `IProductRepository`)
+2. **Infrastructure**: Implement the new method in the repository, update `DbContext` if needed, add EF Core migration if schema changes
+3. **Application**: Create a new use case service that depends on repository interfaces
 4. **Web UI**: Add Razor Page model injecting the new use case, add corresponding view
-5. **DI Registration**: Register interfaces and use cases in `Program.cs`
-6. **Tests**: Add unit tests mocking `IProductRepository` to verify interactions
+5. **DI Registration**: Register interfaces and use cases in the module's extension method (e.g., `ProductModuleExtensions.cs`)
+6. **Tests**: Add unit tests mocking repository interfaces to verify interactions
+
+## Module Registration
+
+### Modules without persistence
+```csharp
+builder.Services.AddSellerModule();
+builder.Services.AddBuyerModule();
+builder.Services.AddIdentityModule();
+builder.Services.AddAdminModule();
+```
+
+### Modules with persistence (require IConfiguration)
+```csharp
+builder.Services.AddProductModule(builder.Configuration);
+builder.Services.AddCartModule(builder.Configuration);
+builder.Services.AddOrdersModule(builder.Configuration);
+builder.Services.AddPaymentsModule(builder.Configuration);
+```
 
 ## Boundaries and Constraints
 
@@ -134,9 +202,16 @@ When adding a new feature, follow this workflow:
 - Respect user role boundaries (Buyer, Seller, Admin)
 - Uphold GDPR requirements (data minimalism, audit logging, RBAC)
 - Use async/await patterns everywhere (`Task`, `await`)
-- Update DI registrations in `Program.cs` when adding new services
+- Update DI registrations in the module's extension method when adding new services
 - Add/adjust Razor Pages if the UI changes
 - Ensure unit tests cover new code paths
+- Validate image URLs using prefix allowlisting (restrict to trusted paths like `/uploads/` and `/images/`)
+
+## Security Considerations
+
+- Image URLs in views are validated using prefix allowlisting to restrict to trusted paths
+- Result classes use `IsNotAuthorized` boolean flag for explicit authorization failures
+- Always use `Forbid()` response in web handlers when authorization fails
 
 ## Documentation Requirements
 
@@ -149,8 +224,8 @@ When adding a new feature, follow this workflow:
 
 Before submitting changes, verify:
 - [ ] Domain API changes have corresponding Infrastructure updates
-- [ ] Schema changes have migrations in the correct project and DbContext
-- [ ] DI registrations are updated in `Program.cs`
+- [ ] Schema changes have migrations in the correct module and DbContext
+- [ ] DI registrations are updated in the module's extension method
 - [ ] Razor Pages are updated if UI changes
 - [ ] Unit tests cover new functionality
 - [ ] Code follows existing patterns and conventions
