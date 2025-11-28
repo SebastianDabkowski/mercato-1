@@ -171,6 +171,19 @@ else
                                 <span>@Model.CartResult.Totals.TotalShipping.ToString("C")</span>
                             }
                         </div>
+                        @if (Model.CartResult.Totals.DiscountAmount > 0)
+                        {
+                            <div class="d-flex justify-content-between mb-2 text-success">
+                                <span>
+                                    <i class="bi bi-tag-fill me-1"></i>Discount
+                                    @if (!string.IsNullOrEmpty(Model.CartResult.Totals.AppliedPromoCode))
+                                    {
+                                        <span class="small">(@Model.CartResult.Totals.AppliedPromoCode)</span>
+                                    }
+                                </span>
+                                <span>-@Model.CartResult.Totals.DiscountAmount.ToString("C")</span>
+                            </div>
+                        }
                         <hr>
                         <div class="d-flex justify-content-between mb-3">
                             <strong>Total:</strong>
@@ -185,6 +198,44 @@ else
                             <strong class="text-primary fs-5">@Model.CartResult.TotalPrice.ToString("C")</strong>
                         </div>
                     }
+
+                    <!-- Promo Code Section -->
+                    <div class="mb-3">
+                        @if (Model.CartResult.Totals != null && !string.IsNullOrEmpty(Model.CartResult.Totals.AppliedPromoCode))
+                        {
+                            <div class="alert alert-success mb-2 py-2">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <i class="bi bi-check-circle me-1"></i>
+                                        <strong>@Model.CartResult.Totals.AppliedPromoCode</strong>
+                                        @if (!string.IsNullOrEmpty(Model.CartResult.Totals.AppliedPromoCodeDescription))
+                                        {
+                                            <br><small class="text-muted">@Model.CartResult.Totals.AppliedPromoCodeDescription</small>
+                                        }
+                                    </div>
+                                    <form method="post" asp-page-handler="RemovePromoCode" class="d-inline">
+                                        <button type="submit" class="btn btn-link text-danger p-0 small">
+                                            <i class="bi bi-x-circle"></i> Remove
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        }
+                        else
+                        {
+                            <form method="post" asp-page-handler="ApplyPromoCode">
+                                <div class="input-group">
+                                    <input type="text" 
+                                           asp-for="PromoCodeInput" 
+                                           class="form-control" 
+                                           placeholder="Enter promo code"
+                                           aria-label="Promo code">
+                                    <button type="submit" class="btn btn-outline-primary">Apply</button>
+                                </div>
+                            </form>
+                        }
+                    </div>
+
                     <div class="d-grid gap-2">
                         @if (Model.IsGuest)
                         {

@@ -1,3 +1,4 @@
+using Mercato.Cart.Application.Services;
 using Mercato.Cart.Domain.Entities;
 
 namespace Mercato.Cart.Application.Queries;
@@ -52,6 +53,21 @@ public class GetCartResult
         Domain.Entities.Cart? cart,
         IReadOnlyDictionary<Guid, StoreShippingCost>? shippingByStore = null)
     {
+        return Success(cart, shippingByStore, PromoCodeDiscountInfo.None());
+    }
+
+    /// <summary>
+    /// Creates a successful result with the cart, calculated totals, and promo code discount.
+    /// </summary>
+    /// <param name="cart">The cart.</param>
+    /// <param name="shippingByStore">The shipping costs by store. If null, shipping is not calculated.</param>
+    /// <param name="discountInfo">The promo code discount information.</param>
+    /// <returns>A successful result.</returns>
+    public static GetCartResult Success(
+        Domain.Entities.Cart? cart,
+        IReadOnlyDictionary<Guid, StoreShippingCost>? shippingByStore,
+        PromoCodeDiscountInfo discountInfo)
+    {
         if (cart == null || cart.Items.Count == 0)
         {
             return new GetCartResult
@@ -93,11 +109,17 @@ public class GetCartResult
         var totalItemCount = cart.Items.Sum(i => i.Quantity);
         var itemsSubtotal = cart.Items.Sum(i => i.ProductPrice * i.Quantity);
 
-        // Calculate totals with shipping if shipping data is provided
+        // Calculate totals with shipping and discount if shipping data is provided
         CartTotals? totals = null;
         if (shippingByStore != null)
         {
-            totals = CartTotals.Create(itemsSubtotal, shippingByStore, totalItemCount);
+            totals = CartTotals.Create(
+                itemsSubtotal, 
+                shippingByStore, 
+                totalItemCount,
+                discountInfo.DiscountAmount,
+                discountInfo.AppliedPromoCode,
+                discountInfo.AppliedPromoCodeDescription);
         }
 
         return new GetCartResult

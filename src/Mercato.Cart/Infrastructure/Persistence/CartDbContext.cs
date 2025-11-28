@@ -27,6 +27,11 @@ public class CartDbContext : DbContext
     /// </summary>
     public DbSet<CartItem> CartItems { get; set; }
 
+    /// <summary>
+    /// Gets or sets the promo codes DbSet.
+    /// </summary>
+    public DbSet<PromoCode> PromoCodes { get; set; }
+
     /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -34,6 +39,7 @@ public class CartDbContext : DbContext
 
         ConfigureCart(modelBuilder);
         ConfigureCartItem(modelBuilder);
+        ConfigurePromoCode(modelBuilder);
     }
 
     private static void ConfigureCart(ModelBuilder modelBuilder)
@@ -71,6 +77,12 @@ public class CartDbContext : DbContext
                 .WithOne(e => e.Cart)
                 .HasForeignKey(e => e.CartId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            // Relationship to applied promo code
+            entity.HasOne(e => e.AppliedPromoCode)
+                .WithMany()
+                .HasForeignKey(e => e.AppliedPromoCodeId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
     }
 
@@ -124,6 +136,74 @@ public class CartDbContext : DbContext
 
             // Index for querying cart items by store (for grouping)
             entity.HasIndex(e => new { e.CartId, e.StoreId });
+        });
+    }
+
+    private static void ConfigurePromoCode(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<PromoCode>(entity =>
+        {
+            entity.ToTable("PromoCodes");
+
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.Code)
+                .IsRequired()
+                .HasMaxLength(50);
+
+            entity.Property(e => e.Description)
+                .IsRequired()
+                .HasMaxLength(500);
+
+            entity.Property(e => e.DiscountType)
+                .IsRequired();
+
+            entity.Property(e => e.DiscountValue)
+                .IsRequired()
+                .HasPrecision(18, 2);
+
+            entity.Property(e => e.MinimumOrderAmount)
+                .HasPrecision(18, 2);
+
+            entity.Property(e => e.MaxDiscountAmount)
+                .HasPrecision(18, 2);
+
+            entity.Property(e => e.Scope)
+                .IsRequired();
+
+            entity.Property(e => e.SellerId)
+                .HasMaxLength(450);
+
+            entity.Property(e => e.StartDate)
+                .IsRequired();
+
+            entity.Property(e => e.IsActive)
+                .IsRequired();
+
+            entity.Property(e => e.UsageCount)
+                .IsRequired()
+                .HasDefaultValue(0);
+
+            entity.Property(e => e.CreatedAt)
+                .IsRequired();
+
+            entity.Property(e => e.LastUpdatedAt)
+                .IsRequired();
+
+            // Unique index on promo code
+            entity.HasIndex(e => e.Code)
+                .IsUnique();
+
+            // Index for querying by seller
+            entity.HasIndex(e => e.SellerId)
+                .HasFilter("[SellerId] IS NOT NULL");
+
+            // Index for querying by store
+            entity.HasIndex(e => e.StoreId)
+                .HasFilter("[StoreId] IS NOT NULL");
+
+            // Index for querying active promo codes
+            entity.HasIndex(e => new { e.IsActive, e.StartDate, e.EndDate });
         });
     }
 }
