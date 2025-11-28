@@ -24,8 +24,10 @@ public class PromoCodeRepository : IPromoCodeRepository
     /// <inheritdoc />
     public async Task<PromoCode?> GetByCodeAsync(string code)
     {
+        // Use EF.Functions.Collate for case-insensitive comparison with SQL Server
+        // This allows the database to use indexes effectively
         return await _context.PromoCodes
-            .FirstOrDefaultAsync(p => p.Code.ToLower() == code.ToLower());
+            .FirstOrDefaultAsync(p => EF.Functions.Collate(p.Code, "Latin1_General_CI_AS") == code);
     }
 
     /// <inheritdoc />
