@@ -1,16 +1,19 @@
+using Mercato.Product.Application.Queries;
 using Mercato.Product.Application.Services;
+using Mercato.Seller.Application.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace Mercato.Web.Pages.Product;
 
 /// <summary>
-/// Page model for searching products by keyword.
+/// Page model for searching products by keyword with filtering support.
 /// </summary>
 public class SearchModel : PageModel
 {
     private readonly IProductService _productService;
     private readonly ICategoryService _categoryService;
+    private readonly IStoreProfileService _storeProfileService;
     private const int DefaultPageSize = 12;
 
     /// <summary>
@@ -23,10 +26,15 @@ public class SearchModel : PageModel
     /// </summary>
     /// <param name="productService">The product service.</param>
     /// <param name="categoryService">The category service.</param>
-    public SearchModel(IProductService productService, ICategoryService categoryService)
+    /// <param name="storeProfileService">The store profile service for seller filter.</param>
+    public SearchModel(
+        IProductService productService,
+        ICategoryService categoryService,
+        IStoreProfileService storeProfileService)
     {
         _productService = productService;
         _categoryService = categoryService;
+        _storeProfileService = storeProfileService;
     }
 
     /// <summary>
@@ -34,6 +42,36 @@ public class SearchModel : PageModel
     /// </summary>
     [BindProperty(SupportsGet = true)]
     public string? Query { get; set; }
+
+    /// <summary>
+    /// Gets or sets the minimum price filter.
+    /// </summary>
+    [BindProperty(SupportsGet = true)]
+    public decimal? MinPrice { get; set; }
+
+    /// <summary>
+    /// Gets or sets the maximum price filter.
+    /// </summary>
+    [BindProperty(SupportsGet = true)]
+    public decimal? MaxPrice { get; set; }
+
+    /// <summary>
+    /// Gets or sets the condition filter (InStock, OutOfStock).
+    /// </summary>
+    [BindProperty(SupportsGet = true)]
+    public string? Condition { get; set; }
+
+    /// <summary>
+    /// Gets or sets the store ID filter for seller filtering.
+    /// </summary>
+    [BindProperty(SupportsGet = true)]
+    public Guid? StoreId { get; set; }
+
+    /// <summary>
+    /// Gets or sets the category filter.
+    /// </summary>
+    [BindProperty(SupportsGet = true)]
+    public string? Category { get; set; }
 
     /// <summary>
     /// Gets the products matching the search query.
@@ -44,6 +82,11 @@ public class SearchModel : PageModel
     /// Gets the root categories for navigation.
     /// </summary>
     public IReadOnlyList<Mercato.Product.Domain.Entities.Category> RootCategories { get; private set; } = [];
+
+    /// <summary>
+    /// Gets the available stores for the seller filter dropdown.
+    /// </summary>
+    public IReadOnlyList<StoreFilterOption> AvailableStores { get; private set; } = [];
 
     /// <summary>
     /// Gets the current page number.
@@ -61,6 +104,24 @@ public class SearchModel : PageModel
     public int TotalProducts { get; private set; }
 
     /// <summary>
+    /// Gets the minimum available price for the price filter range.
+    /// </summary>
+    public decimal? MinAvailablePrice { get; private set; }
+
+    /// <summary>
+    /// Gets the maximum available price for the price filter range.
+    /// </summary>
+    public decimal? MaxAvailablePrice { get; private set; }
+
+    /// <summary>
+    /// Gets whether any filter is currently applied.
+    /// </summary>
+    public bool HasActiveFilters => MinPrice.HasValue || MaxPrice.HasValue || 
+                                    !string.IsNullOrWhiteSpace(Condition) || 
+                                    StoreId.HasValue ||
+                                    !string.IsNullOrWhiteSpace(Category);
+
+    /// <summary>
     /// Handles GET requests for search results page.
     /// </summary>
     /// <param name="page">The page number for pagination.</param>
@@ -76,24 +137,67 @@ public class SearchModel : PageModel
         // Load root categories for navigation sidebar
         RootCategories = await _categoryService.GetActiveCategoriesByParentIdAsync(null);
 
-        // If no query provided or empty, return empty results
-        if (string.IsNullOrWhiteSpace(Query))
-        {
-            return Page();
-        }
+        // Load price range for filter UI
+        var (minPrice, maxPrice) = await _productService.GetActivePriceRangeAsync();
+        MinAvailablePrice = minPrice;
+        MaxAvailablePrice = maxPrice;
+
+        // Load available stores for seller filter
+        await LoadAvailableStoresAsync();
 
         // Truncate extremely long queries to prevent abuse
-        if (Query.Length > MaxQueryLength)
+        if (Query != null && Query.Length > MaxQueryLength)
         {
             Query = Query[..MaxQueryLength];
         }
 
-        // Search products
-        var (products, totalCount) = await _productService.SearchProductsAsync(Query, CurrentPage, DefaultPageSize);
-        Products = products;
-        TotalProducts = totalCount;
-        TotalPages = (int)Math.Ceiling((double)totalCount / DefaultPageSize);
+        // Create filter query
+        var filter = new ProductFilterQuery
+        {
+            SearchQuery = string.IsNullOrWhiteSpace(Query) ? null : Query,
+            Category = Category,
+            MinPrice = MinPrice,
+            MaxPrice = MaxPrice,
+            Condition = Condition,
+            StoreId = StoreId,
+            Page = CurrentPage,
+            PageSize = DefaultPageSize
+        };
+
+        // Search products with filters
+        var result = await _productService.SearchProductsWithFiltersAsync(filter);
+        Products = result.Products;
+        TotalProducts = result.TotalCount;
+        TotalPages = result.TotalPages;
 
         return Page();
+    }
+
+    /// <summary>
+    /// Handles POST request to clear all filters.
+    /// </summary>
+    /// <returns>Redirect to search page with only the query preserved.</returns>
+    public IActionResult OnPostClearFilters()
+    {
+        return RedirectToPage(new { Query });
+    }
+
+    /// <summary>
+    /// Loads the available stores for the seller filter dropdown.
+    /// </summary>
+    private async Task LoadAvailableStoresAsync()
+    {
+        var storeIds = await _productService.GetActiveProductStoreIdsAsync();
+        if (storeIds.Count == 0)
+        {
+            AvailableStores = [];
+            return;
+        }
+
+        var stores = await _storeProfileService.GetStoresByIdsAsync(storeIds);
+        AvailableStores = stores
+            .Select(s => new StoreFilterOption { Id = s.Id, Name = s.Name })
+            .OrderBy(s => s.Name)
+            .ToList();
     }
 }

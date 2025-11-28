@@ -93,4 +93,20 @@ public class StoreRepository : IStoreRepository
         _context.Stores.Update(store);
         await _context.SaveChangesAsync();
     }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<Store>> GetByIdsAsync(IEnumerable<Guid> ids)
+    {
+        ArgumentNullException.ThrowIfNull(ids);
+
+        var idList = ids.ToList();
+        if (idList.Count == 0)
+        {
+            return [];
+        }
+
+        return await _context.Stores
+            .Where(s => idList.Contains(s.Id))
+            .ToListAsync();
+    }
 }

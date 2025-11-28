@@ -50,4 +50,11 @@ public interface IStoreProfileService
     /// <param name="command">The update store profile command.</param>
     /// <returns>The result of the create or update operation.</returns>
     Task<UpdateStoreProfileResult> CreateOrUpdateStoreProfileAsync(UpdateStoreProfileCommand command);
+
+    /// <summary>
+    /// Gets stores by their unique identifiers.
+    /// </summary>
+    /// <param name="ids">The store IDs to retrieve.</param>
+    /// <returns>A list of stores matching the provided IDs.</returns>
+    Task<IReadOnlyList<Store>> GetStoresByIdsAsync(IEnumerable<Guid> ids);
 }

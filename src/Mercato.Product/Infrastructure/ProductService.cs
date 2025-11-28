@@ -3,6 +3,7 @@ using ClosedXML.Excel;
 using CsvHelper;
 using CsvHelper.Configuration;
 using Mercato.Product.Application.Commands;
+using Mercato.Product.Application.Queries;
 using Mercato.Product.Application.Services;
 using Mercato.Product.Domain;
 using Mercato.Product.Domain.Entities;
@@ -1014,5 +1015,35 @@ public class ProductService : IProductService
     public async Task<(IReadOnlyList<Domain.Entities.Product> Products, int TotalCount)> SearchProductsAsync(string searchQuery, int page, int pageSize)
     {
         return await _repository.SearchActiveProductsAsync(searchQuery, page, pageSize);
+    }
+
+    /// <inheritdoc />
+    public async Task<FilteredProductsResult> SearchProductsWithFiltersAsync(ProductFilterQuery filter)
+    {
+        ArgumentNullException.ThrowIfNull(filter);
+
+        var (products, totalCount) = await _repository.SearchActiveProductsWithFiltersAsync(
+            filter.SearchQuery,
+            filter.Category,
+            filter.MinPrice,
+            filter.MaxPrice,
+            filter.Condition,
+            filter.StoreId,
+            filter.Page,
+            filter.PageSize);
+
+        return FilteredProductsResult.Success(products, totalCount, filter);
+    }
+
+    /// <inheritdoc />
+    public async Task<(decimal? MinPrice, decimal? MaxPrice)> GetActivePriceRangeAsync()
+    {
+        return await _repository.GetActivePriceRangeAsync();
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<Guid>> GetActiveProductStoreIdsAsync()
+    {
+        return await _repository.GetActiveProductStoreIdsAsync();
     }
 }

@@ -121,4 +121,101 @@ public class ProductRepository : IProductRepository
 
         return (products, totalCount);
     }
+
+    /// <inheritdoc />
+    public async Task<(IReadOnlyList<Domain.Entities.Product> Products, int TotalCount)> SearchActiveProductsWithFiltersAsync(
+        string? searchQuery,
+        string? categoryName,
+        decimal? minPrice,
+        decimal? maxPrice,
+        string? condition,
+        Guid? storeId,
+        int page,
+        int pageSize)
+    {
+        var query = _context.Products
+            .Where(p => p.Status == ProductStatus.Active);
+
+        // Apply search query filter
+        if (!string.IsNullOrWhiteSpace(searchQuery))
+        {
+            var likePattern = $"%{searchQuery}%";
+            query = query.Where(p => 
+                EF.Functions.Like(p.Title, likePattern) ||
+                (p.Description != null && EF.Functions.Like(p.Description, likePattern)));
+        }
+
+        // Apply category filter
+        if (!string.IsNullOrWhiteSpace(categoryName))
+        {
+            query = query.Where(p => p.Category == categoryName);
+        }
+
+        // Apply price range filters
+        if (minPrice.HasValue)
+        {
+            query = query.Where(p => p.Price >= minPrice.Value);
+        }
+
+        if (maxPrice.HasValue)
+        {
+            query = query.Where(p => p.Price <= maxPrice.Value);
+        }
+
+        // Apply condition filter (InStock or OutOfStock)
+        if (!string.IsNullOrWhiteSpace(condition))
+        {
+            if (condition.Equals("InStock", StringComparison.OrdinalIgnoreCase))
+            {
+                query = query.Where(p => p.Stock > 0);
+            }
+            else if (condition.Equals("OutOfStock", StringComparison.OrdinalIgnoreCase))
+            {
+                query = query.Where(p => p.Stock <= 0);
+            }
+        }
+
+        // Apply store/seller filter
+        if (storeId.HasValue)
+        {
+            query = query.Where(p => p.StoreId == storeId.Value);
+        }
+
+        var totalCount = await query.CountAsync();
+
+        var products = await query
+            .OrderByDescending(p => p.CreatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        return (products, totalCount);
+    }
+
+    /// <inheritdoc />
+    public async Task<(decimal? MinPrice, decimal? MaxPrice)> GetActivePriceRangeAsync()
+    {
+        var query = _context.Products
+            .Where(p => p.Status == ProductStatus.Active);
+
+        if (!await query.AnyAsync())
+        {
+            return (null, null);
+        }
+
+        var minPrice = await query.MinAsync(p => p.Price);
+        var maxPrice = await query.MaxAsync(p => p.Price);
+
+        return (minPrice, maxPrice);
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<Guid>> GetActiveProductStoreIdsAsync()
+    {
+        return await _context.Products
+            .Where(p => p.Status == ProductStatus.Active)
+            .Select(p => p.StoreId)
+            .Distinct()
+            .ToListAsync();
+    }
 }
