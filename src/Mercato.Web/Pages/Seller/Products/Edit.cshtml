@@ -74,6 +74,56 @@
                                 <div class="form-text">The category this product belongs to (e.g., Electronics, Clothing).</div>
                             </div>
 
+                            <div class="mb-3">
+                                <label asp-for="Images" class="form-label">Images</label>
+                                <textarea asp-for="Images" class="form-control" rows="3" placeholder='Enter image URLs as JSON array, e.g. ["https://example.com/image1.jpg", "https://example.com/image2.jpg"]'></textarea>
+                                <span asp-validation-for="Images" class="text-danger"></span>
+                                <div class="form-text">Product image URLs as a JSON array (up to 10 images).</div>
+                            </div>
+
+                            <hr class="my-4" />
+                            <h5 class="mb-3"><i class="bi bi-truck me-2"></i>Shipping Parameters</h5>
+                            <p class="text-muted mb-3">Optional shipping details for logistics and cost calculation.</p>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label asp-for="Weight" class="form-label">Weight (kg)</label>
+                                    <input asp-for="Weight" class="form-control" type="number" step="0.001" min="0" max="1000" placeholder="0.000" />
+                                    <span asp-validation-for="Weight" class="text-danger"></span>
+                                    <div class="form-text">Product weight in kilograms (0-1000 kg).</div>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-4 mb-3">
+                                    <label asp-for="Length" class="form-label">Length (cm)</label>
+                                    <input asp-for="Length" class="form-control" type="number" step="0.01" min="0" max="500" placeholder="0.00" />
+                                    <span asp-validation-for="Length" class="text-danger"></span>
+                                    <div class="form-text">Length in centimeters.</div>
+                                </div>
+
+                                <div class="col-md-4 mb-3">
+                                    <label asp-for="Width" class="form-label">Width (cm)</label>
+                                    <input asp-for="Width" class="form-control" type="number" step="0.01" min="0" max="500" placeholder="0.00" />
+                                    <span asp-validation-for="Width" class="text-danger"></span>
+                                    <div class="form-text">Width in centimeters.</div>
+                                </div>
+
+                                <div class="col-md-4 mb-3">
+                                    <label asp-for="Height" class="form-label">Height (cm)</label>
+                                    <input asp-for="Height" class="form-control" type="number" step="0.01" min="0" max="500" placeholder="0.00" />
+                                    <span asp-validation-for="Height" class="text-danger"></span>
+                                    <div class="form-text">Height in centimeters.</div>
+                                </div>
+                            </div>
+
+                            <div class="mb-4">
+                                <label asp-for="ShippingMethods" class="form-label">Shipping Methods</label>
+                                <input asp-for="ShippingMethods" class="form-control" placeholder="e.g., standard,express,courier,parcel_locker" />
+                                <span asp-validation-for="ShippingMethods" class="text-danger"></span>
+                                <div class="form-text">Comma-separated list of available shipping methods.</div>
+                            </div>
+
                             <div class="d-flex justify-content-between">
                                 <a asp-page="Index" class="btn btn-outline-secondary">
                                     <i class="bi bi-arrow-left me-1"></i>Back to Products

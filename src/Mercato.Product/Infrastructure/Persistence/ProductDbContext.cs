@@ -1,3 +1,4 @@
+using Mercato.Product.Domain;
 using Mercato.Product.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 
@@ -71,6 +72,25 @@ public class ProductDbContext : DbContext
 
             entity.Property(e => e.ArchivedBy)
                 .HasMaxLength(450);
+
+            // Shipping parameters
+            entity.Property(e => e.Weight)
+                .HasPrecision(10, 3);
+
+            entity.Property(e => e.Length)
+                .HasPrecision(10, 2);
+
+            entity.Property(e => e.Width)
+                .HasPrecision(10, 2);
+
+            entity.Property(e => e.Height)
+                .HasPrecision(10, 2);
+
+            entity.Property(e => e.ShippingMethods)
+                .HasMaxLength(ProductValidationConstants.ShippingMethodsMaxLength);
+
+            entity.Property(e => e.Images)
+                .HasMaxLength(ProductValidationConstants.ImagesMaxLength);
 
             // Index for querying products by store
             entity.HasIndex(e => e.StoreId);

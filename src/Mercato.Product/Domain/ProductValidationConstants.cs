@@ -29,4 +29,29 @@ public static class ProductValidationConstants
     /// Maximum length for product description.
     /// </summary>
     public const int DescriptionMaxLength = 2000;
+
+    /// <summary>
+    /// Maximum weight in kilograms.
+    /// </summary>
+    public const decimal WeightMaxKg = 1000m;
+
+    /// <summary>
+    /// Maximum dimension (length, width, height) in centimeters.
+    /// </summary>
+    public const decimal DimensionMaxCm = 500m;
+
+    /// <summary>
+    /// Maximum length for shipping methods string.
+    /// </summary>
+    public const int ShippingMethodsMaxLength = 500;
+
+    /// <summary>
+    /// Maximum length for images JSON string.
+    /// </summary>
+    public const int ImagesMaxLength = 4000;
+
+    /// <summary>
+    /// Maximum number of images allowed per product.
+    /// </summary>
+    public const int MaxImagesCount = 10;
 }
