@@ -28,6 +28,7 @@ public static class SellerModuleExtensions
         services.AddScoped<IStoreRepository, StoreRepository>();
         services.AddScoped<IPayoutSettingsRepository, PayoutSettingsRepository>();
         services.AddScoped<IStoreUserRepository, StoreUserRepository>();
+        services.AddScoped<IShippingRuleRepository, ShippingRuleRepository>();
 
         // Register services
         services.AddScoped<IKycService, KycService>();

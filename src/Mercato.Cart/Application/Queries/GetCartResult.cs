@@ -33,16 +33,24 @@ public class GetCartResult
     public int TotalItemCount { get; private init; }
 
     /// <summary>
-    /// Gets the total price of all items in the cart.
+    /// Gets the total price of all items in the cart (items subtotal only, before shipping).
     /// </summary>
     public decimal TotalPrice { get; private init; }
 
     /// <summary>
-    /// Creates a successful result with the cart.
+    /// Gets the cart totals including shipping costs.
+    /// </summary>
+    public CartTotals? Totals { get; private init; }
+
+    /// <summary>
+    /// Creates a successful result with the cart and calculated totals.
     /// </summary>
     /// <param name="cart">The cart.</param>
+    /// <param name="shippingByStore">The shipping costs by store. If null, shipping is not calculated.</param>
     /// <returns>A successful result.</returns>
-    public static GetCartResult Success(Domain.Entities.Cart? cart)
+    public static GetCartResult Success(
+        Domain.Entities.Cart? cart,
+        IReadOnlyDictionary<Guid, StoreShippingCost>? shippingByStore = null)
     {
         if (cart == null || cart.Items.Count == 0)
         {
@@ -53,23 +61,44 @@ public class GetCartResult
                 Cart = cart,
                 ItemsByStore = [],
                 TotalItemCount = 0,
-                TotalPrice = 0
+                TotalPrice = 0,
+                Totals = null
             };
         }
 
         var itemsByStore = cart.Items
             .GroupBy(i => new { i.StoreId, i.StoreName })
-            .Select(g => new CartItemsByStore
+            .Select(g =>
             {
-                StoreId = g.Key.StoreId,
-                StoreName = g.Key.StoreName,
-                Items = g.ToList()
+                var storeGroup = new CartItemsByStore
+                {
+                    StoreId = g.Key.StoreId,
+                    StoreName = g.Key.StoreName,
+                    Items = g.ToList()
+                };
+
+                // Set shipping cost for this store if available
+                if (shippingByStore != null && shippingByStore.TryGetValue(g.Key.StoreId, out var storeShipping))
+                {
+                    storeGroup.ShippingCost = storeShipping.ShippingCost;
+                    storeGroup.IsFreeShipping = storeShipping.IsFreeShipping;
+                    storeGroup.AmountToFreeShipping = storeShipping.AmountToFreeShipping;
+                }
+
+                return storeGroup;
             })
             .OrderBy(g => g.StoreName)
             .ToList();
 
         var totalItemCount = cart.Items.Sum(i => i.Quantity);
-        var totalPrice = cart.Items.Sum(i => i.ProductPrice * i.Quantity);
+        var itemsSubtotal = cart.Items.Sum(i => i.ProductPrice * i.Quantity);
+
+        // Calculate totals with shipping if shipping data is provided
+        CartTotals? totals = null;
+        if (shippingByStore != null)
+        {
+            totals = CartTotals.Create(itemsSubtotal, shippingByStore, totalItemCount);
+        }
 
         return new GetCartResult
         {
@@ -78,7 +107,8 @@ public class GetCartResult
             Cart = cart,
             ItemsByStore = itemsByStore,
             TotalItemCount = totalItemCount,
-            TotalPrice = totalPrice
+            TotalPrice = itemsSubtotal,
+            Totals = totals
         };
     }
 
@@ -125,4 +155,25 @@ public class CartItemsByStore
     /// Gets the subtotal for items from this store.
     /// </summary>
     public decimal Subtotal => Items.Sum(i => i.ProductPrice * i.Quantity);
+
+    /// <summary>
+    /// Gets or sets the shipping cost for this store.
+    /// </summary>
+    public decimal ShippingCost { get; set; }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether free shipping is applied.
+    /// </summary>
+    public bool IsFreeShipping { get; set; }
+
+    /// <summary>
+    /// Gets or sets the amount needed to reach free shipping threshold.
+    /// Null if free shipping is not configured or already applied.
+    /// </summary>
+    public decimal? AmountToFreeShipping { get; set; }
+
+    /// <summary>
+    /// Gets the total for this store (subtotal + shipping).
+    /// </summary>
+    public decimal StoreTotal => Subtotal + ShippingCost;
 }

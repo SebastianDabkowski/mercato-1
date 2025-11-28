@@ -19,6 +19,7 @@ public class CartService : ICartService
     private readonly ICartRepository _cartRepository;
     private readonly IProductService _productService;
     private readonly IStoreProfileService _storeProfileService;
+    private readonly IShippingCalculator _shippingCalculator;
     private readonly ILogger<CartService> _logger;
 
     private const string PlaceholderImage = "/images/placeholder.png";
@@ -31,16 +32,19 @@ public class CartService : ICartService
     /// <param name="cartRepository">The cart repository.</param>
     /// <param name="productService">The product service.</param>
     /// <param name="storeProfileService">The store profile service.</param>
+    /// <param name="shippingCalculator">The shipping calculator.</param>
     /// <param name="logger">The logger.</param>
     public CartService(
         ICartRepository cartRepository,
         IProductService productService,
         IStoreProfileService storeProfileService,
+        IShippingCalculator shippingCalculator,
         ILogger<CartService> logger)
     {
         _cartRepository = cartRepository;
         _productService = productService;
         _storeProfileService = storeProfileService;
+        _shippingCalculator = shippingCalculator;
         _logger = logger;
     }
 
@@ -176,7 +180,27 @@ public class CartService : ICartService
         try
         {
             var cart = await _cartRepository.GetByBuyerIdAsync(query.BuyerId);
-            return GetCartResult.Success(cart);
+            
+            if (cart == null || cart.Items.Count == 0)
+            {
+                return GetCartResult.Success(cart);
+            }
+
+            // Build items by store for shipping calculation
+            var itemsByStore = cart.Items
+                .GroupBy(i => new { i.StoreId, i.StoreName })
+                .Select(g => new CartItemsByStore
+                {
+                    StoreId = g.Key.StoreId,
+                    StoreName = g.Key.StoreName,
+                    Items = g.ToList()
+                })
+                .ToList();
+
+            // Calculate shipping costs
+            var shippingByStore = await _shippingCalculator.CalculateShippingAsync(itemsByStore);
+
+            return GetCartResult.Success(cart, shippingByStore);
         }
         catch (Exception ex)
         {

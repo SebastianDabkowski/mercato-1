@@ -1,5 +1,6 @@
 using Mercato.Cart.Application.Commands;
 using Mercato.Cart.Application.Queries;
+using Mercato.Cart.Application.Services;
 using Mercato.Cart.Domain.Interfaces;
 using Mercato.Cart.Infrastructure;
 using Mercato.Product.Application.Services;
@@ -25,6 +26,7 @@ public class CartServiceTests
     private readonly Mock<ICartRepository> _mockCartRepository;
     private readonly Mock<IProductService> _mockProductService;
     private readonly Mock<IStoreProfileService> _mockStoreProfileService;
+    private readonly Mock<IShippingCalculator> _mockShippingCalculator;
     private readonly Mock<ILogger<CartService>> _mockLogger;
     private readonly CartService _service;
 
@@ -33,11 +35,13 @@ public class CartServiceTests
         _mockCartRepository = new Mock<ICartRepository>(MockBehavior.Strict);
         _mockProductService = new Mock<IProductService>(MockBehavior.Strict);
         _mockStoreProfileService = new Mock<IStoreProfileService>(MockBehavior.Strict);
+        _mockShippingCalculator = new Mock<IShippingCalculator>(MockBehavior.Strict);
         _mockLogger = new Mock<ILogger<CartService>>();
         _service = new CartService(
             _mockCartRepository.Object,
             _mockProductService.Object,
             _mockStoreProfileService.Object,
+            _mockShippingCalculator.Object,
             _mockLogger.Object);
     }
 
@@ -381,6 +385,21 @@ public class CartServiceTests
         _mockCartRepository.Setup(r => r.GetByBuyerIdAsync(TestBuyerId))
             .ReturnsAsync(cart);
 
+        var shippingByStore = new Dictionary<Guid, StoreShippingCost>
+        {
+            [TestStoreId] = new StoreShippingCost
+            {
+                StoreId = TestStoreId,
+                StoreName = "Test Store",
+                ShippingCost = 5.99m,
+                IsFreeShipping = false,
+                AmountToFreeShipping = null
+            }
+        };
+
+        _mockShippingCalculator.Setup(s => s.CalculateShippingAsync(It.IsAny<IReadOnlyList<CartItemsByStore>>()))
+            .ReturnsAsync(shippingByStore);
+
         // Act
         var result = await _service.GetCartAsync(query);
 
@@ -390,6 +409,10 @@ public class CartServiceTests
         Assert.Single(result.ItemsByStore);
         Assert.Equal(2, result.TotalItemCount);
         Assert.Equal(59.98m, result.TotalPrice);
+        Assert.NotNull(result.Totals);
+        Assert.Equal(59.98m, result.Totals.ItemsSubtotal);
+        Assert.Equal(5.99m, result.Totals.TotalShipping);
+        Assert.Equal(65.97m, result.Totals.TotalAmount);
     }
 
     [Fact]
