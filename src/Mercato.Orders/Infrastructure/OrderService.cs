@@ -216,6 +216,12 @@ public class OrderService : IOrderService
                 return UpdateOrderStatusResult.Failure("Order not found.");
             }
 
+            // Validate that the order is in the correct state for payment processing
+            if (order.Status != OrderStatus.New)
+            {
+                return UpdateOrderStatusResult.Failure($"Cannot process payment for order in status '{order.Status}'. Order must be in 'New' status.");
+            }
+
             var now = DateTimeOffset.UtcNow;
             order.LastUpdatedAt = now;
 
@@ -408,6 +414,8 @@ public class OrderService : IOrderService
                     break;
                 case SellerSubOrderStatus.Refunded:
                     subOrder.RefundedAt = now;
+                    // Update parent order if sub-order is refunded
+                    await UpdateParentOrderForRefundAsync(subOrder, now);
                     break;
             }
 
@@ -423,6 +431,34 @@ public class OrderService : IOrderService
         {
             _logger.LogError(ex, "Error updating seller sub-order status for {SubOrderId}", subOrderId);
             return UpdateSellerSubOrderStatusResult.Failure("An error occurred while updating the sub-order status.");
+        }
+    }
+
+    /// <summary>
+    /// Updates the parent order when a sub-order is refunded.
+    /// Sets the order's RefundedAt timestamp and updates status to Refunded if all sub-orders are refunded.
+    /// </summary>
+    private async Task UpdateParentOrderForRefundAsync(SellerSubOrder refundedSubOrder, DateTimeOffset now)
+    {
+        var order = await _orderRepository.GetByIdAsync(refundedSubOrder.OrderId);
+        if (order == null)
+        {
+            return;
+        }
+
+        // Check if all sub-orders are now refunded (including the current one being updated)
+        var allSubOrdersRefunded = order.SellerSubOrders
+            .Where(s => s.Id != refundedSubOrder.Id)
+            .All(s => s.Status == SellerSubOrderStatus.Refunded);
+
+        if (allSubOrdersRefunded)
+        {
+            order.Status = OrderStatus.Refunded;
+            order.RefundedAt = now;
+            order.LastUpdatedAt = now;
+            await _orderRepository.UpdateAsync(order);
+
+            _logger.LogInformation("Order {OrderNumber} fully refunded", order.OrderNumber);
         }
     }
 

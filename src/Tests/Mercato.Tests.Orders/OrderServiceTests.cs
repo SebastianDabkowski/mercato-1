@@ -363,6 +363,24 @@ public class OrderServiceTests
         Assert.Contains("Order not found.", result.Errors);
     }
 
+    [Fact]
+    public async Task UpdateOrderStatusAsync_OrderNotInNewStatus_ReturnsFailure()
+    {
+        // Arrange
+        var order = CreateTestOrder();
+        order.Status = OrderStatus.Paid; // Order already paid
+
+        _mockOrderRepository.Setup(r => r.GetByIdAsync(TestOrderId))
+            .ReturnsAsync(order);
+
+        // Act
+        var result = await _service.UpdateOrderStatusAsync(TestOrderId, isPaymentSuccessful: true);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains("Cannot process payment for order in status 'Paid'. Order must be in 'New' status.", result.Errors);
+    }
+
     #endregion
 
     #region GetOrdersForBuyerAsync Tests
@@ -871,6 +889,10 @@ public class OrderServiceTests
         _mockSellerSubOrderRepository.Setup(r => r.UpdateAsync(It.IsAny<SellerSubOrder>()))
             .Returns(Task.CompletedTask);
 
+        // Mock order repository for parent order update
+        _mockOrderRepository.Setup(r => r.GetByIdAsync(subOrder.OrderId))
+            .ReturnsAsync((Order?)null); // No parent order, just testing sub-order refund
+
         var command = new UpdateSellerSubOrderStatusCommand
         {
             NewStatus = SellerSubOrderStatus.Refunded
@@ -884,6 +906,47 @@ public class OrderServiceTests
         _mockSellerSubOrderRepository.Verify(r => r.UpdateAsync(It.Is<SellerSubOrder>(s =>
             s.Status == SellerSubOrderStatus.Refunded &&
             s.RefundedAt != null)), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateSellerSubOrderStatusAsync_Refunded_UpdatesParentOrderWhenAllSubOrdersRefunded()
+    {
+        // Arrange
+        var parentOrder = CreateTestOrder();
+        parentOrder.Status = OrderStatus.Delivered;
+
+        var subOrder1 = CreateTestSellerSubOrder();
+        subOrder1.OrderId = parentOrder.Id;
+        subOrder1.Status = SellerSubOrderStatus.Refunded;
+
+        var subOrder2 = CreateTestSellerSubOrder();
+        subOrder2.OrderId = parentOrder.Id;
+        subOrder2.Status = SellerSubOrderStatus.Delivered;
+
+        parentOrder.SellerSubOrders = [subOrder1, subOrder2];
+
+        _mockSellerSubOrderRepository.Setup(r => r.GetByIdAsync(subOrder2.Id))
+            .ReturnsAsync(subOrder2);
+        _mockSellerSubOrderRepository.Setup(r => r.UpdateAsync(It.IsAny<SellerSubOrder>()))
+            .Returns(Task.CompletedTask);
+        _mockOrderRepository.Setup(r => r.GetByIdAsync(parentOrder.Id))
+            .ReturnsAsync(parentOrder);
+        _mockOrderRepository.Setup(r => r.UpdateAsync(It.IsAny<Order>()))
+            .Returns(Task.CompletedTask);
+
+        var command = new UpdateSellerSubOrderStatusCommand
+        {
+            NewStatus = SellerSubOrderStatus.Refunded
+        };
+
+        // Act
+        var result = await _service.UpdateSellerSubOrderStatusAsync(subOrder2.Id, TestStoreId, command);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        _mockOrderRepository.Verify(r => r.UpdateAsync(It.Is<Order>(o =>
+            o.Status == OrderStatus.Refunded &&
+            o.RefundedAt != null)), Times.Once);
     }
 
     #endregion
