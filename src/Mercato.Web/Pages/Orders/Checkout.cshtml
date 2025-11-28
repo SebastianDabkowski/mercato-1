@@ -1,0 +1,344 @@
+@page
+@model Mercato.Web.Pages.Orders.CheckoutModel
+@{
+    ViewData["Title"] = "Checkout - Delivery Address";
+}
+
+<div class="container py-4">
+    <h1 class="mb-4">Checkout</h1>
+
+    <!-- Progress Steps -->
+    <div class="mb-4">
+        <div class="d-flex justify-content-between">
+            <div class="text-center">
+                <span class="badge bg-primary rounded-pill p-2">1</span>
+                <div class="small mt-1 fw-bold">Address</div>
+            </div>
+            <div class="text-center">
+                <span class="badge bg-secondary rounded-pill p-2">2</span>
+                <div class="small mt-1 text-muted">Payment</div>
+            </div>
+            <div class="text-center">
+                <span class="badge bg-secondary rounded-pill p-2">3</span>
+                <div class="small mt-1 text-muted">Review</div>
+            </div>
+        </div>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            @TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            @TempData["Error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+    {
+        <div class="alert alert-danger">@Model.ErrorMessage</div>
+    }
+
+    <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+    @if (Model.IsCartEmpty)
+    {
+        <div class="alert alert-warning">
+            Your cart is empty. <a asp-page="/Product/Index">Continue shopping</a>.
+        </div>
+    }
+    else
+    {
+        <div class="row">
+            <!-- Address Selection -->
+            <div class="col-lg-8">
+                <form method="post">
+                    <div class="card mb-4">
+                        <div class="card-header bg-light">
+                            <h5 class="mb-0">
+                                <i class="bi bi-geo-alt me-2"></i>Delivery Address
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            @if (Model.SavedAddresses.Count > 0)
+                            {
+                                <h6 class="mb-3">Select a saved address:</h6>
+                                @foreach (var address in Model.SavedAddresses)
+                                {
+                                    <div class="form-check border rounded p-3 mb-2 @(address.IsDefault ? "border-primary" : "")">
+                                        <div class="d-flex justify-content-between align-items-start">
+                                            <div class="d-flex">
+                                                <input class="form-check-input me-3" type="radio"
+                                                       name="SelectedAddressId" id="address-@address.Id"
+                                                       value="@address.Id"
+                                                       checked="@(Model.SelectedAddressId == address.Id && !Model.UseNewAddress)"
+                                                       onchange="document.getElementById('UseNewAddress').value = 'false';">
+                                                <label class="form-check-label" for="address-@address.Id">
+                                                    <strong>@address.FullName</strong>
+                                                    @if (!string.IsNullOrEmpty(address.Label))
+                                                    {
+                                                        <span class="badge bg-secondary ms-2">@address.Label</span>
+                                                    }
+                                                    @if (address.IsDefault)
+                                                    {
+                                                        <span class="badge bg-primary ms-2">Default</span>
+                                                    }
+                                                    <br>
+                                                    <span class="text-muted">@address.FormattedAddress</span>
+                                                    @if (!string.IsNullOrEmpty(address.PhoneNumber))
+                                                    {
+                                                        <br>
+                                                        <span class="text-muted small">
+                                                            <i class="bi bi-telephone me-1"></i>@address.PhoneNumber
+                                                        </span>
+                                                    }
+                                                </label>
+                                            </div>
+                                            <div class="btn-group btn-group-sm">
+                                                @if (!address.IsDefault)
+                                                {
+                                                    <button type="submit" asp-page-handler="SetDefaultAddress"
+                                                            asp-route-addressId="@address.Id"
+                                                            class="btn btn-outline-secondary btn-sm"
+                                                            title="Set as default">
+                                                        <i class="bi bi-star"></i>
+                                                    </button>
+                                                }
+                                                <button type="submit" asp-page-handler="DeleteAddress"
+                                                        asp-route-addressId="@address.Id"
+                                                        class="btn btn-outline-danger btn-sm"
+                                                        title="Delete address"
+                                                        onclick="return confirm('Are you sure you want to delete this address?');">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                                <hr class="my-4">
+                            }
+
+                            <!-- New Address Section -->
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="radio"
+                                       name="addressChoice" id="useNewAddressRadio"
+                                       @(Model.UseNewAddress || Model.SavedAddresses.Count == 0 ? "checked" : "")
+                                       onchange="toggleNewAddressForm(true);">
+                                <label class="form-check-label fw-bold" for="useNewAddressRadio">
+                                    <i class="bi bi-plus-circle me-1"></i>
+                                    @(Model.SavedAddresses.Count > 0 ? "Enter a new address" : "Enter your delivery address")
+                                </label>
+                            </div>
+
+                            <input type="hidden" asp-for="UseNewAddress" id="UseNewAddress" />
+
+                            <div id="newAddressForm" class="ps-4" style="display: @(Model.UseNewAddress || Model.SavedAddresses.Count == 0 ? "block" : "none");">
+                                <div class="row g-3">
+                                    <div class="col-md-4">
+                                        <label asp-for="NewAddress.Label" class="form-label">Label (optional)</label>
+                                        <input asp-for="NewAddress.Label" class="form-control" placeholder="e.g., Home, Work">
+                                        <span asp-validation-for="NewAddress.Label" class="text-danger small"></span>
+                                    </div>
+
+                                    <div class="col-md-8">
+                                        <label asp-for="NewAddress.FullName" class="form-label">Full Name <span class="text-danger">*</span></label>
+                                        <input asp-for="NewAddress.FullName" class="form-control" placeholder="John Doe">
+                                        <span asp-validation-for="NewAddress.FullName" class="text-danger small"></span>
+                                    </div>
+
+                                    <div class="col-12">
+                                        <label asp-for="NewAddress.AddressLine1" class="form-label">Address Line 1 <span class="text-danger">*</span></label>
+                                        <input asp-for="NewAddress.AddressLine1" class="form-control" placeholder="123 Main St">
+                                        <span asp-validation-for="NewAddress.AddressLine1" class="text-danger small"></span>
+                                    </div>
+
+                                    <div class="col-12">
+                                        <label asp-for="NewAddress.AddressLine2" class="form-label">Address Line 2</label>
+                                        <input asp-for="NewAddress.AddressLine2" class="form-control" placeholder="Apt, Suite, Unit, etc. (optional)">
+                                        <span asp-validation-for="NewAddress.AddressLine2" class="text-danger small"></span>
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <label asp-for="NewAddress.City" class="form-label">City <span class="text-danger">*</span></label>
+                                        <input asp-for="NewAddress.City" class="form-control" placeholder="City">
+                                        <span asp-validation-for="NewAddress.City" class="text-danger small"></span>
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <label asp-for="NewAddress.State" class="form-label">State/Province</label>
+                                        <input asp-for="NewAddress.State" class="form-control" placeholder="State or Province (optional)">
+                                        <span asp-validation-for="NewAddress.State" class="text-danger small"></span>
+                                    </div>
+
+                                    <div class="col-md-4">
+                                        <label asp-for="NewAddress.PostalCode" class="form-label">Postal Code <span class="text-danger">*</span></label>
+                                        <input asp-for="NewAddress.PostalCode" class="form-control" placeholder="12345">
+                                        <span asp-validation-for="NewAddress.PostalCode" class="text-danger small"></span>
+                                    </div>
+
+                                    <div class="col-md-4">
+                                        <label asp-for="NewAddress.Country" class="form-label">Country Code <span class="text-danger">*</span></label>
+                                        <select asp-for="NewAddress.Country" class="form-select">
+                                            <option value="">Select country</option>
+                                            <option value="US">United States (US)</option>
+                                            <option value="CA">Canada (CA)</option>
+                                            <option value="GB">United Kingdom (GB)</option>
+                                            <option value="DE">Germany (DE)</option>
+                                            <option value="FR">France (FR)</option>
+                                            <option value="IT">Italy (IT)</option>
+                                            <option value="ES">Spain (ES)</option>
+                                            <option value="NL">Netherlands (NL)</option>
+                                            <option value="PL">Poland (PL)</option>
+                                        </select>
+                                        <span asp-validation-for="NewAddress.Country" class="text-danger small"></span>
+                                    </div>
+
+                                    <div class="col-md-4">
+                                        <label asp-for="NewAddress.PhoneNumber" class="form-label">Phone Number</label>
+                                        <input asp-for="NewAddress.PhoneNumber" class="form-control" placeholder="+1 234 567 8900">
+                                        <span asp-validation-for="NewAddress.PhoneNumber" class="text-danger small"></span>
+                                    </div>
+
+                                    <div class="col-12">
+                                        <div class="form-check">
+                                            <input asp-for="SaveAddressToProfile" class="form-check-input" type="checkbox">
+                                            <label asp-for="SaveAddressToProfile" class="form-check-label">
+                                                Save this address to my profile
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-12">
+                                        <div class="form-check">
+                                            <input asp-for="NewAddress.SetAsDefault" class="form-check-input" type="checkbox">
+                                            <label asp-for="NewAddress.SetAsDefault" class="form-check-label">
+                                                Set as my default address
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-footer">
+                            <div class="d-flex justify-content-between">
+                                <a asp-page="/Cart/Index" class="btn btn-outline-secondary">
+                                    <i class="bi bi-arrow-left me-1"></i>Back to Cart
+                                </a>
+                                <button type="submit" class="btn btn-primary">
+                                    Continue to Payment<i class="bi bi-arrow-right ms-1"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Order Summary -->
+            <div class="col-lg-4">
+                <div class="card sticky-top" style="top: 20px;">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">Order Summary</h5>
+                    </div>
+                    <div class="card-body">
+                        @if (Model.CartResult?.ItemsByStore != null)
+                        {
+                            @foreach (var storeGroup in Model.CartResult.ItemsByStore)
+                            {
+                                <div class="mb-3">
+                                    <h6 class="text-muted small">@storeGroup.StoreName</h6>
+                                    @foreach (var item in storeGroup.Items)
+                                    {
+                                        <div class="d-flex justify-content-between mb-1">
+                                            <span class="small">
+                                                @item.ProductTitle
+                                                <span class="text-muted">x @item.Quantity</span>
+                                            </span>
+                                            <span class="small">@((item.ProductPrice * item.Quantity).ToString("C"))</span>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                            <hr>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>Items (@Model.CartResult.TotalItemCount):</span>
+                                <span>@Model.CartResult.TotalPrice.ToString("C")</span>
+                            </div>
+                            @if (Model.CartResult.Totals != null)
+                            {
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span>Shipping:</span>
+                                    @if (Model.CartResult.Totals.TotalShipping == 0)
+                                    {
+                                        <span class="text-success">Free</span>
+                                    }
+                                    else
+                                    {
+                                        <span>@Model.CartResult.Totals.TotalShipping.ToString("C")</span>
+                                    }
+                                </div>
+                                <hr>
+                                <div class="d-flex justify-content-between">
+                                    <strong>Total:</strong>
+                                    <strong class="text-primary fs-5">@Model.CartResult.Totals.TotalAmount.ToString("C")</strong>
+                                </div>
+                            }
+                        }
+                    </div>
+                </div>
+
+                <div class="card mt-3">
+                    <div class="card-body">
+                        <h6 class="mb-3">We Ship To:</h6>
+                        <div class="d-flex flex-wrap gap-2">
+                            <span class="badge bg-light text-dark">🇺🇸 US</span>
+                            <span class="badge bg-light text-dark">🇨🇦 CA</span>
+                            <span class="badge bg-light text-dark">🇬🇧 GB</span>
+                            <span class="badge bg-light text-dark">🇩🇪 DE</span>
+                            <span class="badge bg-light text-dark">🇫🇷 FR</span>
+                            <span class="badge bg-light text-dark">🇮🇹 IT</span>
+                            <span class="badge bg-light text-dark">🇪🇸 ES</span>
+                            <span class="badge bg-light text-dark">🇳🇱 NL</span>
+                            <span class="badge bg-light text-dark">🇵🇱 PL</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        function toggleNewAddressForm(showNew) {
+            var form = document.getElementById('newAddressForm');
+            var useNewAddressInput = document.getElementById('UseNewAddress');
+
+            if (showNew) {
+                form.style.display = 'block';
+                useNewAddressInput.value = 'true';
+            } else {
+                form.style.display = 'none';
+                useNewAddressInput.value = 'false';
+            }
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function () {
+            var savedAddressRadios = document.querySelectorAll('input[name="SelectedAddressId"]');
+            savedAddressRadios.forEach(function (radio) {
+                radio.addEventListener('change', function () {
+                    toggleNewAddressForm(false);
+                    document.getElementById('useNewAddressRadio').checked = false;
+                });
+            });
+        });
+    </script>
+}

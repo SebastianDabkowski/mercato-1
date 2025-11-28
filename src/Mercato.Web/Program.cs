@@ -99,7 +99,7 @@ if (!string.IsNullOrEmpty(facebookAppId) && !string.IsNullOrEmpty(facebookAppSec
 
 // Register module services
 builder.Services.AddSellerModule(builder.Configuration);
-builder.Services.AddBuyerModule();
+builder.Services.AddBuyerModule(builder.Configuration);
 builder.Services.AddProductModule(builder.Configuration, builder.Environment.ContentRootPath);
 builder.Services.AddOrdersModule(builder.Configuration);
 builder.Services.AddCartModule(builder.Configuration);
