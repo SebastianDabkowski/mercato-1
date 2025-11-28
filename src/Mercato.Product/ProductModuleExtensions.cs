@@ -35,11 +35,13 @@ public static class ProductModuleExtensions
         services.AddScoped<ICategoryRepository, CategoryRepository>();
         services.AddScoped<IProductImportRepository, ProductImportRepository>();
         services.AddScoped<IProductImageRepository, ProductImageRepository>();
+        services.AddScoped<IProductVariantRepository, ProductVariantRepository>();
 
         // Register services
         services.AddScoped<IProductService, ProductService>();
         services.AddScoped<ICategoryService, CategoryService>();
         services.AddScoped<IProductImportService, ProductImportService>();
+        services.AddScoped<IProductVariantService, ProductVariantService>();
 
         // Register ProductImageService with wwwroot path
         services.AddScoped<IProductImageService>(sp =>

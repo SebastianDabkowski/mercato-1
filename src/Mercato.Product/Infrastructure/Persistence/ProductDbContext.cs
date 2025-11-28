@@ -39,6 +39,21 @@ public class ProductDbContext : DbContext
     /// </summary>
     public DbSet<ProductImage> ProductImages { get; set; }
 
+    /// <summary>
+    /// Gets or sets the product variant attributes DbSet.
+    /// </summary>
+    public DbSet<ProductVariantAttribute> ProductVariantAttributes { get; set; }
+
+    /// <summary>
+    /// Gets or sets the product variant attribute values DbSet.
+    /// </summary>
+    public DbSet<ProductVariantAttributeValue> ProductVariantAttributeValues { get; set; }
+
+    /// <summary>
+    /// Gets or sets the product variants DbSet.
+    /// </summary>
+    public DbSet<ProductVariant> ProductVariants { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -48,6 +63,9 @@ public class ProductDbContext : DbContext
         ConfigureProductImportJob(modelBuilder);
         ConfigureProductImportRowError(modelBuilder);
         ConfigureProductImage(modelBuilder);
+        ConfigureProductVariantAttribute(modelBuilder);
+        ConfigureProductVariantAttributeValue(modelBuilder);
+        ConfigureProductVariant(modelBuilder);
     }
 
     private static void ConfigureProduct(ModelBuilder modelBuilder)
@@ -118,6 +136,10 @@ public class ProductDbContext : DbContext
 
             entity.Property(e => e.Sku)
                 .HasMaxLength(100);
+
+            entity.Property(e => e.HasVariants)
+                .IsRequired()
+                .HasDefaultValue(false);
 
             // Index for querying products by store
             entity.HasIndex(e => e.StoreId);
@@ -318,6 +340,131 @@ public class ProductDbContext : DbContext
             // Relationship to product
             entity.HasOne(e => e.Product)
                 .WithMany()
+                .HasForeignKey(e => e.ProductId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+    }
+
+    private static void ConfigureProductVariantAttribute(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<ProductVariantAttribute>(entity =>
+        {
+            entity.ToTable("ProductVariantAttributes");
+
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.ProductId)
+                .IsRequired();
+
+            entity.Property(e => e.Name)
+                .IsRequired()
+                .HasMaxLength(ProductVariantValidationConstants.AttributeNameMaxLength);
+
+            entity.Property(e => e.DisplayOrder)
+                .IsRequired()
+                .HasDefaultValue(0);
+
+            entity.Property(e => e.CreatedAt)
+                .IsRequired();
+
+            // Index for querying attributes by product
+            entity.HasIndex(e => e.ProductId);
+
+            // Unique index for attribute name within product
+            entity.HasIndex(e => new { e.ProductId, e.Name })
+                .IsUnique();
+
+            // Relationship to product
+            entity.HasOne(e => e.Product)
+                .WithMany(p => p.VariantAttributes)
+                .HasForeignKey(e => e.ProductId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+    }
+
+    private static void ConfigureProductVariantAttributeValue(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<ProductVariantAttributeValue>(entity =>
+        {
+            entity.ToTable("ProductVariantAttributeValues");
+
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.VariantAttributeId)
+                .IsRequired();
+
+            entity.Property(e => e.Value)
+                .IsRequired()
+                .HasMaxLength(ProductVariantValidationConstants.AttributeValueMaxLength);
+
+            entity.Property(e => e.DisplayOrder)
+                .IsRequired()
+                .HasDefaultValue(0);
+
+            entity.Property(e => e.CreatedAt)
+                .IsRequired();
+
+            // Index for querying values by attribute
+            entity.HasIndex(e => e.VariantAttributeId);
+
+            // Unique index for value within attribute
+            entity.HasIndex(e => new { e.VariantAttributeId, e.Value })
+                .IsUnique();
+
+            // Relationship to variant attribute
+            entity.HasOne(e => e.VariantAttribute)
+                .WithMany(a => a.Values)
+                .HasForeignKey(e => e.VariantAttributeId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+    }
+
+    private static void ConfigureProductVariant(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<ProductVariant>(entity =>
+        {
+            entity.ToTable("ProductVariants");
+
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.ProductId)
+                .IsRequired();
+
+            entity.Property(e => e.Sku)
+                .HasMaxLength(100);
+
+            entity.Property(e => e.Price)
+                .HasPrecision(18, 2);
+
+            entity.Property(e => e.Stock)
+                .IsRequired();
+
+            entity.Property(e => e.Images)
+                .HasMaxLength(ProductValidationConstants.ImagesMaxLength);
+
+            entity.Property(e => e.AttributeCombination)
+                .IsRequired()
+                .HasMaxLength(ProductVariantValidationConstants.AttributeCombinationMaxLength);
+
+            entity.Property(e => e.IsActive)
+                .IsRequired()
+                .HasDefaultValue(true);
+
+            entity.Property(e => e.CreatedAt)
+                .IsRequired();
+
+            entity.Property(e => e.LastUpdatedAt)
+                .IsRequired();
+
+            // Index for querying variants by product
+            entity.HasIndex(e => e.ProductId);
+
+            // Index for querying active variants
+            entity.HasIndex(e => new { e.ProductId, e.IsActive });
+
+            // Relationship to product
+            entity.HasOne(e => e.Product)
+                .WithMany(p => p.Variants)
                 .HasForeignKey(e => e.ProductId)
                 .OnDelete(DeleteBehavior.Cascade);
         });

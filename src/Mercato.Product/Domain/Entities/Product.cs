@@ -110,4 +110,20 @@ public class Product
     /// Used as a stable key for import/update operations.
     /// </summary>
     public string? Sku { get; set; }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether this product has variants enabled.
+    /// When true, stock and price are managed at the variant level.
+    /// </summary>
+    public bool HasVariants { get; set; }
+
+    /// <summary>
+    /// Navigation property to the product variant attributes.
+    /// </summary>
+    public ICollection<ProductVariantAttribute> VariantAttributes { get; set; } = new List<ProductVariantAttribute>();
+
+    /// <summary>
+    /// Navigation property to the product variants.
+    /// </summary>
+    public ICollection<ProductVariant> Variants { get; set; } = new List<ProductVariant>();
 }
