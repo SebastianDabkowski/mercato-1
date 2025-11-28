@@ -31,6 +31,11 @@ public class FilteredProductsResult
     public int TotalPages => PageSize > 0 ? (int)Math.Ceiling((double)TotalCount / PageSize) : 0;
 
     /// <summary>
+    /// Gets the pagination information for UI rendering.
+    /// </summary>
+    public PaginationInfo Pagination => PaginationInfo.Create(CurrentPage, TotalCount, PageSize);
+
+    /// <summary>
     /// Gets the filter query that was applied to generate these results.
     /// </summary>
     public ProductFilterQuery AppliedFilter { get; init; } = new();
