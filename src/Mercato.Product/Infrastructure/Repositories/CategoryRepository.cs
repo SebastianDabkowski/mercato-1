@@ -120,4 +120,21 @@ public class CategoryRepository : ICategoryRepository
             .ThenBy(c => c.Name)
             .ToListAsync();
     }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<Category>> SearchCategoriesAsync(string searchTerm, int maxResults)
+    {
+        if (string.IsNullOrWhiteSpace(searchTerm))
+        {
+            return [];
+        }
+
+        var likePattern = $"%{searchTerm}%";
+
+        return await _context.Categories
+            .Where(c => c.IsActive && EF.Functions.Like(c.Name, likePattern))
+            .OrderBy(c => c.Name)
+            .Take(maxResults)
+            .ToListAsync();
+    }
 }

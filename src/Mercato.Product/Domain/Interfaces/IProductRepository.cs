@@ -120,4 +120,13 @@ public interface IProductRepository
     /// </summary>
     /// <returns>A list of store IDs with active products.</returns>
     Task<IReadOnlyList<Guid>> GetActiveProductStoreIdsAsync();
+
+    /// <summary>
+    /// Searches for active product titles that match the given search term.
+    /// Returns distinct products ordered by title.
+    /// </summary>
+    /// <param name="searchTerm">The search term to match against product titles.</param>
+    /// <param name="maxResults">The maximum number of results to return.</param>
+    /// <returns>A list of products matching the search term.</returns>
+    Task<IReadOnlyList<Entities.Product>> SearchProductTitlesAsync(string searchTerm, int maxResults);
 }

@@ -77,4 +77,13 @@ public interface ICategoryRepository
     /// <param name="parentId">The parent category ID. Use null to get root categories.</param>
     /// <returns>A list of active child categories.</returns>
     Task<IReadOnlyList<Category>> GetActiveByParentIdAsync(Guid? parentId);
+
+    /// <summary>
+    /// Searches for active categories that match the given search term.
+    /// Returns categories ordered by name.
+    /// </summary>
+    /// <param name="searchTerm">The search term to match against category names.</param>
+    /// <param name="maxResults">The maximum number of results to return.</param>
+    /// <returns>A list of categories matching the search term.</returns>
+    Task<IReadOnlyList<Category>> SearchCategoriesAsync(string searchTerm, int maxResults);
 }

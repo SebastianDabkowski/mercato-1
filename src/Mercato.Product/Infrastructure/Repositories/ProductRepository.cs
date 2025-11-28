@@ -230,4 +230,22 @@ public class ProductRepository : IProductRepository
             .Distinct()
             .ToListAsync();
     }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<Domain.Entities.Product>> SearchProductTitlesAsync(string searchTerm, int maxResults)
+    {
+        if (string.IsNullOrWhiteSpace(searchTerm))
+        {
+            return [];
+        }
+
+        var likePattern = $"%{searchTerm}%";
+
+        return await _context.Products
+            .Where(p => p.Status == ProductStatus.Active &&
+                       EF.Functions.Like(p.Title, likePattern))
+            .OrderBy(p => p.Title)
+            .Take(maxResults)
+            .ToListAsync();
+    }
 }

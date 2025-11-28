@@ -49,9 +49,26 @@
                     </ul>
                     <!-- Global Search Bar -->
                     <!-- Note: maxlength="200" matches SearchModel.MaxQueryLength constant -->
-                    <form class="d-flex me-3" asp-page="/Product/Search" method="get" role="search">
-                        <input class="form-control me-2" type="search" name="query" placeholder="Search products..." aria-label="Search" maxlength="200">
+                    <form class="d-flex me-3 position-relative" asp-page="/Product/Search" method="get" role="search" id="search-form">
+                        <input class="form-control me-2" type="search" name="query" placeholder="Search products..." aria-label="Search" maxlength="200" id="search-input" autocomplete="off">
                         <button class="btn btn-outline-primary" type="submit">Search</button>
+                        <!-- Search Suggestions Dropdown -->
+                        <div id="search-suggestions" class="dropdown-menu w-100 position-absolute" style="top: 100%; left: 0; display: none; max-height: 400px; overflow-y: auto;">
+                            <!-- Categories section -->
+                            <div id="suggestions-categories" style="display: none;">
+                                <h6 class="dropdown-header">Categories</h6>
+                                <div id="suggestions-categories-list"></div>
+                            </div>
+                            <!-- Products section -->
+                            <div id="suggestions-products" style="display: none;">
+                                <h6 class="dropdown-header">Products</h6>
+                                <div id="suggestions-products-list"></div>
+                            </div>
+                            <!-- No results message -->
+                            <div id="suggestions-empty" class="dropdown-item text-muted" style="display: none;">
+                                No suggestions found
+                            </div>
+                        </div>
                     </form>
                     <ul class="navbar-nav">
                         @if (User.Identity?.IsAuthenticated == true)
