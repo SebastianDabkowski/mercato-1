@@ -19,11 +19,17 @@ public class ProductDbContext : DbContext
     /// </summary>
     public DbSet<Domain.Entities.Product> Products { get; set; }
 
+    /// <summary>
+    /// Gets or sets the categories DbSet.
+    /// </summary>
+    public DbSet<Category> Categories { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
 
         ConfigureProduct(modelBuilder);
+        ConfigureCategory(modelBuilder);
     }
 
     private static void ConfigureProduct(ModelBuilder modelBuilder)
@@ -100,6 +106,49 @@ public class ProductDbContext : DbContext
 
             // Index for filtering archived products by store
             entity.HasIndex(e => new { e.StoreId, e.Status });
+
+            // Index for efficient category lookups (used by category management)
+            entity.HasIndex(e => e.Category);
+        });
+    }
+
+    private static void ConfigureCategory(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<Category>(entity =>
+        {
+            entity.ToTable("Categories");
+
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.Name)
+                .IsRequired()
+                .HasMaxLength(ProductValidationConstants.CategoryNameMaxLength);
+
+            entity.Property(e => e.ParentId);
+
+            entity.Property(e => e.DisplayOrder)
+                .IsRequired()
+                .HasDefaultValue(0);
+
+            entity.Property(e => e.IsActive)
+                .IsRequired()
+                .HasDefaultValue(true);
+
+            entity.Property(e => e.CreatedAt)
+                .IsRequired();
+
+            entity.Property(e => e.LastUpdatedAt)
+                .IsRequired();
+
+            // Index for querying categories by parent
+            entity.HasIndex(e => e.ParentId);
+
+            // Index for active categories
+            entity.HasIndex(e => e.IsActive);
+
+            // Unique index for name within parent to enforce uniqueness
+            entity.HasIndex(e => new { e.ParentId, e.Name })
+                .IsUnique();
         });
     }
 }
