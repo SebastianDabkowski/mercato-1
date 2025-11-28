@@ -523,8 +523,8 @@ public class OrderServiceTests
             DeliveryPhoneNumber = "+1234567890",
             CreatedAt = DateTimeOffset.UtcNow,
             LastUpdatedAt = DateTimeOffset.UtcNow,
-            Items = new List<OrderItem>(),
-            SellerSubOrders = new List<SellerSubOrder>()
+            Items = [],
+            SellerSubOrders = []
         };
     }
 
@@ -543,7 +543,7 @@ public class OrderServiceTests
             TotalAmount = 65.97m,
             CreatedAt = DateTimeOffset.UtcNow,
             LastUpdatedAt = DateTimeOffset.UtcNow,
-            Items = new List<SellerSubOrderItem>()
+            Items = []
         };
     }
 

@@ -487,7 +487,9 @@ public class OrderService : IOrderService
     {
         var errors = new List<string>();
 
-        // Define valid status transitions
+        // Define valid status transitions for seller-initiated actions.
+        // Note: Refunded status has no transitions because refunds are handled by
+        // a separate admin/support workflow, not by sellers directly.
         var validTransitions = new Dictionary<SellerSubOrderStatus, SellerSubOrderStatus[]>
         {
             { SellerSubOrderStatus.Pending, [SellerSubOrderStatus.Confirmed, SellerSubOrderStatus.Cancelled] },
