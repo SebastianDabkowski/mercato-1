@@ -1,0 +1,269 @@
+@page "{id:guid}"
+@model Mercato.Web.Pages.Seller.Orders.DetailsModel
+@{
+    ViewData["Title"] = Model.SubOrder != null ? $"Order {Model.SubOrder.SubOrderNumber}" : "Order Details";
+}
+
+<div class="container py-4">
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-page="Index">My Orders</a></li>
+            <li class="breadcrumb-item active" aria-current="page">@(Model.SubOrder?.SubOrderNumber ?? "Order Details")</li>
+        </ol>
+    </nav>
+
+    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+    {
+        <div class="alert alert-danger">@Model.ErrorMessage</div>
+    }
+    else if (!string.IsNullOrEmpty(Model.SuccessMessage))
+    {
+        <div class="alert alert-success">@Model.SuccessMessage</div>
+    }
+
+    @if (Model.SubOrder != null)
+    {
+        var subOrder = Model.SubOrder;
+        
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1 class="mb-1">@subOrder.SubOrderNumber</h1>
+                <p class="text-muted mb-0">Received on @subOrder.CreatedAt.ToString("MMMM dd, yyyy 'at' h:mm tt")</p>
+            </div>
+            <span class="badge fs-6 @DetailsModel.GetStatusBadgeClass(subOrder.Status)">
+                @DetailsModel.GetStatusDisplayText(subOrder.Status)
+            </span>
+        </div>
+
+        <div class="row">
+            @* Left Column - Order Items and Actions *@
+            <div class="col-lg-8">
+                @* Order Items *@
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-box-seam me-2"></i>Items to Fulfill</h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Product</th>
+                                        <th class="text-center">Quantity</th>
+                                        <th class="text-end">Unit Price</th>
+                                        <th class="text-end">Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var item in subOrder.Items)
+                                    {
+                                        <tr>
+                                            <td>
+                                                <strong>@item.ProductTitle</strong>
+                                            </td>
+                                            <td class="text-center align-middle">@item.Quantity</td>
+                                            <td class="text-end align-middle">@item.UnitPrice.ToString("C")</td>
+                                            <td class="text-end align-middle">@item.TotalPrice.ToString("C")</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                                <tfoot class="table-light">
+                                    <tr>
+                                        <td colspan="3" class="text-end"><strong>Subtotal:</strong></td>
+                                        <td class="text-end"><strong>@subOrder.ItemsSubtotal.ToString("C")</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td colspan="3" class="text-end text-muted">Shipping:</td>
+                                        <td class="text-end text-muted">@subOrder.ShippingCost.ToString("C")</td>
+                                    </tr>
+                                    <tr>
+                                        <td colspan="3" class="text-end"><strong>Total:</strong></td>
+                                        <td class="text-end"><strong class="text-primary fs-5">@subOrder.TotalAmount.ToString("C")</strong></td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                @* Update Status Form *@
+                @if (Model.CanUpdateStatus)
+                {
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="bi bi-arrow-repeat me-2"></i>Update Status</h5>
+                        </div>
+                        <div class="card-body">
+                            <form method="post">
+                                @if (subOrder.Status == Mercato.Orders.Domain.Entities.SellerSubOrderStatus.Confirmed)
+                                {
+                                    <p class="text-muted mb-3">Mark this order as processing when you start preparing it for shipment.</p>
+                                    <input type="hidden" name="NewStatus" value="Processing" />
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="bi bi-gear me-1"></i>Mark as Processing
+                                    </button>
+                                }
+                                else if (subOrder.Status == Mercato.Orders.Domain.Entities.SellerSubOrderStatus.Processing)
+                                {
+                                    <p class="text-muted mb-3">Enter shipping details and mark this order as shipped.</p>
+                                    <input type="hidden" name="NewStatus" value="Shipped" />
+                                    <div class="row g-3 mb-3">
+                                        <div class="col-md-6">
+                                            <label for="ShippingCarrier" class="form-label">Shipping Carrier</label>
+                                            <input type="text" class="form-control" id="ShippingCarrier" name="ShippingCarrier" 
+                                                   placeholder="e.g., FedEx, UPS, USPS" />
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label for="TrackingNumber" class="form-label">Tracking Number</label>
+                                            <input type="text" class="form-control" id="TrackingNumber" name="TrackingNumber" 
+                                                   placeholder="Enter tracking number" />
+                                        </div>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="bi bi-truck me-1"></i>Mark as Shipped
+                                    </button>
+                                }
+                                else if (subOrder.Status == Mercato.Orders.Domain.Entities.SellerSubOrderStatus.Shipped)
+                                {
+                                    <p class="text-muted mb-3">Mark this order as delivered when the customer receives it.</p>
+                                    <input type="hidden" name="NewStatus" value="Delivered" />
+                                    <button type="submit" class="btn btn-success">
+                                        <i class="bi bi-check-circle me-1"></i>Mark as Delivered
+                                    </button>
+                                }
+                            </form>
+                        </div>
+                    </div>
+                }
+
+                @* Tracking Information *@
+                @if (!string.IsNullOrEmpty(subOrder.TrackingNumber))
+                {
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="bi bi-truck me-2"></i>Shipping Information</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <strong>Carrier:</strong>
+                                    <span class="ms-2">@(subOrder.ShippingCarrier ?? "Not specified")</span>
+                                </div>
+                                <div class="col-md-6">
+                                    <strong>Tracking Number:</strong>
+                                    <span class="ms-2 font-monospace">@subOrder.TrackingNumber</span>
+                                </div>
+                            </div>
+                            @if (subOrder.ShippedAt.HasValue)
+                            {
+                                <div class="mt-2 text-muted">
+                                    <small>Shipped on @subOrder.ShippedAt.Value.ToString("MMMM dd, yyyy 'at' h:mm tt")</small>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+
+                @* Timeline *@
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-clock-history me-2"></i>Timeline</h5>
+                    </div>
+                    <div class="card-body">
+                        <ul class="list-unstyled mb-0">
+                            <li class="d-flex align-items-start mb-3">
+                                <span class="badge bg-success rounded-circle p-2 me-3"><i class="bi bi-check"></i></span>
+                                <div>
+                                    <strong>Order Received</strong>
+                                    <br><small class="text-muted">@subOrder.CreatedAt.ToString("MMMM dd, yyyy 'at' h:mm tt")</small>
+                                </div>
+                            </li>
+                            @if (subOrder.ConfirmedAt.HasValue)
+                            {
+                                <li class="d-flex align-items-start mb-3">
+                                    <span class="badge bg-success rounded-circle p-2 me-3"><i class="bi bi-check"></i></span>
+                                    <div>
+                                        <strong>Payment Confirmed</strong>
+                                        <br><small class="text-muted">@subOrder.ConfirmedAt.Value.ToString("MMMM dd, yyyy 'at' h:mm tt")</small>
+                                    </div>
+                                </li>
+                            }
+                            @if (subOrder.ShippedAt.HasValue)
+                            {
+                                <li class="d-flex align-items-start mb-3">
+                                    <span class="badge bg-success rounded-circle p-2 me-3"><i class="bi bi-check"></i></span>
+                                    <div>
+                                        <strong>Shipped</strong>
+                                        <br><small class="text-muted">@subOrder.ShippedAt.Value.ToString("MMMM dd, yyyy 'at' h:mm tt")</small>
+                                    </div>
+                                </li>
+                            }
+                            @if (subOrder.DeliveredAt.HasValue)
+                            {
+                                <li class="d-flex align-items-start mb-3">
+                                    <span class="badge bg-success rounded-circle p-2 me-3"><i class="bi bi-check"></i></span>
+                                    <div>
+                                        <strong>Delivered</strong>
+                                        <br><small class="text-muted">@subOrder.DeliveredAt.Value.ToString("MMMM dd, yyyy 'at' h:mm tt")</small>
+                                    </div>
+                                </li>
+                            }
+                            @if (subOrder.CancelledAt.HasValue)
+                            {
+                                <li class="d-flex align-items-start mb-3">
+                                    <span class="badge bg-danger rounded-circle p-2 me-3"><i class="bi bi-x"></i></span>
+                                    <div>
+                                        <strong>Cancelled</strong>
+                                        <br><small class="text-muted">@subOrder.CancelledAt.Value.ToString("MMMM dd, yyyy 'at' h:mm tt")</small>
+                                    </div>
+                                </li>
+                            }
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            @* Right Column - Delivery Address *@
+            <div class="col-lg-4">
+                @* Delivery Address *@
+                @if (Model.ParentOrder != null)
+                {
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="bi bi-geo-alt me-2"></i>Delivery Address</h5>
+                        </div>
+                        <div class="card-body">
+                            <strong>@Model.ParentOrder.DeliveryFullName</strong><br>
+                            @Model.ParentOrder.DeliveryAddressLine1<br>
+                            @if (!string.IsNullOrEmpty(Model.ParentOrder.DeliveryAddressLine2))
+                            {
+                                @Model.ParentOrder.DeliveryAddressLine2<br>
+                            }
+                            @Model.ParentOrder.DeliveryCity@(string.IsNullOrEmpty(Model.ParentOrder.DeliveryState) ? "" : ", " + Model.ParentOrder.DeliveryState) @Model.ParentOrder.DeliveryPostalCode<br>
+                            @Model.ParentOrder.DeliveryCountry
+                            @if (!string.IsNullOrEmpty(Model.ParentOrder.DeliveryPhoneNumber))
+                            {
+                                <br><span class="text-muted small"><i class="bi bi-telephone me-1"></i>@Model.ParentOrder.DeliveryPhoneNumber</span>
+                            }
+                        </div>
+                    </div>
+                }
+
+                @* Actions *@
+                <div class="d-grid gap-2">
+                    <a asp-page="Index" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left me-1"></i>Back to Orders
+                    </a>
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="alert alert-warning">
+            <h5>Order Not Found</h5>
+            <p>We couldn't find the order you're looking for.</p>
+            <a asp-page="Index" class="btn btn-primary">Back to Orders</a>
+        </div>
+    }
+</div>

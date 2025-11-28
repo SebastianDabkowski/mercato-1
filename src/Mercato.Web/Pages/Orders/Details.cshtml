@@ -31,42 +31,119 @@
         </div>
 
         <div class="row">
-            @* Left Column - Order Items *@
+            @* Left Column - Order Items by Seller *@
             <div class="col-lg-8">
-                <div class="card mb-4">
-                    <div class="card-header">
-                        <h5 class="mb-0"><i class="bi bi-box-seam me-2"></i>Items Ordered</h5>
-                    </div>
-                    <div class="card-body p-0">
-                        <div class="table-responsive">
-                            <table class="table table-hover mb-0">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>Product</th>
-                                        <th class="text-center">Quantity</th>
-                                        <th class="text-end">Unit Price</th>
-                                        <th class="text-end">Total</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach (var item in order.Items)
-                                    {
+                @if (order.SellerSubOrders.Any())
+                {
+                    @* Seller Sub-Orders Breakdown *@
+                    @foreach (var subOrder in order.SellerSubOrders.OrderBy(s => s.StoreName))
+                    {
+                        <div class="card mb-4">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h5 class="mb-0">
+                                        <i class="bi bi-shop me-2"></i>@subOrder.StoreName
+                                    </h5>
+                                    <small class="text-muted">Sub-order: @subOrder.SubOrderNumber</small>
+                                </div>
+                                <span class="badge @DetailsModel.GetSubOrderStatusBadgeClass(subOrder.Status)">
+                                    @DetailsModel.GetSubOrderStatusDisplayText(subOrder.Status)
+                                </span>
+                            </div>
+                            <div class="card-body p-0">
+                                <div class="table-responsive">
+                                    <table class="table table-hover mb-0">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Product</th>
+                                                <th class="text-center">Quantity</th>
+                                                <th class="text-end">Unit Price</th>
+                                                <th class="text-end">Total</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var item in subOrder.Items)
+                                            {
+                                                <tr>
+                                                    <td>
+                                                        <strong>@item.ProductTitle</strong>
+                                                    </td>
+                                                    <td class="text-center align-middle">@item.Quantity</td>
+                                                    <td class="text-end align-middle">@item.UnitPrice.ToString("C")</td>
+                                                    <td class="text-end align-middle">@item.TotalPrice.ToString("C")</td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                        <tfoot class="table-light">
+                                            <tr>
+                                                <td colspan="3" class="text-end"><strong>Subtotal:</strong></td>
+                                                <td class="text-end"><strong>@subOrder.ItemsSubtotal.ToString("C")</strong></td>
+                                            </tr>
+                                            <tr>
+                                                <td colspan="3" class="text-end text-muted">Shipping:</td>
+                                                <td class="text-end text-muted">@subOrder.ShippingCost.ToString("C")</td>
+                                            </tr>
+                                            <tr>
+                                                <td colspan="3" class="text-end"><strong>Sub-order Total:</strong></td>
+                                                <td class="text-end"><strong class="text-primary">@subOrder.TotalAmount.ToString("C")</strong></td>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
+                                @if (subOrder.ShippedAt.HasValue && !string.IsNullOrEmpty(subOrder.TrackingNumber))
+                                {
+                                    <div class="p-3 border-top bg-light">
+                                        <i class="bi bi-truck me-2"></i>
+                                        <strong>Tracking:</strong> 
+                                        @if (!string.IsNullOrEmpty(subOrder.ShippingCarrier))
+                                        {
+                                            <span class="me-2">@subOrder.ShippingCarrier</span>
+                                        }
+                                        <span class="font-monospace">@subOrder.TrackingNumber</span>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+                }
+                else
+                {
+                    @* Fallback to old items display if no sub-orders *@
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="bi bi-box-seam me-2"></i>Items Ordered</h5>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table table-hover mb-0">
+                                    <thead class="table-light">
                                         <tr>
-                                            <td>
-                                                <strong>@item.ProductTitle</strong>
-                                                <br>
-                                                <small class="text-muted">Sold by: @item.StoreName</small>
-                                            </td>
-                                            <td class="text-center align-middle">@item.Quantity</td>
-                                            <td class="text-end align-middle">@item.UnitPrice.ToString("C")</td>
-                                            <td class="text-end align-middle">@item.TotalPrice.ToString("C")</td>
+                                            <th>Product</th>
+                                            <th class="text-center">Quantity</th>
+                                            <th class="text-end">Unit Price</th>
+                                            <th class="text-end">Total</th>
                                         </tr>
-                                    }
-                                </tbody>
-                            </table>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var item in order.Items)
+                                        {
+                                            <tr>
+                                                <td>
+                                                    <strong>@item.ProductTitle</strong>
+                                                    <br>
+                                                    <small class="text-muted">Sold by: @item.StoreName</small>
+                                                </td>
+                                                <td class="text-center align-middle">@item.Quantity</td>
+                                                <td class="text-end align-middle">@item.UnitPrice.ToString("C")</td>
+                                                <td class="text-end align-middle">@item.TotalPrice.ToString("C")</td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
-                </div>
+                }
 
                 @* Order Timeline *@
                 <div class="card mb-4">
@@ -158,6 +235,14 @@
                             <span>Total:</span>
                             <span class="text-primary fs-5">@order.TotalAmount.ToString("C")</span>
                         </div>
+                        @if (order.SellerSubOrders.Count > 1)
+                        {
+                            <hr>
+                            <small class="text-muted">
+                                <i class="bi bi-info-circle me-1"></i>
+                                This order is fulfilled by @order.SellerSubOrders.Count different sellers
+                            </small>
+                        }
                     </div>
                 </div>
 

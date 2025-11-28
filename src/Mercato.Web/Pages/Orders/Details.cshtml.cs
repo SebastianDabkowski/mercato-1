@@ -120,6 +120,40 @@ public class DetailsModel : PageModel
         _ => status.ToString()
     };
 
+    /// <summary>
+    /// Gets the CSS class for a seller sub-order status badge.
+    /// </summary>
+    /// <param name="status">The seller sub-order status.</param>
+    /// <returns>The CSS class name.</returns>
+    public static string GetSubOrderStatusBadgeClass(SellerSubOrderStatus status) => status switch
+    {
+        SellerSubOrderStatus.Pending => "bg-warning text-dark",
+        SellerSubOrderStatus.Confirmed => "bg-info",
+        SellerSubOrderStatus.Processing => "bg-primary",
+        SellerSubOrderStatus.Shipped => "bg-secondary",
+        SellerSubOrderStatus.Delivered => "bg-success",
+        SellerSubOrderStatus.Cancelled => "bg-danger",
+        SellerSubOrderStatus.Refunded => "bg-dark",
+        _ => "bg-secondary"
+    };
+
+    /// <summary>
+    /// Gets the display text for a seller sub-order status.
+    /// </summary>
+    /// <param name="status">The seller sub-order status.</param>
+    /// <returns>The display text.</returns>
+    public static string GetSubOrderStatusDisplayText(SellerSubOrderStatus status) => status switch
+    {
+        SellerSubOrderStatus.Pending => "Pending",
+        SellerSubOrderStatus.Confirmed => "Confirmed",
+        SellerSubOrderStatus.Processing => "Processing",
+        SellerSubOrderStatus.Shipped => "Shipped",
+        SellerSubOrderStatus.Delivered => "Delivered",
+        SellerSubOrderStatus.Cancelled => "Cancelled",
+        SellerSubOrderStatus.Refunded => "Refunded",
+        _ => status.ToString()
+    };
+
     private string? GetBuyerId()
     {
         return User.FindFirstValue(ClaimTypes.NameIdentifier);

@@ -120,4 +120,9 @@ public class Order
     /// Navigation property to the order items.
     /// </summary>
     public ICollection<OrderItem> Items { get; set; } = new List<OrderItem>();
+
+    /// <summary>
+    /// Navigation property to the seller sub-orders.
+    /// </summary>
+    public ICollection<SellerSubOrder> SellerSubOrders { get; set; } = new List<SellerSubOrder>();
 }

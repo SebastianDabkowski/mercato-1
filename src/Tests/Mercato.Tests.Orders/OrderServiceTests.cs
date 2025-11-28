@@ -17,6 +17,7 @@ public class OrderServiceTests
     private static readonly Guid TestStoreId = Guid.NewGuid();
 
     private readonly Mock<IOrderRepository> _mockOrderRepository;
+    private readonly Mock<ISellerSubOrderRepository> _mockSellerSubOrderRepository;
     private readonly Mock<IOrderConfirmationEmailService> _mockEmailService;
     private readonly Mock<ILogger<OrderService>> _mockLogger;
     private readonly OrderService _service;
@@ -24,10 +25,12 @@ public class OrderServiceTests
     public OrderServiceTests()
     {
         _mockOrderRepository = new Mock<IOrderRepository>(MockBehavior.Strict);
+        _mockSellerSubOrderRepository = new Mock<ISellerSubOrderRepository>(MockBehavior.Strict);
         _mockEmailService = new Mock<IOrderConfirmationEmailService>(MockBehavior.Strict);
         _mockLogger = new Mock<ILogger<OrderService>>();
         _service = new OrderService(
             _mockOrderRepository.Object,
+            _mockSellerSubOrderRepository.Object,
             _mockEmailService.Object,
             _mockLogger.Object);
     }
@@ -520,8 +523,340 @@ public class OrderServiceTests
             DeliveryPhoneNumber = "+1234567890",
             CreatedAt = DateTimeOffset.UtcNow,
             LastUpdatedAt = DateTimeOffset.UtcNow,
-            Items = new List<OrderItem>()
+            Items = new List<OrderItem>(),
+            SellerSubOrders = new List<SellerSubOrder>()
         };
+    }
+
+    private static SellerSubOrder CreateTestSellerSubOrder()
+    {
+        return new SellerSubOrder
+        {
+            Id = Guid.NewGuid(),
+            OrderId = TestOrderId,
+            StoreId = TestStoreId,
+            StoreName = "Test Store",
+            SubOrderNumber = "ORD-12345678-S1",
+            Status = SellerSubOrderStatus.Confirmed,
+            ItemsSubtotal = 59.98m,
+            ShippingCost = 5.99m,
+            TotalAmount = 65.97m,
+            CreatedAt = DateTimeOffset.UtcNow,
+            LastUpdatedAt = DateTimeOffset.UtcNow,
+            Items = new List<SellerSubOrderItem>()
+        };
+    }
+
+    #endregion
+
+    #region CreateOrderAsync with Seller Sub-Orders Tests
+
+    [Fact]
+    public async Task CreateOrderAsync_SingleSeller_CreatesOneSubOrder()
+    {
+        // Arrange
+        var command = CreateTestOrderCommand();
+
+        _mockOrderRepository.Setup(r => r.AddAsync(It.IsAny<Order>()))
+            .ReturnsAsync((Order o) => o);
+
+        // Act
+        var result = await _service.CreateOrderAsync(command);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        _mockOrderRepository.Verify(r => r.AddAsync(It.Is<Order>(o =>
+            o.SellerSubOrders.Count == 1 &&
+            o.SellerSubOrders.First().StoreId == TestStoreId &&
+            o.SellerSubOrders.First().Status == SellerSubOrderStatus.Pending)), Times.Once);
+    }
+
+    [Fact]
+    public async Task CreateOrderAsync_MultipleSellers_CreatesMultipleSubOrders()
+    {
+        // Arrange
+        var storeId1 = Guid.NewGuid();
+        var storeId2 = Guid.NewGuid();
+        var command = new CreateOrderCommand
+        {
+            BuyerId = TestBuyerId,
+            PaymentTransactionId = TestTransactionId,
+            Items = new List<CreateOrderItem>
+            {
+                new CreateOrderItem
+                {
+                    ProductId = Guid.NewGuid(),
+                    StoreId = storeId1,
+                    ProductTitle = "Product from Store 1",
+                    UnitPrice = 20.00m,
+                    Quantity = 1,
+                    StoreName = "Store 1"
+                },
+                new CreateOrderItem
+                {
+                    ProductId = Guid.NewGuid(),
+                    StoreId = storeId2,
+                    ProductTitle = "Product from Store 2",
+                    UnitPrice = 30.00m,
+                    Quantity = 2,
+                    StoreName = "Store 2"
+                }
+            },
+            ShippingTotal = 10.00m,
+            DeliveryAddress = CreateTestDeliveryAddress()
+        };
+
+        _mockOrderRepository.Setup(r => r.AddAsync(It.IsAny<Order>()))
+            .ReturnsAsync((Order o) => o);
+
+        // Act
+        var result = await _service.CreateOrderAsync(command);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        _mockOrderRepository.Verify(r => r.AddAsync(It.Is<Order>(o =>
+            o.SellerSubOrders.Count == 2 &&
+            o.SellerSubOrders.Any(s => s.StoreId == storeId1 && s.ItemsSubtotal == 20.00m) &&
+            o.SellerSubOrders.Any(s => s.StoreId == storeId2 && s.ItemsSubtotal == 60.00m))), Times.Once);
+    }
+
+    [Fact]
+    public async Task CreateOrderAsync_SubOrderNumbers_AreGeneratedCorrectly()
+    {
+        // Arrange
+        var storeId1 = Guid.NewGuid();
+        var storeId2 = Guid.NewGuid();
+        var command = new CreateOrderCommand
+        {
+            BuyerId = TestBuyerId,
+            PaymentTransactionId = TestTransactionId,
+            Items = new List<CreateOrderItem>
+            {
+                new CreateOrderItem
+                {
+                    ProductId = Guid.NewGuid(),
+                    StoreId = storeId1,
+                    ProductTitle = "Product 1",
+                    UnitPrice = 20.00m,
+                    Quantity = 1,
+                    StoreName = "Store 1"
+                },
+                new CreateOrderItem
+                {
+                    ProductId = Guid.NewGuid(),
+                    StoreId = storeId2,
+                    ProductTitle = "Product 2",
+                    UnitPrice = 30.00m,
+                    Quantity = 1,
+                    StoreName = "Store 2"
+                }
+            },
+            ShippingTotal = 10.00m,
+            DeliveryAddress = CreateTestDeliveryAddress()
+        };
+
+        _mockOrderRepository.Setup(r => r.AddAsync(It.IsAny<Order>()))
+            .ReturnsAsync((Order o) => o);
+
+        // Act
+        var result = await _service.CreateOrderAsync(command);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        _mockOrderRepository.Verify(r => r.AddAsync(It.Is<Order>(o =>
+            o.SellerSubOrders.All(s => s.SubOrderNumber.StartsWith(o.OrderNumber) && s.SubOrderNumber.Contains("-S")))), Times.Once);
+    }
+
+    #endregion
+
+    #region GetSellerSubOrdersAsync Tests
+
+    [Fact]
+    public async Task GetSellerSubOrdersAsync_ValidStoreId_ReturnsSubOrders()
+    {
+        // Arrange
+        var subOrders = new List<SellerSubOrder> { CreateTestSellerSubOrder() };
+        _mockSellerSubOrderRepository.Setup(r => r.GetByStoreIdAsync(TestStoreId))
+            .ReturnsAsync(subOrders);
+
+        // Act
+        var result = await _service.GetSellerSubOrdersAsync(TestStoreId);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.Single(result.SellerSubOrders);
+    }
+
+    [Fact]
+    public async Task GetSellerSubOrdersAsync_EmptyStoreId_ReturnsFailure()
+    {
+        // Act
+        var result = await _service.GetSellerSubOrdersAsync(Guid.Empty);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains("Store ID is required.", result.Errors);
+    }
+
+    #endregion
+
+    #region GetSellerSubOrderAsync Tests
+
+    [Fact]
+    public async Task GetSellerSubOrderAsync_ValidSubOrder_ReturnsSubOrder()
+    {
+        // Arrange
+        var subOrder = CreateTestSellerSubOrder();
+        _mockSellerSubOrderRepository.Setup(r => r.GetByIdAsync(subOrder.Id))
+            .ReturnsAsync(subOrder);
+
+        // Act
+        var result = await _service.GetSellerSubOrderAsync(subOrder.Id, TestStoreId);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.NotNull(result.SellerSubOrder);
+    }
+
+    [Fact]
+    public async Task GetSellerSubOrderAsync_SubOrderNotFound_ReturnsFailure()
+    {
+        // Arrange
+        var subOrderId = Guid.NewGuid();
+        _mockSellerSubOrderRepository.Setup(r => r.GetByIdAsync(subOrderId))
+            .ReturnsAsync((SellerSubOrder?)null);
+
+        // Act
+        var result = await _service.GetSellerSubOrderAsync(subOrderId, TestStoreId);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains("Sub-order not found.", result.Errors);
+    }
+
+    [Fact]
+    public async Task GetSellerSubOrderAsync_DifferentStore_ReturnsNotAuthorized()
+    {
+        // Arrange
+        var subOrder = CreateTestSellerSubOrder();
+        subOrder.StoreId = Guid.NewGuid(); // Different store
+
+        _mockSellerSubOrderRepository.Setup(r => r.GetByIdAsync(subOrder.Id))
+            .ReturnsAsync(subOrder);
+
+        // Act
+        var result = await _service.GetSellerSubOrderAsync(subOrder.Id, TestStoreId);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.True(result.IsNotAuthorized);
+    }
+
+    #endregion
+
+    #region UpdateSellerSubOrderStatusAsync Tests
+
+    [Fact]
+    public async Task UpdateSellerSubOrderStatusAsync_ValidTransition_UpdatesStatus()
+    {
+        // Arrange
+        var subOrder = CreateTestSellerSubOrder();
+        subOrder.Status = SellerSubOrderStatus.Confirmed;
+
+        _mockSellerSubOrderRepository.Setup(r => r.GetByIdAsync(subOrder.Id))
+            .ReturnsAsync(subOrder);
+        _mockSellerSubOrderRepository.Setup(r => r.UpdateAsync(It.IsAny<SellerSubOrder>()))
+            .Returns(Task.CompletedTask);
+
+        var command = new UpdateSellerSubOrderStatusCommand
+        {
+            NewStatus = SellerSubOrderStatus.Processing
+        };
+
+        // Act
+        var result = await _service.UpdateSellerSubOrderStatusAsync(subOrder.Id, TestStoreId, command);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        _mockSellerSubOrderRepository.Verify(r => r.UpdateAsync(It.Is<SellerSubOrder>(s =>
+            s.Status == SellerSubOrderStatus.Processing)), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateSellerSubOrderStatusAsync_InvalidTransition_ReturnsFailure()
+    {
+        // Arrange
+        var subOrder = CreateTestSellerSubOrder();
+        subOrder.Status = SellerSubOrderStatus.Delivered; // Final status
+
+        _mockSellerSubOrderRepository.Setup(r => r.GetByIdAsync(subOrder.Id))
+            .ReturnsAsync(subOrder);
+
+        var command = new UpdateSellerSubOrderStatusCommand
+        {
+            NewStatus = SellerSubOrderStatus.Processing // Invalid transition
+        };
+
+        // Act
+        var result = await _service.UpdateSellerSubOrderStatusAsync(subOrder.Id, TestStoreId, command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains("Cannot transition from Delivered to Processing.", result.Errors);
+    }
+
+    [Fact]
+    public async Task UpdateSellerSubOrderStatusAsync_ShippedWithTracking_SetsTrackingInfo()
+    {
+        // Arrange
+        var subOrder = CreateTestSellerSubOrder();
+        subOrder.Status = SellerSubOrderStatus.Processing;
+
+        _mockSellerSubOrderRepository.Setup(r => r.GetByIdAsync(subOrder.Id))
+            .ReturnsAsync(subOrder);
+        _mockSellerSubOrderRepository.Setup(r => r.UpdateAsync(It.IsAny<SellerSubOrder>()))
+            .Returns(Task.CompletedTask);
+
+        var command = new UpdateSellerSubOrderStatusCommand
+        {
+            NewStatus = SellerSubOrderStatus.Shipped,
+            TrackingNumber = "1Z999AA10123456784",
+            ShippingCarrier = "UPS"
+        };
+
+        // Act
+        var result = await _service.UpdateSellerSubOrderStatusAsync(subOrder.Id, TestStoreId, command);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        _mockSellerSubOrderRepository.Verify(r => r.UpdateAsync(It.Is<SellerSubOrder>(s =>
+            s.Status == SellerSubOrderStatus.Shipped &&
+            s.TrackingNumber == "1Z999AA10123456784" &&
+            s.ShippingCarrier == "UPS" &&
+            s.ShippedAt != null)), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateSellerSubOrderStatusAsync_DifferentStore_ReturnsNotAuthorized()
+    {
+        // Arrange
+        var subOrder = CreateTestSellerSubOrder();
+        subOrder.StoreId = Guid.NewGuid(); // Different store
+
+        _mockSellerSubOrderRepository.Setup(r => r.GetByIdAsync(subOrder.Id))
+            .ReturnsAsync(subOrder);
+
+        var command = new UpdateSellerSubOrderStatusCommand
+        {
+            NewStatus = SellerSubOrderStatus.Processing
+        };
+
+        // Act
+        var result = await _service.UpdateSellerSubOrderStatusAsync(subOrder.Id, TestStoreId, command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.True(result.IsNotAuthorized);
     }
 
     #endregion
