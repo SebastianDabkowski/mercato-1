@@ -1,7 +1,10 @@
+using Mercato.Orders.Application.Services;
 using Mercato.Payments.Application.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.Extensions.Options;
+using Mercato.Orders.Infrastructure;
 using System.Security.Claims;
 using System.Text.Json;
 
@@ -14,18 +17,26 @@ namespace Mercato.Web.Pages.Orders;
 public class ConfirmationModel : PageModel
 {
     private readonly IPaymentService _paymentService;
+    private readonly IOrderService _orderService;
+    private readonly EmailSettings _emailSettings;
     private readonly ILogger<ConfirmationModel> _logger;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ConfirmationModel"/> class.
     /// </summary>
     /// <param name="paymentService">The payment service.</param>
+    /// <param name="orderService">The order service.</param>
+    /// <param name="emailSettings">The email settings.</param>
     /// <param name="logger">The logger.</param>
     public ConfirmationModel(
         IPaymentService paymentService,
+        IOrderService orderService,
+        IOptions<EmailSettings> emailSettings,
         ILogger<ConfirmationModel> logger)
     {
         _paymentService = paymentService;
+        _orderService = orderService;
+        _emailSettings = emailSettings.Value;
         _logger = logger;
     }
 
@@ -40,11 +51,17 @@ public class ConfirmationModel : PageModel
     public string? ErrorMessage { get; private set; }
 
     /// <summary>
+    /// Gets the estimated delivery days message.
+    /// </summary>
+    public string EstimatedDeliveryDays => _emailSettings.EstimatedDeliveryDays;
+
+    /// <summary>
     /// Handles GET requests for the confirmation page.
     /// </summary>
-    /// <param name="transactionId">The transaction ID.</param>
+    /// <param name="orderId">The order ID (for access via order history).</param>
+    /// <param name="transactionId">The transaction ID (legacy parameter).</param>
     /// <returns>The page result.</returns>
-    public async Task<IActionResult> OnGetAsync(Guid? transactionId)
+    public async Task<IActionResult> OnGetAsync(Guid? orderId, Guid? transactionId)
     {
         var buyerId = GetBuyerId();
         if (string.IsNullOrEmpty(buyerId))
@@ -52,20 +69,93 @@ public class ConfirmationModel : PageModel
             return Forbid();
         }
 
-        // Try to get confirmation from TempData first
+        // Try to get confirmation from TempData first (immediate redirect after payment)
         if (TryLoadConfirmationData())
         {
             return Page();
         }
 
-        // If no TempData, try to fetch from transaction ID
-        if (!transactionId.HasValue || transactionId.Value == Guid.Empty)
+        // If orderId is provided, load from order (for access via order history)
+        if (orderId.HasValue && orderId.Value != Guid.Empty)
         {
-            TempData["Error"] = "Order confirmation not found.";
-            return RedirectToPage("Index");
+            return await LoadFromOrderAsync(orderId.Value, buyerId);
         }
 
-        var transactionResult = await _paymentService.GetTransactionAsync(transactionId.Value, buyerId);
+        // If no TempData and no orderId, try to fetch from transaction ID (legacy fallback)
+        if (transactionId.HasValue && transactionId.Value != Guid.Empty)
+        {
+            return await LoadFromTransactionAsync(transactionId.Value, buyerId);
+        }
+
+        TempData["Error"] = "Order confirmation not found.";
+        return RedirectToPage("Index");
+    }
+
+    private async Task<IActionResult> LoadFromOrderAsync(Guid orderId, string buyerId)
+    {
+        var orderResult = await _orderService.GetOrderAsync(orderId, buyerId);
+
+        if (!orderResult.Succeeded)
+        {
+            if (orderResult.IsNotAuthorized)
+            {
+                return Forbid();
+            }
+
+            ErrorMessage = string.Join(", ", orderResult.Errors);
+            return Page();
+        }
+
+        if (orderResult.Order == null)
+        {
+            ErrorMessage = "Order not found.";
+            return Page();
+        }
+
+        var order = orderResult.Order;
+
+        // Build confirmation data from order
+        ConfirmationData = new OrderConfirmationData
+        {
+            TransactionId = order.PaymentTransactionId ?? Guid.Empty,
+            OrderId = order.Id,
+            OrderNumber = order.OrderNumber,
+            Amount = order.TotalAmount,
+            ItemsSubtotal = order.ItemsSubtotal,
+            PaymentMethod = "credit_card", // Default since we don't store this on Order
+            CompletedAt = order.ConfirmedAt ?? order.CreatedAt,
+            DeliveryAddress = new CheckoutAddressData
+            {
+                FullName = order.DeliveryFullName,
+                AddressLine1 = order.DeliveryAddressLine1,
+                AddressLine2 = order.DeliveryAddressLine2,
+                City = order.DeliveryCity,
+                State = order.DeliveryState,
+                PostalCode = order.DeliveryPostalCode,
+                Country = order.DeliveryCountry,
+                PhoneNumber = order.DeliveryPhoneNumber
+            },
+            ShippingData = new CheckoutShippingData
+            {
+                TotalShippingCost = order.ShippingTotal
+            },
+            Items = order.Items.Select(i => new OrderItemData
+            {
+                ProductId = i.ProductId,
+                ProductTitle = i.ProductTitle,
+                StoreName = i.StoreName,
+                UnitPrice = i.UnitPrice,
+                Quantity = i.Quantity
+            }).ToList(),
+            EmailSent = true // Assume email was sent if loading from order history
+        };
+
+        return Page();
+    }
+
+    private async Task<IActionResult> LoadFromTransactionAsync(Guid transactionId, string buyerId)
+    {
+        var transactionResult = await _paymentService.GetTransactionAsync(transactionId, buyerId);
 
         if (!transactionResult.Succeeded)
         {
@@ -84,7 +174,14 @@ public class ConfirmationModel : PageModel
             return Page();
         }
 
-        // Build confirmation data from transaction
+        // Try to find the order by transaction ID
+        var orderResult = await _orderService.GetOrderByTransactionAsync(transactionId, buyerId);
+        if (orderResult.Succeeded && orderResult.Order != null)
+        {
+            return await LoadFromOrderAsync(orderResult.Order.Id, buyerId);
+        }
+
+        // Fallback: Build minimal confirmation data from transaction
         ConfirmationData = new OrderConfirmationData
         {
             TransactionId = transactionResult.Transaction.Id,

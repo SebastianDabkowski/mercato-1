@@ -12,18 +12,22 @@ namespace Mercato.Orders.Infrastructure;
 public class OrderService : IOrderService
 {
     private readonly IOrderRepository _orderRepository;
+    private readonly IOrderConfirmationEmailService _emailService;
     private readonly ILogger<OrderService> _logger;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="OrderService"/> class.
     /// </summary>
     /// <param name="orderRepository">The order repository.</param>
+    /// <param name="emailService">The email service.</param>
     /// <param name="logger">The logger.</param>
     public OrderService(
         IOrderRepository orderRepository,
+        IOrderConfirmationEmailService emailService,
         ILogger<OrderService> logger)
     {
         _orderRepository = orderRepository;
+        _emailService = emailService;
         _logger = logger;
     }
 
@@ -189,6 +193,51 @@ public class OrderService : IOrderService
         {
             _logger.LogError(ex, "Error updating order status for {OrderId}", orderId);
             return UpdateOrderStatusResult.Failure("An error occurred while updating the order status.");
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<GetOrdersResult> GetOrdersForBuyerAsync(string buyerId)
+    {
+        if (string.IsNullOrEmpty(buyerId))
+        {
+            return GetOrdersResult.Failure("Buyer ID is required.");
+        }
+
+        try
+        {
+            var orders = await _orderRepository.GetByBuyerIdAsync(buyerId);
+            return GetOrdersResult.Success(orders);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting orders for buyer {BuyerId}", buyerId);
+            return GetOrdersResult.Failure("An error occurred while getting the orders.");
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<SendEmailResult> SendOrderConfirmationEmailAsync(Guid orderId, string buyerEmail)
+    {
+        if (string.IsNullOrEmpty(buyerEmail))
+        {
+            return SendEmailResult.Failure("Buyer email is required.");
+        }
+
+        try
+        {
+            var order = await _orderRepository.GetByIdAsync(orderId);
+            if (order == null)
+            {
+                return SendEmailResult.Failure("Order not found.");
+            }
+
+            return await _emailService.SendOrderConfirmationAsync(order, buyerEmail);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error sending confirmation email for order {OrderId}", orderId);
+            return SendEmailResult.Failure("An error occurred while sending the confirmation email.");
         }
     }
 

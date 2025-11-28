@@ -1,24 +1,119 @@
 @page
 @model Mercato.Web.Pages.Orders.IndexModel
 @{
-    ViewData["Title"] = "Orders";
+    ViewData["Title"] = "My Orders";
 }
 
-@* TODO: Implement actual UI for Orders section *@
-<h1>Orders</h1>
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1><i class="bi bi-bag me-2"></i>My Orders</h1>
+    </div>
 
-<div class="alert alert-info">
-    <strong>Coming Soon!</strong> This page is under development.
-</div>
+    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+    {
+        <div class="alert alert-danger">@Model.ErrorMessage</div>
+    }
 
-<p>Manage your orders:</p>
-<ul>
-    <li>View order history</li>
-    <li>Track active orders</li>
-    <li>Manage returns and refunds</li>
-    <li>Download invoices</li>
-</ul>
+    @if (TempData["Error"] is string error)
+    {
+        <div class="alert alert-danger">@error</div>
+    }
 
-<div class="mt-4">
-    <a asp-page="Details" class="btn btn-outline-primary">View Order Details</a>
+    @if (TempData["Success"] is string success)
+    {
+        <div class="alert alert-success">@success</div>
+    }
+
+    @if (Model.Orders.Count == 0)
+    {
+        <div class="text-center py-5">
+            <i class="bi bi-bag-x text-muted" style="font-size: 4rem;"></i>
+            <h3 class="mt-3 text-muted">No Orders Yet</h3>
+            <p class="text-muted">You haven't placed any orders yet.</p>
+            <a asp-page="/Product/Index" class="btn btn-primary mt-2">
+                <i class="bi bi-shop me-1"></i>Start Shopping
+            </a>
+        </div>
+    }
+    else
+    {
+        <div class="row">
+            @foreach (var order in Model.Orders)
+            {
+                <div class="col-12 mb-3">
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>Order @order.OrderNumber</strong>
+                                <span class="text-muted ms-3">@order.CreatedAt.ToString("MMMM dd, yyyy")</span>
+                            </div>
+                            <span class="badge @IndexModel.GetStatusBadgeClass(order.Status)">
+                                @IndexModel.GetStatusDisplayText(order.Status)
+                            </span>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-8">
+                                    @if (order.Items.Any())
+                                    {
+                                        <div class="d-flex flex-wrap gap-2 mb-2">
+                                            @foreach (var item in order.Items.Take(3))
+                                            {
+                                                <span class="badge bg-light text-dark border">
+                                                    @item.ProductTitle @(item.Quantity > 1 ? $"(x{item.Quantity})" : "")
+                                                </span>
+                                            }
+                                            @if (order.Items.Count > 3)
+                                            {
+                                                <span class="badge bg-light text-muted border">
+                                                    +@(order.Items.Count - 3) more
+                                                </span>
+                                            }
+                                        </div>
+                                    }
+                                    <small class="text-muted">
+                                        @order.Items.Count item@(order.Items.Count > 1 ? "s" : "")
+                                        • Shipping to @order.DeliveryCity, @order.DeliveryCountry
+                                    </small>
+                                </div>
+                                <div class="col-md-4 text-md-end">
+                                    <div class="h5 mb-1">@order.TotalAmount.ToString("C")</div>
+                                    <a asp-page="Details" asp-route-id="@order.Id" class="btn btn-outline-primary btn-sm">
+                                        <i class="bi bi-eye me-1"></i>View Details
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        @if (order.Status == Mercato.Orders.Domain.Entities.OrderStatus.Confirmed && order.ConfirmedAt.HasValue)
+                        {
+                            <div class="card-footer bg-light">
+                                <small class="text-muted">
+                                    <i class="bi bi-check-circle me-1"></i>
+                                    Confirmed on @order.ConfirmedAt.Value.ToString("MMMM dd, yyyy 'at' h:mm tt")
+                                </small>
+                            </div>
+                        }
+                        @if (order.Status == Mercato.Orders.Domain.Entities.OrderStatus.Shipped && order.ShippedAt.HasValue)
+                        {
+                            <div class="card-footer bg-light">
+                                <small class="text-muted">
+                                    <i class="bi bi-truck me-1"></i>
+                                    Shipped on @order.ShippedAt.Value.ToString("MMMM dd, yyyy")
+                                </small>
+                            </div>
+                        }
+                        @if (order.Status == Mercato.Orders.Domain.Entities.OrderStatus.Delivered && order.DeliveredAt.HasValue)
+                        {
+                            <div class="card-footer bg-success bg-opacity-10">
+                                <small class="text-success">
+                                    <i class="bi bi-check2-all me-1"></i>
+                                    Delivered on @order.DeliveredAt.Value.ToString("MMMM dd, yyyy")
+                                </small>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    }
 </div>

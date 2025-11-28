@@ -1,4 +1,5 @@
 using Mercato.Orders.Application.Commands;
+using Mercato.Orders.Application.Services;
 using Mercato.Orders.Domain.Entities;
 using Mercato.Orders.Domain.Interfaces;
 using Mercato.Orders.Infrastructure;
@@ -16,15 +17,18 @@ public class OrderServiceTests
     private static readonly Guid TestStoreId = Guid.NewGuid();
 
     private readonly Mock<IOrderRepository> _mockOrderRepository;
+    private readonly Mock<IOrderConfirmationEmailService> _mockEmailService;
     private readonly Mock<ILogger<OrderService>> _mockLogger;
     private readonly OrderService _service;
 
     public OrderServiceTests()
     {
         _mockOrderRepository = new Mock<IOrderRepository>(MockBehavior.Strict);
+        _mockEmailService = new Mock<IOrderConfirmationEmailService>(MockBehavior.Strict);
         _mockLogger = new Mock<ILogger<OrderService>>();
         _service = new OrderService(
             _mockOrderRepository.Object,
+            _mockEmailService.Object,
             _mockLogger.Object);
     }
 
@@ -350,6 +354,104 @@ public class OrderServiceTests
 
         // Act
         var result = await _service.UpdateOrderStatusAsync(TestOrderId, isPaymentSuccessful: true);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains("Order not found.", result.Errors);
+    }
+
+    #endregion
+
+    #region GetOrdersForBuyerAsync Tests
+
+    [Fact]
+    public async Task GetOrdersForBuyerAsync_ValidBuyer_ReturnsOrders()
+    {
+        // Arrange
+        var orders = new List<Order> { CreateTestOrder() };
+        _mockOrderRepository.Setup(r => r.GetByBuyerIdAsync(TestBuyerId))
+            .ReturnsAsync(orders);
+
+        // Act
+        var result = await _service.GetOrdersForBuyerAsync(TestBuyerId);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.Single(result.Orders);
+        Assert.Equal(TestOrderId, result.Orders[0].Id);
+    }
+
+    [Fact]
+    public async Task GetOrdersForBuyerAsync_EmptyBuyerId_ReturnsFailure()
+    {
+        // Act
+        var result = await _service.GetOrdersForBuyerAsync(string.Empty);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains("Buyer ID is required.", result.Errors);
+    }
+
+    [Fact]
+    public async Task GetOrdersForBuyerAsync_NoOrders_ReturnsEmptyList()
+    {
+        // Arrange
+        _mockOrderRepository.Setup(r => r.GetByBuyerIdAsync(TestBuyerId))
+            .ReturnsAsync(new List<Order>());
+
+        // Act
+        var result = await _service.GetOrdersForBuyerAsync(TestBuyerId);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.Empty(result.Orders);
+    }
+
+    #endregion
+
+    #region SendOrderConfirmationEmailAsync Tests
+
+    [Fact]
+    public async Task SendOrderConfirmationEmailAsync_ValidOrder_SendsEmail()
+    {
+        // Arrange
+        var order = CreateTestOrder();
+        var buyerEmail = "test@example.com";
+
+        _mockOrderRepository.Setup(r => r.GetByIdAsync(TestOrderId))
+            .ReturnsAsync(order);
+
+        _mockEmailService.Setup(e => e.SendOrderConfirmationAsync(order, buyerEmail))
+            .ReturnsAsync(SendEmailResult.Success());
+
+        // Act
+        var result = await _service.SendOrderConfirmationEmailAsync(TestOrderId, buyerEmail);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        _mockEmailService.Verify(e => e.SendOrderConfirmationAsync(order, buyerEmail), Times.Once);
+    }
+
+    [Fact]
+    public async Task SendOrderConfirmationEmailAsync_EmptyEmail_ReturnsFailure()
+    {
+        // Act
+        var result = await _service.SendOrderConfirmationEmailAsync(TestOrderId, string.Empty);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains("Buyer email is required.", result.Errors);
+    }
+
+    [Fact]
+    public async Task SendOrderConfirmationEmailAsync_OrderNotFound_ReturnsFailure()
+    {
+        // Arrange
+        _mockOrderRepository.Setup(r => r.GetByIdAsync(TestOrderId))
+            .ReturnsAsync((Order?)null);
+
+        // Act
+        var result = await _service.SendOrderConfirmationEmailAsync(TestOrderId, "test@example.com");
 
         // Assert
         Assert.False(result.Succeeded);

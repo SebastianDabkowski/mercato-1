@@ -1,4 +1,4 @@
-@page
+@page "{orderId:guid?}"
 @model Mercato.Web.Pages.Orders.ConfirmationModel
 @{
     ViewData["Title"] = "Order Confirmation";
@@ -6,7 +6,7 @@
 
 <div class="container py-5">
     <div class="row justify-content-center">
-        <div class="col-md-8">
+        <div class="col-md-10 col-lg-8">
             @if (!string.IsNullOrEmpty(Model.ErrorMessage))
             {
                 <div class="alert alert-danger">@Model.ErrorMessage</div>
@@ -14,12 +14,14 @@
             else if (Model.ConfirmationData != null)
             {
                 <div class="card border-success">
-                    <div class="card-body text-center py-5">
-                        <div class="mb-4">
-                            <i class="bi bi-check-circle-fill text-success" style="font-size: 5rem;"></i>
+                    <div class="card-body py-5">
+                        <div class="text-center mb-4">
+                            <div class="mb-4">
+                                <i class="bi bi-check-circle-fill text-success" style="font-size: 5rem;"></i>
+                            </div>
+                            <h1 class="text-success mb-3">Thank You!</h1>
+                            <h4 class="mb-4">Your order has been placed successfully.</h4>
                         </div>
-                        <h1 class="text-success mb-3">Thank You!</h1>
-                        <h4 class="mb-4">Your order has been placed successfully.</h4>
                         
                         <div class="bg-light rounded p-4 mb-4">
                             <div class="row">
@@ -36,13 +38,67 @@
                             </div>
                         </div>
 
-                        <div class="text-start mb-4">
-                            <h5 class="mb-3">Order Details</h5>
-                            <table class="table">
+                        @* Items Ordered Section *@
+                        @if (Model.ConfirmationData.Items != null && Model.ConfirmationData.Items.Count > 0)
+                        {
+                            <div class="mb-4">
+                                <h5 class="mb-3"><i class="bi bi-box-seam me-2"></i>Items Ordered</h5>
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Product</th>
+                                                <th class="text-center">Quantity</th>
+                                                <th class="text-end">Unit Price</th>
+                                                <th class="text-end">Total</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var item in Model.ConfirmationData.Items)
+                                            {
+                                                <tr>
+                                                    <td>
+                                                        <strong>@item.ProductTitle</strong>
+                                                        <br>
+                                                        <small class="text-muted">Sold by: @item.StoreName</small>
+                                                    </td>
+                                                    <td class="text-center">@item.Quantity</td>
+                                                    <td class="text-end">@item.UnitPrice.ToString("C")</td>
+                                                    <td class="text-end">@item.TotalPrice.ToString("C")</td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        }
+
+                        @* Order Summary Section *@
+                        <div class="mb-4">
+                            <h5 class="mb-3"><i class="bi bi-receipt me-2"></i>Order Summary</h5>
+                            <table class="table table-borderless">
                                 <tbody>
                                     <tr>
                                         <td class="text-muted">Order Date:</td>
                                         <td class="text-end">@Model.ConfirmationData.CompletedAt.ToString("MMMM dd, yyyy 'at' h:mm tt")</td>
+                                    </tr>
+                                    @if (Model.ConfirmationData.Items != null && Model.ConfirmationData.Items.Count > 0)
+                                    {
+                                        <tr>
+                                            <td class="text-muted">Subtotal (@Model.ConfirmationData.Items.Count item@(Model.ConfirmationData.Items.Count > 1 ? "s" : "")):</td>
+                                            <td class="text-end">@Model.ConfirmationData.ItemsSubtotal.ToString("C")</td>
+                                        </tr>
+                                    }
+                                    @if (Model.ConfirmationData.ShippingData != null)
+                                    {
+                                        <tr>
+                                            <td class="text-muted">Shipping:</td>
+                                            <td class="text-end">@Model.ConfirmationData.ShippingData.TotalShippingCost.ToString("C")</td>
+                                        </tr>
+                                    }
+                                    <tr class="fw-bold">
+                                        <td>Total:</td>
+                                        <td class="text-end text-primary">@Model.ConfirmationData.Amount.ToString("C")</td>
                                     </tr>
                                     <tr>
                                         <td class="text-muted">Payment Method:</td>
@@ -71,10 +127,11 @@
                             </table>
                         </div>
 
+                        @* Delivery Address Section *@
                         @if (Model.ConfirmationData.DeliveryAddress != null)
                         {
-                            <div class="text-start mb-4">
-                                <h5 class="mb-3">Delivery Address</h5>
+                            <div class="mb-4">
+                                <h5 class="mb-3"><i class="bi bi-geo-alt me-2"></i>Delivery Address</h5>
                                 <div class="bg-light rounded p-3">
                                     <strong>@Model.ConfirmationData.DeliveryAddress.FullName</strong><br>
                                     @Model.ConfirmationData.DeliveryAddress.AddressLine1<br>
@@ -82,12 +139,7 @@
                                     {
                                         @Model.ConfirmationData.DeliveryAddress.AddressLine2<br>
                                     }
-                                    @Model.ConfirmationData.DeliveryAddress.City,
-                                    @if (!string.IsNullOrEmpty(Model.ConfirmationData.DeliveryAddress.State))
-                                    {
-                                        @Model.ConfirmationData.DeliveryAddress.State
-                                    }
-                                    @Model.ConfirmationData.DeliveryAddress.PostalCode<br>
+                                    @Model.ConfirmationData.DeliveryAddress.City@(string.IsNullOrEmpty(Model.ConfirmationData.DeliveryAddress.State) ? "" : ", " + Model.ConfirmationData.DeliveryAddress.State) @Model.ConfirmationData.DeliveryAddress.PostalCode<br>
                                     @Model.ConfirmationData.DeliveryAddress.Country
                                     @if (!string.IsNullOrEmpty(Model.ConfirmationData.DeliveryAddress.PhoneNumber))
                                     {
@@ -97,21 +149,30 @@
                             </div>
                         }
 
-                        @if (Model.ConfirmationData.ShippingData != null && Model.ConfirmationData.ShippingData.TotalShippingCost > 0)
+                        @* Estimated Delivery Section *@
+                        <div class="mb-4">
+                            <h5 class="mb-3"><i class="bi bi-truck me-2"></i>Estimated Delivery</h5>
+                            <div class="bg-light rounded p-3">
+                                <span class="text-muted">Expected delivery within:</span>
+                                <strong class="ms-2">@Model.EstimatedDeliveryDays business days</strong>
+                            </div>
+                        </div>
+
+                        @* Email Confirmation Notice *@
+                        @if (Model.ConfirmationData.EmailSent)
                         {
-                            <div class="text-start mb-4">
-                                <h5 class="mb-3">Shipping</h5>
-                                <div class="d-flex justify-content-between">
-                                    <span class="text-muted">Shipping Cost:</span>
-                                    <span>@Model.ConfirmationData.ShippingData.TotalShippingCost.ToString("C")</span>
-                                </div>
+                            <div class="alert alert-success">
+                                <i class="bi bi-envelope-check me-2"></i>
+                                A confirmation email has been sent to your registered email address.
                             </div>
                         }
-
-                        <div class="alert alert-info">
-                            <i class="bi bi-envelope me-2"></i>
-                            A confirmation email will be sent to your registered email address.
-                        </div>
+                        else
+                        {
+                            <div class="alert alert-info">
+                                <i class="bi bi-envelope me-2"></i>
+                                A confirmation email will be sent to your registered email address.
+                            </div>
+                        }
 
                         <div class="d-flex justify-content-center gap-3 mt-4">
                             <a asp-page="Index" class="btn btn-primary">

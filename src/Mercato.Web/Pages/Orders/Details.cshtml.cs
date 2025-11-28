@@ -1,20 +1,127 @@
+using Mercato.Orders.Application.Services;
+using Mercato.Orders.Domain.Entities;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.Extensions.Options;
+using Mercato.Orders.Infrastructure;
+using System.Security.Claims;
 
-namespace Mercato.Web.Pages.Orders
+namespace Mercato.Web.Pages.Orders;
+
+/// <summary>
+/// Page model for the order details page.
+/// </summary>
+[Authorize(Roles = "Buyer")]
+public class DetailsModel : PageModel
 {
-    // TODO: Implement actual page logic and UI
-    public class DetailsModel : PageModel
+    private readonly IOrderService _orderService;
+    private readonly EmailSettings _emailSettings;
+    private readonly ILogger<DetailsModel> _logger;
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="DetailsModel"/> class.
+    /// </summary>
+    /// <param name="orderService">The order service.</param>
+    /// <param name="emailSettings">The email settings.</param>
+    /// <param name="logger">The logger.</param>
+    public DetailsModel(
+        IOrderService orderService,
+        IOptions<EmailSettings> emailSettings,
+        ILogger<DetailsModel> logger)
     {
-        private readonly ILogger<DetailsModel> _logger;
+        _orderService = orderService;
+        _emailSettings = emailSettings.Value;
+        _logger = logger;
+    }
 
-        public DetailsModel(ILogger<DetailsModel> logger)
+    /// <summary>
+    /// Gets the order.
+    /// </summary>
+    public Order? Order { get; private set; }
+
+    /// <summary>
+    /// Gets the error message to display.
+    /// </summary>
+    public string? ErrorMessage { get; private set; }
+
+    /// <summary>
+    /// Gets the estimated delivery days message.
+    /// </summary>
+    public string EstimatedDeliveryDays => _emailSettings.EstimatedDeliveryDays;
+
+    /// <summary>
+    /// Handles GET requests for the order details page.
+    /// </summary>
+    /// <param name="id">The order ID.</param>
+    /// <returns>The page result.</returns>
+    public async Task<IActionResult> OnGetAsync(Guid? id)
+    {
+        var buyerId = GetBuyerId();
+        if (string.IsNullOrEmpty(buyerId))
         {
-            _logger = logger;
+            return Forbid();
         }
 
-        public void OnGet()
+        if (!id.HasValue || id.Value == Guid.Empty)
         {
-            // TODO: Implement actual page logic and UI
+            TempData["Error"] = "Order not found.";
+            return RedirectToPage("Index");
         }
+
+        var result = await _orderService.GetOrderAsync(id.Value, buyerId);
+
+        if (!result.Succeeded)
+        {
+            if (result.IsNotAuthorized)
+            {
+                return Forbid();
+            }
+
+            ErrorMessage = string.Join(", ", result.Errors);
+            return Page();
+        }
+
+        Order = result.Order;
+        return Page();
+    }
+
+    /// <summary>
+    /// Gets the CSS class for an order status badge.
+    /// </summary>
+    /// <param name="status">The order status.</param>
+    /// <returns>The CSS class name.</returns>
+    public static string GetStatusBadgeClass(OrderStatus status) => status switch
+    {
+        OrderStatus.Pending => "bg-warning text-dark",
+        OrderStatus.Confirmed => "bg-info",
+        OrderStatus.Processing => "bg-primary",
+        OrderStatus.Shipped => "bg-secondary",
+        OrderStatus.Delivered => "bg-success",
+        OrderStatus.Cancelled => "bg-danger",
+        OrderStatus.Refunded => "bg-dark",
+        _ => "bg-secondary"
+    };
+
+    /// <summary>
+    /// Gets the display text for an order status.
+    /// </summary>
+    /// <param name="status">The order status.</param>
+    /// <returns>The display text.</returns>
+    public static string GetStatusDisplayText(OrderStatus status) => status switch
+    {
+        OrderStatus.Pending => "Pending",
+        OrderStatus.Confirmed => "Confirmed",
+        OrderStatus.Processing => "Processing",
+        OrderStatus.Shipped => "Shipped",
+        OrderStatus.Delivered => "Delivered",
+        OrderStatus.Cancelled => "Cancelled",
+        OrderStatus.Refunded => "Refunded",
+        _ => status.ToString()
+    };
+
+    private string? GetBuyerId()
+    {
+        return User.FindFirstValue(ClaimTypes.NameIdentifier);
     }
 }
