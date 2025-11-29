@@ -399,8 +399,8 @@ public class DetailsModel : PageModel
             var result = await _shipmentService.GetShipmentsForSubOrderAsync(subOrderId, Store.Id);
             if (result.Succeeded && result.Shipments.Count > 0)
             {
-                // Use the most recent shipment (service returns shipments ordered by CreatedAt descending)
-                var shipment = result.Shipments[0];
+                // Use the most recent shipment
+                var shipment = result.Shipments.OrderByDescending(s => s.CreatedAt).First();
                 ShipmentId = shipment.Id;
 
                 // Check if a label exists
