@@ -1,0 +1,232 @@
+@page "{id:guid}"
+@model Mercato.Web.Pages.Admin.Settlements.DetailsModel
+@{
+    ViewData["Title"] = "Settlement Details";
+}
+
+@if (Model.Settlement == null)
+{
+    <div class="alert alert-danger">
+        Settlement not found.
+    </div>
+    <a asp-page="Index" class="btn btn-outline-secondary">&laquo; Back to Settlements</a>
+}
+else
+{
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Settlement Details</h1>
+        <div>
+            @switch (Model.Settlement.Status)
+            {
+                case Mercato.Payments.Domain.Entities.SettlementStatus.Draft:
+                    <span class="badge bg-warning text-dark fs-5">Draft</span>
+                    break;
+                case Mercato.Payments.Domain.Entities.SettlementStatus.Finalized:
+                    <span class="badge bg-success fs-5">Finalized</span>
+                    break;
+                case Mercato.Payments.Domain.Entities.SettlementStatus.Exported:
+                    <span class="badge bg-info fs-5">Exported</span>
+                    break;
+            }
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Settlement Information</h5>
+                </div>
+                <div class="card-body">
+                    <dl class="row mb-0">
+                        <dt class="col-sm-4">Settlement ID</dt>
+                        <dd class="col-sm-8"><code>@Model.Settlement.Id</code></dd>
+
+                        <dt class="col-sm-4">Seller ID</dt>
+                        <dd class="col-sm-8"><code>@Model.Settlement.SellerId</code></dd>
+
+                        <dt class="col-sm-4">Period</dt>
+                        <dd class="col-sm-8"><strong>@($"{Model.Settlement.Year}-{Model.Settlement.Month:D2}")</strong></dd>
+
+                        <dt class="col-sm-4">Currency</dt>
+                        <dd class="col-sm-8">@Model.Settlement.Currency</dd>
+
+                        <dt class="col-sm-4">Version</dt>
+                        <dd class="col-sm-8">@Model.Settlement.Version</dd>
+
+                        <dt class="col-sm-4">Generated At</dt>
+                        <dd class="col-sm-8">@Model.Settlement.GeneratedAt.ToString("yyyy-MM-dd HH:mm:ss") UTC</dd>
+
+                        @if (Model.Settlement.RegeneratedAt.HasValue)
+                        {
+                            <dt class="col-sm-4">Last Regenerated</dt>
+                            <dd class="col-sm-8">@Model.Settlement.RegeneratedAt.Value.ToString("yyyy-MM-dd HH:mm:ss") UTC</dd>
+                        }
+
+                        @if (Model.Settlement.FinalizedAt.HasValue)
+                        {
+                            <dt class="col-sm-4">Finalized At</dt>
+                            <dd class="col-sm-8">@Model.Settlement.FinalizedAt.Value.ToString("yyyy-MM-dd HH:mm:ss") UTC</dd>
+                        }
+
+                        @if (Model.Settlement.ExportedAt.HasValue)
+                        {
+                            <dt class="col-sm-4">Exported At</dt>
+                            <dd class="col-sm-8">@Model.Settlement.ExportedAt.Value.ToString("yyyy-MM-dd HH:mm:ss") UTC</dd>
+                        }
+                    </dl>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Financial Summary</h5>
+                </div>
+                <div class="card-body">
+                    <dl class="row mb-0">
+                        <dt class="col-sm-6">Gross Sales</dt>
+                        <dd class="col-sm-6 text-end">@Model.Settlement.GrossSales.ToString("C")</dd>
+
+                        <dt class="col-sm-6">Total Refunds</dt>
+                        <dd class="col-sm-6 text-end text-danger">-@Model.Settlement.TotalRefunds.ToString("C")</dd>
+
+                        <dt class="col-sm-6">Net Sales</dt>
+                        <dd class="col-sm-6 text-end">@Model.Settlement.NetSales.ToString("C")</dd>
+
+                        <dt class="col-sm-6">Total Commission</dt>
+                        <dd class="col-sm-6 text-end">-@Model.Settlement.TotalCommission.ToString("C")</dd>
+
+                        <dt class="col-sm-6">Previous Month Adjustments</dt>
+                        <dd class="col-sm-6 text-end">
+                            @if (Model.Settlement.PreviousMonthAdjustments >= 0)
+                            {
+                                @Model.Settlement.PreviousMonthAdjustments.ToString("C")
+                            }
+                            else
+                            {
+                                <span class="text-danger">@Model.Settlement.PreviousMonthAdjustments.ToString("C")</span>
+                            }
+                        </dd>
+
+                        <dt class="col-sm-6 border-top pt-2"><strong>Net Payable</strong></dt>
+                        <dd class="col-sm-6 text-end border-top pt-2"><strong class="fs-5">@Model.Settlement.NetPayable.ToString("C")</strong></dd>
+
+                        <dt class="col-sm-6">Order Count</dt>
+                        <dd class="col-sm-6 text-end">@Model.Settlement.OrderCount</dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(Model.Settlement.AuditNotes))
+    {
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Audit Notes</h5>
+            </div>
+            <div class="card-body">
+                <pre class="mb-0">@Model.Settlement.AuditNotes</pre>
+            </div>
+        </div>
+    }
+
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="card-title mb-0">Line Items (Orders)</h5>
+            <span class="badge bg-secondary">@Model.Settlement.LineItems.Count items</span>
+        </div>
+        <div class="card-body p-0">
+            @if (Model.Settlement.LineItems.Count == 0)
+            {
+                <div class="p-3 text-muted">No line items in this settlement.</div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover mb-0">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Order Number</th>
+                                <th>Order Date</th>
+                                <th class="text-end">Gross Amount</th>
+                                <th class="text-end">Refund Amount</th>
+                                <th class="text-end">Net Amount</th>
+                                <th class="text-end">Commission</th>
+                                <th>Type</th>
+                                <th>Notes</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var lineItem in Model.Settlement.LineItems.OrderBy(li => li.OrderDate))
+                            {
+                                <tr class="@(lineItem.IsAdjustment ? "table-warning" : "")">
+                                    <td>
+                                        <code>@lineItem.OrderNumber</code>
+                                    </td>
+                                    <td>@lineItem.OrderDate.ToString("yyyy-MM-dd HH:mm")</td>
+                                    <td class="text-end">@lineItem.GrossAmount.ToString("C")</td>
+                                    <td class="text-end text-danger">
+                                        @if (lineItem.RefundAmount > 0)
+                                        {
+                                            @($"-{lineItem.RefundAmount:C}")
+                                        }
+                                        else
+                                        {
+                                            @lineItem.RefundAmount.ToString("C")
+                                        }
+                                    </td>
+                                    <td class="text-end">@lineItem.NetAmount.ToString("C")</td>
+                                    <td class="text-end">@lineItem.CommissionAmount.ToString("C")</td>
+                                    <td>
+                                        @if (lineItem.IsAdjustment)
+                                        {
+                                            <span class="badge bg-warning text-dark">Adjustment</span>
+                                            @if (lineItem.OriginalYear.HasValue && lineItem.OriginalMonth.HasValue)
+                                            {
+                                                <br />
+                                                <small class="text-muted">from @($"{lineItem.OriginalYear}-{lineItem.OriginalMonth:D2}")</small>
+                                            }
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-primary">Order</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (!string.IsNullOrWhiteSpace(lineItem.AdjustmentNotes))
+                                        {
+                                            <small class="text-muted">@lineItem.AdjustmentNotes</small>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="d-flex justify-content-between">
+        <a asp-page="Index" class="btn btn-outline-secondary">
+            &laquo; Back to Settlements
+        </a>
+        <div class="btn-group">
+            <a asp-page="Export" asp-route-id="@Model.Settlement.Id" class="btn btn-success">
+                Export CSV
+            </a>
+            @if (Model.Settlement.Status == Mercato.Payments.Domain.Entities.SettlementStatus.Draft)
+            {
+                <form method="post" asp-page-handler="Finalize" class="d-inline">
+                    <input type="hidden" name="id" value="@Model.Settlement.Id" />
+                    <button type="submit" class="btn btn-primary"
+                            onclick="return confirm('Are you sure you want to finalize this settlement? This action cannot be undone.');">
+                        Finalize Settlement
+                    </button>
+                </form>
+            }
+        </div>
+    </div>
+}
