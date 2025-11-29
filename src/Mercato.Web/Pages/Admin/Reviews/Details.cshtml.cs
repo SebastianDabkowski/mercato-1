@@ -230,8 +230,10 @@ public class DetailsModel : PageModel
     /// <returns>The star display string.</returns>
     public static string GetStarRating(int rating)
     {
-        var filled = new string('★', rating);
-        var empty = new string('☆', 5 - rating);
+        // Clamp rating to valid range
+        var clampedRating = Math.Clamp(rating, 0, 5);
+        var filled = new string('★', clampedRating);
+        var empty = new string('☆', 5 - clampedRating);
         return filled + empty;
     }
 
