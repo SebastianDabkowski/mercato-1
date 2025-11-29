@@ -1617,6 +1617,10 @@ public class OrderServiceTests
         var order = CreateTestOrder();
         var subOrder = CreateTestSellerSubOrder();
         subOrder.Order = order;
+        subOrder.Items = new List<SellerSubOrderItem>
+        {
+            new SellerSubOrderItem { Id = Guid.NewGuid(), ProductTitle = "Test Product", Quantity = 2, UnitPrice = 10m }
+        };
         var subOrders = new List<SellerSubOrder> { subOrder };
         var query = new SellerSubOrderFilterQuery
         {
@@ -1633,8 +1637,13 @@ public class OrderServiceTests
         // Assert
         Assert.NotEmpty(result);
         var csvContent = System.Text.Encoding.UTF8.GetString(result);
-        Assert.Contains("Sub-Order ID", csvContent);
         Assert.Contains("Sub-Order Number", csvContent);
+        Assert.Contains("Buyer Name", csvContent);
+        Assert.Contains("Delivery Address Line 1", csvContent);
+        Assert.Contains("Phone", csvContent);
+        Assert.Contains("Shipping Method", csvContent);
+        Assert.Contains("Tracking Number", csvContent);
+        Assert.Contains("Items", csvContent);
         Assert.Contains(subOrder.SubOrderNumber, csvContent);
     }
 
@@ -1655,7 +1664,7 @@ public class OrderServiceTests
     }
 
     [Fact]
-    public async Task ExportSellerSubOrdersToCsvAsync_NoOrders_ReturnsCsvWithHeaderOnly()
+    public async Task ExportSellerSubOrdersToCsvAsync_NoOrders_ReturnsEmptyArray()
     {
         // Arrange
         var query = new SellerSubOrderFilterQuery
@@ -1671,12 +1680,7 @@ public class OrderServiceTests
         var result = await _service.ExportSellerSubOrdersToCsvAsync(TestStoreId, query);
 
         // Assert
-        Assert.NotEmpty(result);
-        var csvContent = System.Text.Encoding.UTF8.GetString(result);
-        Assert.Contains("Sub-Order ID", csvContent);
-        // Only header line should be present
-        var lines = csvContent.Split('\n', StringSplitOptions.RemoveEmptyEntries);
-        Assert.Single(lines);
+        Assert.Empty(result);
     }
 
     [Fact]
@@ -1686,6 +1690,10 @@ public class OrderServiceTests
         var order = CreateTestOrder();
         var subOrder = CreateTestSellerSubOrder();
         subOrder.Order = order;
+        subOrder.Items = new List<SellerSubOrderItem>
+        {
+            new SellerSubOrderItem { Id = Guid.NewGuid(), ProductTitle = "Product 1", Quantity = 1, UnitPrice = 10m }
+        };
         var subOrders = new List<SellerSubOrder> { subOrder };
         var statuses = new List<SellerSubOrderStatus> { SellerSubOrderStatus.Paid };
         var fromDate = DateTimeOffset.UtcNow.AddDays(-7);
@@ -1710,6 +1718,78 @@ public class OrderServiceTests
         Assert.NotEmpty(result);
         _mockSellerSubOrderRepository.Verify(r => r.GetFilteredByStoreIdAsync(
             TestStoreId, statuses, fromDate, toDate, "test", 1, 10000), Times.Once);
+    }
+
+    [Fact]
+    public async Task ExportSellerSubOrdersToCsvAsync_IncludesShippingFields()
+    {
+        // Arrange
+        var order = CreateTestOrder();
+        order.DeliveryPhoneNumber = "+1-555-123-4567";
+        var subOrder = CreateTestSellerSubOrder();
+        subOrder.Order = order;
+        subOrder.ShippingMethodName = "Express Delivery";
+        subOrder.TrackingNumber = "TRACK123";
+        subOrder.ShippingCarrier = "FedEx";
+        subOrder.Items = new List<SellerSubOrderItem>
+        {
+            new SellerSubOrderItem { Id = Guid.NewGuid(), ProductTitle = "Widget", Quantity = 3, UnitPrice = 25m },
+            new SellerSubOrderItem { Id = Guid.NewGuid(), ProductTitle = "Gadget", Quantity = 1, UnitPrice = 50m }
+        };
+        var subOrders = new List<SellerSubOrder> { subOrder };
+        var query = new SellerSubOrderFilterQuery { StoreId = TestStoreId };
+
+        _mockSellerSubOrderRepository.Setup(r => r.GetFilteredByStoreIdAsync(
+                TestStoreId, null, null, null, null, 1, 10000))
+            .ReturnsAsync((subOrders, 1));
+
+        // Act
+        var result = await _service.ExportSellerSubOrdersToCsvAsync(TestStoreId, query);
+
+        // Assert
+        Assert.NotEmpty(result);
+        var csvContent = System.Text.Encoding.UTF8.GetString(result);
+        Assert.Contains("Test Buyer", csvContent); // DeliveryFullName
+        Assert.Contains("123 Test St", csvContent); // DeliveryAddressLine1
+        Assert.Contains("Test City", csvContent); // DeliveryCity
+        Assert.Contains("+1-555-123-4567", csvContent); // Phone
+        Assert.Contains("Express Delivery", csvContent); // ShippingMethodName
+        Assert.Contains("TRACK123", csvContent); // TrackingNumber
+        Assert.Contains("FedEx", csvContent); // ShippingCarrier
+        Assert.Contains("Widget x3", csvContent); // Items summary
+        Assert.Contains("Gadget x1", csvContent); // Items summary
+    }
+
+    [Fact]
+    public async Task ExportSellerSubOrdersToCsvAsync_HandlesSpecialCharactersInFields()
+    {
+        // Arrange
+        var order = CreateTestOrder();
+        order.DeliveryFullName = "John \"Johnny\" Doe";
+        order.DeliveryAddressLine1 = "123, Main St, Suite #5";
+        var subOrder = CreateTestSellerSubOrder();
+        subOrder.Order = order;
+        subOrder.Items = new List<SellerSubOrderItem>
+        {
+            new SellerSubOrderItem { Id = Guid.NewGuid(), ProductTitle = "Product, with comma", Quantity = 1, UnitPrice = 10m }
+        };
+        var subOrders = new List<SellerSubOrder> { subOrder };
+        var query = new SellerSubOrderFilterQuery { StoreId = TestStoreId };
+
+        _mockSellerSubOrderRepository.Setup(r => r.GetFilteredByStoreIdAsync(
+                TestStoreId, null, null, null, null, 1, 10000))
+            .ReturnsAsync((subOrders, 1));
+
+        // Act
+        var result = await _service.ExportSellerSubOrdersToCsvAsync(TestStoreId, query);
+
+        // Assert
+        Assert.NotEmpty(result);
+        var csvContent = System.Text.Encoding.UTF8.GetString(result);
+        // Verify CSV escaping of special characters (quotes and commas)
+        Assert.Contains("\"John \"\"Johnny\"\" Doe\"", csvContent); // Escaped quotes
+        Assert.Contains("\"123, Main St, Suite #5\"", csvContent); // Escaped comma
+        Assert.Contains("\"Product, with comma x1\"", csvContent); // Escaped comma in items
     }
 
     #endregion

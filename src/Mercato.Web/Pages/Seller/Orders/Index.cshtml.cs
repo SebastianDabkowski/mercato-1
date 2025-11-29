@@ -199,7 +199,7 @@ public class IndexModel : PageModel
 
             if (csvBytes.Length == 0)
             {
-                TempData["Error"] = "Failed to export orders. Please try again.";
+                TempData["Warning"] = "No orders match your current filter criteria. Please adjust your filters and try again.";
                 return RedirectToPage();
             }
 

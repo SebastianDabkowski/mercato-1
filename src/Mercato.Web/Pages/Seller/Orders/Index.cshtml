@@ -22,6 +22,11 @@
         <div class="alert alert-danger">@error</div>
     }
 
+    @if (TempData["Warning"] is string warning)
+    {
+        <div class="alert alert-warning">@warning</div>
+    }
+
     @if (TempData["Success"] is string success)
     {
         <div class="alert alert-success">@success</div>
