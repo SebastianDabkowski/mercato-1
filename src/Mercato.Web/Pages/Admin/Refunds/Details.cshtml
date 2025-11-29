@@ -1,0 +1,154 @@
+@page "{id:guid}"
+@model Mercato.Web.Pages.Admin.Refunds.DetailsModel
+@{
+    ViewData["Title"] = "Refund Details";
+}
+
+<h1>Refund Details</h1>
+
+@if (!string.IsNullOrEmpty(Model.ErrorMessage))
+{
+    <div class="alert alert-danger">
+        <strong>Error:</strong> @Model.ErrorMessage
+    </div>
+}
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success">
+        @TempData["Success"]
+    </div>
+}
+
+@if (Model.Refund != null)
+{
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">Refund Information</h5>
+                    @switch (Model.Refund.Status)
+                    {
+                        case Mercato.Payments.Domain.Entities.RefundStatus.Pending:
+                            <span class="badge bg-warning text-dark">Pending</span>
+                            break;
+                        case Mercato.Payments.Domain.Entities.RefundStatus.Processing:
+                            <span class="badge bg-info">Processing</span>
+                            break;
+                        case Mercato.Payments.Domain.Entities.RefundStatus.Completed:
+                            <span class="badge bg-success">Completed</span>
+                            break;
+                        case Mercato.Payments.Domain.Entities.RefundStatus.Failed:
+                            <span class="badge bg-danger">Failed</span>
+                            break;
+                        case Mercato.Payments.Domain.Entities.RefundStatus.Cancelled:
+                            <span class="badge bg-secondary">Cancelled</span>
+                            break;
+                    }
+                </div>
+                <div class="card-body">
+                    <dl class="row">
+                        <dt class="col-sm-4">Refund ID</dt>
+                        <dd class="col-sm-8"><code>@Model.Refund.Id</code></dd>
+
+                        <dt class="col-sm-4">Order ID</dt>
+                        <dd class="col-sm-8"><code>@Model.Refund.OrderId</code></dd>
+
+                        <dt class="col-sm-4">Payment Transaction ID</dt>
+                        <dd class="col-sm-8"><code>@Model.Refund.PaymentTransactionId</code></dd>
+
+                        @if (Model.Refund.SellerId.HasValue)
+                        {
+                            <dt class="col-sm-4">Seller ID</dt>
+                            <dd class="col-sm-8"><code>@Model.Refund.SellerId</code></dd>
+                        }
+
+                        <dt class="col-sm-4">Refund Type</dt>
+                        <dd class="col-sm-8">
+                            @switch (Model.Refund.Type)
+                            {
+                                case Mercato.Payments.Domain.Entities.RefundType.Full:
+                                    <span class="badge bg-primary">Full Refund</span>
+                                    break;
+                                case Mercato.Payments.Domain.Entities.RefundType.Partial:
+                                    <span class="badge bg-info">Partial Refund</span>
+                                    break;
+                            }
+                        </dd>
+
+                        <dt class="col-sm-4">Amount</dt>
+                        <dd class="col-sm-8"><strong class="text-danger fs-5">@Model.Refund.Amount.ToString("C") @Model.Refund.Currency</strong></dd>
+
+                        <dt class="col-sm-4">Reason</dt>
+                        <dd class="col-sm-8">@Model.Refund.Reason</dd>
+
+                        @if (!string.IsNullOrEmpty(Model.Refund.AuditNote))
+                        {
+                            <dt class="col-sm-4">Audit Note</dt>
+                            <dd class="col-sm-8">@Model.Refund.AuditNote</dd>
+                        }
+                    </dl>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Financial Impact</h5>
+                </div>
+                <div class="card-body">
+                    <dl class="row">
+                        <dt class="col-sm-4">Escrow Refunded</dt>
+                        <dd class="col-sm-8">@Model.Refund.EscrowRefunded.ToString("C")</dd>
+
+                        <dt class="col-sm-4">Commission Refunded</dt>
+                        <dd class="col-sm-8">@Model.Refund.CommissionRefunded.ToString("C")</dd>
+                    </dl>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Audit Information</h5>
+                </div>
+                <div class="card-body">
+                    <dl class="row">
+                        <dt class="col-sm-4">Initiated By</dt>
+                        <dd class="col-sm-8">@Model.Refund.InitiatedByUserId <span class="badge bg-secondary">@Model.Refund.InitiatedByRole</span></dd>
+
+                        <dt class="col-sm-4">Created</dt>
+                        <dd class="col-sm-8">@Model.Refund.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss")</dd>
+
+                        @if (Model.Refund.CompletedAt.HasValue)
+                        {
+                            <dt class="col-sm-4">Completed</dt>
+                            <dd class="col-sm-8">@Model.Refund.CompletedAt.Value.ToString("yyyy-MM-dd HH:mm:ss")</dd>
+                        }
+
+                        <dt class="col-sm-4">Last Updated</dt>
+                        <dd class="col-sm-8">@Model.Refund.LastUpdatedAt.ToString("yyyy-MM-dd HH:mm:ss")</dd>
+
+                        @if (!string.IsNullOrEmpty(Model.Refund.ExternalReferenceId))
+                        {
+                            <dt class="col-sm-4">External Reference</dt>
+                            <dd class="col-sm-8"><code>@Model.Refund.ExternalReferenceId</code></dd>
+                        }
+                    </dl>
+                </div>
+            </div>
+
+            @if (Model.Refund.Status == Mercato.Payments.Domain.Entities.RefundStatus.Failed && !string.IsNullOrEmpty(Model.Refund.ErrorMessage))
+            {
+                <div class="alert alert-danger">
+                    <h6>Error Message</h6>
+                    <p class="mb-0">@Model.Refund.ErrorMessage</p>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+<div class="mt-4">
+    <a asp-page="/Admin/Index" class="btn btn-outline-secondary">
+        &laquo; Back to Admin Dashboard
+    </a>
+</div>
