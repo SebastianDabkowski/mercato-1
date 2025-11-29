@@ -17,6 +17,7 @@ public class DetailsModel : PageModel
 {
     private readonly IOrderService _orderService;
     private readonly EmailSettings _emailSettings;
+    private readonly ReturnSettings _returnSettings;
     private readonly ILogger<DetailsModel> _logger;
 
     /// <summary>
@@ -24,14 +25,17 @@ public class DetailsModel : PageModel
     /// </summary>
     /// <param name="orderService">The order service.</param>
     /// <param name="emailSettings">The email settings.</param>
+    /// <param name="returnSettings">The return settings.</param>
     /// <param name="logger">The logger.</param>
     public DetailsModel(
         IOrderService orderService,
         IOptions<EmailSettings> emailSettings,
+        IOptions<ReturnSettings> returnSettings,
         ILogger<DetailsModel> logger)
     {
         _orderService = orderService;
         _emailSettings = emailSettings.Value;
+        _returnSettings = returnSettings.Value;
         _logger = logger;
     }
 
@@ -49,6 +53,23 @@ public class DetailsModel : PageModel
     /// Gets the estimated delivery days message.
     /// </summary>
     public string EstimatedDeliveryDays => _emailSettings.EstimatedDeliveryDays;
+
+    /// <summary>
+    /// Gets the return window days.
+    /// </summary>
+    public int ReturnWindowDays => _returnSettings.ReturnWindowDays;
+
+    /// <summary>
+    /// Gets the return eligibility information for each sub-order.
+    /// Key is sub-order ID, value indicates if return can be initiated (true) or has existing return request (null for existing).
+    /// </summary>
+    public Dictionary<Guid, ReturnEligibility> SubOrderReturnEligibility { get; private set; } = new();
+
+    /// <summary>
+    /// Gets the return requests for sub-orders that have one.
+    /// Key is sub-order ID.
+    /// </summary>
+    public Dictionary<Guid, ReturnRequest> SubOrderReturnRequests { get; private set; } = new();
 
     /// <summary>
     /// Handles GET requests for the order details page.
@@ -83,6 +104,37 @@ public class DetailsModel : PageModel
         }
 
         Order = result.Order;
+
+        // Load return eligibility and existing return requests for each sub-order
+        if (Order != null)
+        {
+            foreach (var subOrder in Order.SellerSubOrders)
+            {
+                var canInitiateResult = await _orderService.CanInitiateReturnAsync(subOrder.Id, buyerId);
+                if (canInitiateResult.Succeeded)
+                {
+                    SubOrderReturnEligibility[subOrder.Id] = new ReturnEligibility
+                    {
+                        CanInitiate = canInitiateResult.CanInitiate,
+                        BlockedReason = canInitiateResult.BlockedReason
+                    };
+                }
+            }
+
+            // Load all return requests for this buyer and match to sub-orders
+            var returnRequestsResult = await _orderService.GetReturnRequestsForBuyerAsync(buyerId);
+            if (returnRequestsResult.Succeeded)
+            {
+                foreach (var returnRequest in returnRequestsResult.ReturnRequests)
+                {
+                    if (Order.SellerSubOrders.Any(s => s.Id == returnRequest.SellerSubOrderId))
+                    {
+                        SubOrderReturnRequests[returnRequest.SellerSubOrderId] = returnRequest;
+                    }
+                }
+            }
+        }
+
         return Page();
     }
 
@@ -155,6 +207,36 @@ public class DetailsModel : PageModel
     };
 
     /// <summary>
+    /// Gets the CSS class for a return status badge.
+    /// </summary>
+    /// <param name="status">The return status.</param>
+    /// <returns>The CSS class name.</returns>
+    public static string GetReturnStatusBadgeClass(ReturnStatus status) => status switch
+    {
+        ReturnStatus.Requested => "bg-warning text-dark",
+        ReturnStatus.UnderReview => "bg-info",
+        ReturnStatus.Approved => "bg-success",
+        ReturnStatus.Rejected => "bg-danger",
+        ReturnStatus.Completed => "bg-dark",
+        _ => "bg-secondary"
+    };
+
+    /// <summary>
+    /// Gets the display text for a return status.
+    /// </summary>
+    /// <param name="status">The return status.</param>
+    /// <returns>The display text.</returns>
+    public static string GetReturnStatusDisplayText(ReturnStatus status) => status switch
+    {
+        ReturnStatus.Requested => "Requested",
+        ReturnStatus.UnderReview => "Under Review",
+        ReturnStatus.Approved => "Approved",
+        ReturnStatus.Rejected => "Rejected",
+        ReturnStatus.Completed => "Completed",
+        _ => status.ToString()
+    };
+
+    /// <summary>
     /// Gets the tracking URL for a shipping carrier and tracking number.
     /// </summary>
     /// <param name="carrier">The shipping carrier name.</param>
@@ -184,4 +266,20 @@ public class DetailsModel : PageModel
     {
         return User.FindFirstValue(ClaimTypes.NameIdentifier);
     }
+}
+
+/// <summary>
+/// Represents return eligibility information for a sub-order.
+/// </summary>
+public class ReturnEligibility
+{
+    /// <summary>
+    /// Gets or sets whether a return can be initiated.
+    /// </summary>
+    public bool CanInitiate { get; set; }
+
+    /// <summary>
+    /// Gets or sets the reason why return cannot be initiated (if applicable).
+    /// </summary>
+    public string? BlockedReason { get; set; }
 }
