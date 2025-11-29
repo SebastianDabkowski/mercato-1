@@ -99,7 +99,43 @@
                                         {
                                             <span class="me-2">@subOrder.ShippingCarrier</span>
                                         }
-                                        <span class="font-monospace">@subOrder.TrackingNumber</span>
+                                        @{
+                                            var trackingUrl = DetailsModel.GetCarrierTrackingUrl(subOrder.ShippingCarrier, subOrder.TrackingNumber);
+                                        }
+                                        @if (!string.IsNullOrEmpty(trackingUrl))
+                                        {
+                                            <a href="@trackingUrl" target="_blank" rel="noopener noreferrer" class="font-monospace">
+                                                @subOrder.TrackingNumber <i class="bi bi-box-arrow-up-right ms-1"></i>
+                                            </a>
+                                        }
+                                        else
+                                        {
+                                            <span class="font-monospace">@subOrder.TrackingNumber</span>
+                                        }
+                                    </div>
+                                }
+                                @if (subOrder.Status == Mercato.Orders.Domain.Entities.SellerSubOrderStatus.Cancelled)
+                                {
+                                    <div class="p-3 border-top bg-danger bg-opacity-10">
+                                        <i class="bi bi-x-circle me-2 text-danger"></i>
+                                        <strong class="text-danger">Cancelled</strong>
+                                        @if (subOrder.CancelledAt.HasValue)
+                                        {
+                                            <span class="text-muted ms-2">on @subOrder.CancelledAt.Value.ToString("MMMM dd, yyyy")</span>
+                                        }
+                                        <span class="float-end">Amount: <strong>@subOrder.TotalAmount.ToString("C")</strong></span>
+                                    </div>
+                                }
+                                @if (subOrder.Status == Mercato.Orders.Domain.Entities.SellerSubOrderStatus.Refunded)
+                                {
+                                    <div class="p-3 border-top bg-warning bg-opacity-10">
+                                        <i class="bi bi-arrow-counterclockwise me-2 text-warning"></i>
+                                        <strong class="text-dark">Refunded</strong>
+                                        @if (subOrder.RefundedAt.HasValue)
+                                        {
+                                            <span class="text-muted ms-2">on @subOrder.RefundedAt.Value.ToString("MMMM dd, yyyy")</span>
+                                        }
+                                        <span class="float-end">Refund Amount: <strong>@subOrder.TotalAmount.ToString("C")</strong></span>
                                     </div>
                                 }
                             </div>
@@ -235,6 +271,14 @@
                             <span>Total:</span>
                             <span class="text-primary fs-5">@order.TotalAmount.ToString("C")</span>
                         </div>
+                        @if (!string.IsNullOrEmpty(order.PaymentMethodName))
+                        {
+                            <hr>
+                            <div class="d-flex justify-content-between">
+                                <span class="text-muted"><i class="bi bi-credit-card me-1"></i>Payment Method:</span>
+                                <span>@order.PaymentMethodName</span>
+                            </div>
+                        }
                         @if (order.SellerSubOrders.Count > 1)
                         {
                             <hr>

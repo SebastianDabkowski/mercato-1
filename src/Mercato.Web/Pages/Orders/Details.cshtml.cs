@@ -154,6 +154,32 @@ public class DetailsModel : PageModel
         _ => status.ToString()
     };
 
+    /// <summary>
+    /// Gets the tracking URL for a shipping carrier and tracking number.
+    /// </summary>
+    /// <param name="carrier">The shipping carrier name.</param>
+    /// <param name="trackingNumber">The tracking number.</param>
+    /// <returns>The tracking URL, or null if the carrier is not recognized.</returns>
+    public static string? GetCarrierTrackingUrl(string? carrier, string? trackingNumber)
+    {
+        if (string.IsNullOrEmpty(carrier) || string.IsNullOrEmpty(trackingNumber))
+        {
+            return null;
+        }
+
+        var carrierLower = carrier.ToLowerInvariant().Trim();
+        var encodedTrackingNumber = Uri.EscapeDataString(trackingNumber);
+
+        return carrierLower switch
+        {
+            "ups" => $"https://www.ups.com/track?loc=en_US&tracknum={encodedTrackingNumber}",
+            "fedex" => $"https://www.fedex.com/fedextrack/?tracknumbers={encodedTrackingNumber}",
+            "usps" => $"https://tools.usps.com/go/TrackConfirmAction?tLabels={encodedTrackingNumber}",
+            "dhl" => $"https://www.dhl.com/us-en/home/tracking/tracking-express.html?submit=1&tracking-id={encodedTrackingNumber}",
+            _ => null
+        };
+    }
+
     private string? GetBuyerId()
     {
         return User.FindFirstValue(ClaimTypes.NameIdentifier);
