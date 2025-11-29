@@ -83,7 +83,8 @@ public class MessagingService : IMessagingService
                 command.SellerId,
                 command.BuyerId,
                 command.Subject,
-                threadId);
+                threadId,
+                isRecipientSeller: true);
 
             _logger.LogInformation(
                 "Created message thread {ThreadId} for {ThreadType} from buyer {BuyerId} to seller {SellerId}",
@@ -147,11 +148,13 @@ public class MessagingService : IMessagingService
 
             // Send notification to the recipient
             var recipientId = command.SenderId == thread.BuyerId ? thread.SellerId : thread.BuyerId;
+            var isRecipientSeller = recipientId == thread.SellerId;
             await SendNewMessageNotificationAsync(
                 recipientId,
                 command.SenderId,
                 thread.Subject,
-                thread.Id);
+                thread.Id,
+                isRecipientSeller);
 
             _logger.LogInformation(
                 "Sent message {MessageId} in thread {ThreadId} from {SenderId}",
@@ -440,10 +443,16 @@ public class MessagingService : IMessagingService
         string recipientId,
         string senderId,
         string subject,
-        Guid threadId)
+        Guid threadId,
+        bool isRecipientSeller)
     {
         try
         {
+            // Use the appropriate URL based on whether the recipient is a seller or buyer
+            var relatedUrl = isRecipientSeller
+                ? $"/Seller/Messages/Thread/{threadId}"
+                : $"/Messaging/Thread/{threadId}";
+
             var command = new CreateNotificationCommand
             {
                 UserId = recipientId,
@@ -451,7 +460,7 @@ public class MessagingService : IMessagingService
                 Message = $"You have a new message: {subject}",
                 Type = NotificationType.Message,
                 RelatedEntityId = threadId,
-                RelatedUrl = $"/Messaging/Thread/{threadId}"
+                RelatedUrl = relatedUrl
             };
 
             await _notificationService.CreateNotificationAsync(command);
