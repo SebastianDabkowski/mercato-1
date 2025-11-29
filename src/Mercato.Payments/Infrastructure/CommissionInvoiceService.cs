@@ -343,16 +343,38 @@ public class CommissionInvoiceService : ICommissionInvoiceService
     private static byte[] GeneratePdfContent(CommissionInvoice invoice)
     {
         // TODO: Replace with a proper PDF library (e.g., iTextSharp, PdfSharpCore, or QuestPDF) for production use.
-        // This implementation generates a minimal valid PDF structure for demonstration purposes.
-        var sb = new StringBuilder();
+        // This implementation generates a valid PDF structure with correctly calculated byte offsets.
+        var offsets = new List<int>();
+        var pdfBytes = new List<byte>();
+
+        // Helper to append string and track position
+        void AppendLine(string text)
+        {
+            var bytes = Encoding.ASCII.GetBytes(text + "\n");
+            pdfBytes.AddRange(bytes);
+        }
+
+        void TrackObject()
+        {
+            offsets.Add(pdfBytes.Count);
+        }
 
         // PDF Header
-        sb.AppendLine("%PDF-1.4");
-        sb.AppendLine("1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj");
-        sb.AppendLine("2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj");
-        sb.AppendLine("3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >> endobj");
+        AppendLine("%PDF-1.4");
 
-        // Build content
+        // Object 1: Catalog
+        TrackObject();
+        AppendLine("1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj");
+
+        // Object 2: Pages
+        TrackObject();
+        AppendLine("2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj");
+
+        // Object 3: Page
+        TrackObject();
+        AppendLine("3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >> endobj");
+
+        // Build content stream
         var content = new StringBuilder();
         content.AppendLine("BT");
         content.AppendLine("/F1 18 Tf");
@@ -374,13 +396,12 @@ public class CommissionInvoiceService : ICommissionInvoiceService
         content.AppendLine("0 -40 Td");
         content.AppendLine("(--- Line Items ---) Tj");
 
-        var lineY = 0;
         foreach (var item in invoice.LineItems)
         {
-            lineY -= 20;
-            content.AppendLine($"0 {lineY} Td");
-            content.AppendLine($"({item.Description}: {item.NetAmount:N2} {invoice.Currency}) Tj");
-            lineY = 0;
+            content.AppendLine("0 -20 Td");
+            // Escape special PDF characters in description
+            var safeDescription = EscapePdfString(item.Description);
+            content.AppendLine($"({safeDescription}: {item.NetAmount:N2} {invoice.Currency}) Tj");
         }
 
         content.AppendLine("0 -40 Td");
@@ -397,35 +418,53 @@ public class CommissionInvoiceService : ICommissionInvoiceService
         if (!string.IsNullOrEmpty(invoice.Notes))
         {
             content.AppendLine("0 -40 Td");
-            content.AppendLine($"(Notes: {invoice.Notes}) Tj");
+            var safeNotes = EscapePdfString(invoice.Notes);
+            content.AppendLine($"(Notes: {safeNotes}) Tj");
         }
 
         content.AppendLine("ET");
+        var contentStr = content.ToString();
+        var streamLength = Encoding.ASCII.GetByteCount(contentStr);
 
-        var contentBytes = Encoding.ASCII.GetBytes(content.ToString());
-        var streamLength = contentBytes.Length;
+        // Object 4: Content stream
+        TrackObject();
+        AppendLine($"4 0 obj << /Length {streamLength} >> stream");
+        pdfBytes.AddRange(Encoding.ASCII.GetBytes(contentStr));
+        AppendLine("endstream endobj");
 
-        sb.AppendLine($"4 0 obj << /Length {streamLength} >> stream");
-        sb.Append(content.ToString());
-        sb.AppendLine("endstream endobj");
-        sb.AppendLine("5 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> endobj");
-        sb.AppendLine("xref");
-        sb.AppendLine("0 6");
-        sb.AppendLine("0000000000 65535 f ");
-        sb.AppendLine("0000000009 00000 n ");
-        sb.AppendLine("0000000058 00000 n ");
-        sb.AppendLine("0000000115 00000 n ");
-        sb.AppendLine("0000000268 00000 n ");
-        // Note: Offset values are approximate for this basic PDF structure.
-        // A production implementation should calculate exact byte offsets.
-        const int baseOffset = 350;
-        const int trailerOffset = 400;
-        sb.AppendLine($"0000000{baseOffset + streamLength:D3} 00000 n ");
-        sb.AppendLine("trailer << /Size 6 /Root 1 0 R >>");
-        sb.AppendLine("startxref");
-        sb.AppendLine($"{trailerOffset + streamLength}");
-        sb.AppendLine("%%EOF");
+        // Object 5: Font
+        TrackObject();
+        AppendLine("5 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> endobj");
 
-        return Encoding.ASCII.GetBytes(sb.ToString());
+        // xref table
+        var xrefOffset = pdfBytes.Count;
+        AppendLine("xref");
+        AppendLine($"0 {offsets.Count + 1}");
+        AppendLine("0000000000 65535 f ");
+        foreach (var offset in offsets)
+        {
+            AppendLine($"{offset:D10} 00000 n ");
+        }
+
+        // Trailer
+        AppendLine($"trailer << /Size {offsets.Count + 1} /Root 1 0 R >>");
+        AppendLine("startxref");
+        AppendLine($"{xrefOffset}");
+        AppendLine("%%EOF");
+
+        return pdfBytes.ToArray();
+    }
+
+    private static string EscapePdfString(string input)
+    {
+        if (string.IsNullOrEmpty(input))
+        {
+            return string.Empty;
+        }
+
+        return input
+            .Replace("\\", "\\\\")
+            .Replace("(", "\\(")
+            .Replace(")", "\\)");
     }
 }
