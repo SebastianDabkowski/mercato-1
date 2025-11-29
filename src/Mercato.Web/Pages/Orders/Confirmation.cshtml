@@ -91,10 +91,24 @@
                                     }
                                     @if (Model.ConfirmationData.ShippingData != null)
                                     {
-                                        <tr>
-                                            <td class="text-muted">Shipping:</td>
-                                            <td class="text-end">@Model.ConfirmationData.ShippingData.TotalShippingCost.ToString("C")</td>
-                                        </tr>
+                                        @if (Model.ConfirmationData.ShippingData.ShippingMethodNames != null && Model.ConfirmationData.ShippingData.ShippingMethodNames.Count > 0)
+                                        {
+                                            @foreach (var kvp in Model.ConfirmationData.ShippingData.ShippingMethodNames)
+                                            {
+                                                var cost = Model.ConfirmationData.ShippingData.ShippingCostsByStore?.GetValueOrDefault(kvp.Key) ?? 0;
+                                                <tr>
+                                                    <td class="text-muted">Shipping (@kvp.Value):</td>
+                                                    <td class="text-end">@cost.ToString("C")</td>
+                                                </tr>
+                                            }
+                                        }
+                                        else
+                                        {
+                                            <tr>
+                                                <td class="text-muted">Shipping:</td>
+                                                <td class="text-end">@Model.ConfirmationData.ShippingData.TotalShippingCost.ToString("C")</td>
+                                            </tr>
+                                        }
                                     }
                                     <tr class="fw-bold">
                                         <td>Total:</td>

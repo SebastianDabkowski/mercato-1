@@ -203,10 +203,29 @@ public class ShippingModel : PageModel
 
     private void StoreShippingInTempData(decimal totalShipping)
     {
+        // Build shipping method names and costs by store
+        var methodNames = new Dictionary<Guid, string>();
+        var costsByStore = new Dictionary<Guid, decimal>();
+
+        foreach (var (storeId, methodId) in SelectedShippingMethods)
+        {
+            if (ShippingMethodsByStore.TryGetValue(storeId, out var methods))
+            {
+                var selectedMethod = methods.FirstOrDefault(m => m.Id == methodId);
+                if (selectedMethod != null)
+                {
+                    methodNames[storeId] = selectedMethod.Name;
+                    costsByStore[storeId] = selectedMethod.Cost;
+                }
+            }
+        }
+
         var shippingData = new CheckoutShippingData
         {
             SelectedMethods = SelectedShippingMethods,
-            TotalShippingCost = totalShipping
+            TotalShippingCost = totalShipping,
+            ShippingMethodNames = methodNames,
+            ShippingCostsByStore = costsByStore
         };
 
         TempData["CheckoutShipping"] = JsonSerializer.Serialize(shippingData);
@@ -291,4 +310,14 @@ public class CheckoutShippingData
     /// Gets or sets the total shipping cost.
     /// </summary>
     public decimal TotalShippingCost { get; set; }
+
+    /// <summary>
+    /// Gets or sets the shipping method names by store ID.
+    /// </summary>
+    public Dictionary<Guid, string> ShippingMethodNames { get; set; } = new();
+
+    /// <summary>
+    /// Gets or sets the shipping costs by store ID.
+    /// </summary>
+    public Dictionary<Guid, decimal> ShippingCostsByStore { get; set; } = new();
 }
