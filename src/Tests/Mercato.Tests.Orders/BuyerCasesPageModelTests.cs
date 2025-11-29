@@ -1,4 +1,5 @@
 using Mercato.Orders.Domain.Entities;
+using Mercato.Payments.Domain.Entities;
 using Mercato.Web.Pages.Buyer.Cases;
 
 namespace Mercato.Tests.Orders;
@@ -55,6 +56,19 @@ public class BuyerCasesPageModelTests
         Assert.Contains(ReturnStatus.Rejected, allStatuses);
         Assert.Contains(ReturnStatus.Completed, allStatuses);
         Assert.Equal(5, allStatuses.Count);
+    }
+
+    [Fact]
+    public void IndexModel_FormatCaseId_ReturnsFirst8CharsUppercase()
+    {
+        // Arrange
+        var caseId = Guid.Parse("12345678-abcd-1234-abcd-123456789abc");
+
+        // Act
+        var result = IndexModel.FormatCaseId(caseId);
+
+        // Assert
+        Assert.Equal("12345678", result);
     }
 
     #endregion
@@ -135,22 +149,48 @@ public class BuyerCasesPageModelTests
     public void DetailsModel_GetRefundStatusBadgeClass_ReturnsCorrectClass()
     {
         // Assert
-        Assert.Equal("bg-warning text-dark", DetailsModel.GetRefundStatusBadgeClass(Mercato.Payments.Domain.Entities.RefundStatus.Pending));
-        Assert.Equal("bg-info", DetailsModel.GetRefundStatusBadgeClass(Mercato.Payments.Domain.Entities.RefundStatus.Processing));
-        Assert.Equal("bg-success", DetailsModel.GetRefundStatusBadgeClass(Mercato.Payments.Domain.Entities.RefundStatus.Completed));
-        Assert.Equal("bg-danger", DetailsModel.GetRefundStatusBadgeClass(Mercato.Payments.Domain.Entities.RefundStatus.Failed));
-        Assert.Equal("bg-secondary", DetailsModel.GetRefundStatusBadgeClass(Mercato.Payments.Domain.Entities.RefundStatus.Cancelled));
+        Assert.Equal("bg-warning text-dark", DetailsModel.GetRefundStatusBadgeClass(RefundStatus.Pending));
+        Assert.Equal("bg-info", DetailsModel.GetRefundStatusBadgeClass(RefundStatus.Processing));
+        Assert.Equal("bg-success", DetailsModel.GetRefundStatusBadgeClass(RefundStatus.Completed));
+        Assert.Equal("bg-danger", DetailsModel.GetRefundStatusBadgeClass(RefundStatus.Failed));
+        Assert.Equal("bg-secondary", DetailsModel.GetRefundStatusBadgeClass(RefundStatus.Cancelled));
     }
 
     [Fact]
     public void DetailsModel_GetRefundStatusDisplayText_ReturnsCorrectText()
     {
         // Assert
-        Assert.Equal("Pending", DetailsModel.GetRefundStatusDisplayText(Mercato.Payments.Domain.Entities.RefundStatus.Pending));
-        Assert.Equal("Processing", DetailsModel.GetRefundStatusDisplayText(Mercato.Payments.Domain.Entities.RefundStatus.Processing));
-        Assert.Equal("Completed", DetailsModel.GetRefundStatusDisplayText(Mercato.Payments.Domain.Entities.RefundStatus.Completed));
-        Assert.Equal("Failed", DetailsModel.GetRefundStatusDisplayText(Mercato.Payments.Domain.Entities.RefundStatus.Failed));
-        Assert.Equal("Cancelled", DetailsModel.GetRefundStatusDisplayText(Mercato.Payments.Domain.Entities.RefundStatus.Cancelled));
+        Assert.Equal("Pending", DetailsModel.GetRefundStatusDisplayText(RefundStatus.Pending));
+        Assert.Equal("Processing", DetailsModel.GetRefundStatusDisplayText(RefundStatus.Processing));
+        Assert.Equal("Completed", DetailsModel.GetRefundStatusDisplayText(RefundStatus.Completed));
+        Assert.Equal("Failed", DetailsModel.GetRefundStatusDisplayText(RefundStatus.Failed));
+        Assert.Equal("Cancelled", DetailsModel.GetRefundStatusDisplayText(RefundStatus.Cancelled));
+    }
+
+    [Fact]
+    public void DetailsModel_FormatCaseId_ReturnsFirst8CharsUppercase()
+    {
+        // Arrange
+        var caseId = Guid.Parse("12345678-abcd-1234-abcd-123456789abc");
+
+        // Act
+        var result = DetailsModel.FormatCaseId(caseId);
+
+        // Assert
+        Assert.Equal("12345678", result);
+    }
+
+    [Fact]
+    public void DetailsModel_FormatRefundId_ReturnsFirst8CharsUppercase()
+    {
+        // Arrange
+        var refundId = Guid.Parse("abcdef12-3456-7890-abcd-ef1234567890");
+
+        // Act
+        var result = DetailsModel.FormatRefundId(refundId);
+
+        // Assert
+        Assert.Equal("ABCDEF12", result);
     }
 
     #endregion

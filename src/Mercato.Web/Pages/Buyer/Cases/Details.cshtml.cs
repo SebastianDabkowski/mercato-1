@@ -185,6 +185,26 @@ public class DetailsModel : PageModel
         return "Return Request";
     }
 
+    /// <summary>
+    /// Formats a case ID for display (first 8 characters, uppercase).
+    /// </summary>
+    /// <param name="caseId">The case ID.</param>
+    /// <returns>The formatted case ID.</returns>
+    public static string FormatCaseId(Guid caseId)
+    {
+        return caseId.ToString()[..8].ToUpperInvariant();
+    }
+
+    /// <summary>
+    /// Formats a refund ID for display (first 8 characters, uppercase).
+    /// </summary>
+    /// <param name="refundId">The refund ID.</param>
+    /// <returns>The formatted refund ID.</returns>
+    public static string FormatRefundId(Guid refundId)
+    {
+        return refundId.ToString()[..8].ToUpperInvariant();
+    }
+
     private string? GetBuyerId()
     {
         return User.FindFirstValue(ClaimTypes.NameIdentifier);

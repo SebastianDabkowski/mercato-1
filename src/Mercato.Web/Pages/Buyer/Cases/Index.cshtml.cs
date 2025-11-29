@@ -145,6 +145,16 @@ public class IndexModel : PageModel
         return "Return Request";
     }
 
+    /// <summary>
+    /// Formats a case ID for display (first 8 characters, uppercase).
+    /// </summary>
+    /// <param name="caseId">The case ID.</param>
+    /// <returns>The formatted case ID.</returns>
+    public static string FormatCaseId(Guid caseId)
+    {
+        return caseId.ToString()[..8].ToUpperInvariant();
+    }
+
     private string? GetBuyerId()
     {
         return User.FindFirstValue(ClaimTypes.NameIdentifier);

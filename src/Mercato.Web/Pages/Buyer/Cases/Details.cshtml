@@ -3,7 +3,7 @@
 @using Mercato.Orders.Domain.Entities
 @using Mercato.Payments.Domain.Entities
 @{
-    ViewData["Title"] = Model.Case != null ? $"Case #{Model.Case.Id.ToString()[..8].ToUpperInvariant()}" : "Case Details";
+    ViewData["Title"] = Model.Case != null ? $"Case #{DetailsModel.FormatCaseId(Model.Case.Id)}" : "Case Details";
 }
 
 <div class="container py-4">
@@ -11,7 +11,7 @@
         <ol class="breadcrumb">
             <li class="breadcrumb-item"><a asp-page="/Buyer/Index">Buyer Portal</a></li>
             <li class="breadcrumb-item"><a asp-page="Index">Returns & Complaints</a></li>
-            <li class="breadcrumb-item active" aria-current="page">@(Model.Case != null ? $"Case #{Model.Case.Id.ToString()[..8].ToUpperInvariant()}" : "Case Details")</li>
+            <li class="breadcrumb-item active" aria-current="page">@(Model.Case != null ? $"Case #{DetailsModel.FormatCaseId(Model.Case.Id)}" : "Case Details")</li>
         </ol>
     </nav>
 
@@ -25,7 +25,7 @@
         
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
-                <h1 class="mb-1">Case #@caseItem.Id.ToString()[..8].ToUpperInvariant()</h1>
+                <h1 class="mb-1">Case #@DetailsModel.FormatCaseId(caseItem.Id)</h1>
                 <p class="text-muted mb-0">Submitted on @caseItem.CreatedAt.ToString("MMMM dd, yyyy 'at' h:mm tt")</p>
             </div>
             <span class="badge fs-6 @DetailsModel.GetStatusBadgeClass(caseItem.Status)">
@@ -192,7 +192,7 @@
                                         {
                                             <tr>
                                                 <td>
-                                                    <span class="font-monospace">@refund.Id.ToString()[..8].ToUpperInvariant()</span>
+                                                    <span class="font-monospace">@DetailsModel.FormatRefundId(refund.Id)</span>
                                                 </td>
                                                 <td>@refund.Amount.ToString("C")</td>
                                                 <td>
@@ -292,7 +292,7 @@
                     <div class="card-body">
                         <div class="d-flex justify-content-between mb-2">
                             <span class="text-muted">Case ID:</span>
-                            <span class="font-monospace">@caseItem.Id.ToString()[..8].ToUpperInvariant()</span>
+                            <span class="font-monospace">@DetailsModel.FormatCaseId(caseItem.Id)</span>
                         </div>
                         <div class="d-flex justify-content-between mb-2">
                             <span class="text-muted">Type:</span>
