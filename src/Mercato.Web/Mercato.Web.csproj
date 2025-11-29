@@ -16,6 +16,7 @@
     <ProjectReference Include="..\Mercato.Payments\Mercato.Payments.csproj" />
     <ProjectReference Include="..\Mercato.Admin\Mercato.Admin.csproj" />
     <ProjectReference Include="..\Mercato.Shipping\Mercato.Shipping.csproj" />
+    <ProjectReference Include="..\Mercato.Notifications\Mercato.Notifications.csproj" />
   </ItemGroup>
 
   <ItemGroup>

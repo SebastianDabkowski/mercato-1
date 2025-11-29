@@ -5,6 +5,7 @@ using Mercato.Admin;
 using Mercato.Buyer;
 using Mercato.Cart;
 using Mercato.Identity;
+using Mercato.Notifications;
 using Mercato.Orders;
 using Mercato.Payments;
 using Mercato.Product;
@@ -106,6 +107,7 @@ builder.Services.AddOrdersModule(builder.Configuration);
 builder.Services.AddCartModule(builder.Configuration);
 builder.Services.AddPaymentsModule(builder.Configuration);
 builder.Services.AddShippingModule(builder.Configuration);
+builder.Services.AddNotificationsModule(builder.Configuration);
 builder.Services.AddIdentityModule();
 builder.Services.AddAdminModule(builder.Configuration);
 
