@@ -1237,4 +1237,458 @@ public class EscrowServiceTests
     }
 
     #endregion
+
+    #region PartialRefundEscrowAsync Tests
+
+    [Fact]
+    public async Task PartialRefundEscrowAsync_ValidCommand_RefundsPartialAmountAndUpdatesStatus()
+    {
+        // Arrange
+        var service = CreateService();
+        var orderId = Guid.NewGuid();
+        var sellerId = Guid.NewGuid();
+
+        var existingEntry = new EscrowEntry
+        {
+            Id = Guid.NewGuid(),
+            OrderId = orderId,
+            SellerId = sellerId,
+            Amount = 100.00m,
+            RefundedAmount = 0m,
+            Status = EscrowStatus.Held,
+            Currency = "USD",
+            CreatedAt = DateTimeOffset.UtcNow.AddHours(-1)
+        };
+
+        _mockRepository
+            .Setup(r => r.GetByOrderIdAsync(orderId))
+            .ReturnsAsync(new List<EscrowEntry> { existingEntry });
+
+        _mockRepository
+            .Setup(r => r.UpdateAsync(It.IsAny<EscrowEntry>()))
+            .Returns(Task.CompletedTask);
+
+        var command = new PartialRefundEscrowCommand
+        {
+            OrderId = orderId,
+            SellerId = sellerId,
+            Amount = 25.00m,
+            AuditNote = "Partial refund for item return"
+        };
+
+        // Act
+        var result = await service.PartialRefundEscrowAsync(command);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.NotNull(result.Entry);
+        Assert.Equal(25.00m, result.RefundedAmount);
+        Assert.Equal(75.00m, result.RemainingAmount);
+        Assert.Equal(EscrowStatus.PartiallyRefunded, result.Entry.Status);
+        Assert.Equal(25.00m, result.Entry.RefundedAmount);
+
+        _mockRepository.Verify(r => r.UpdateAsync(It.Is<EscrowEntry>(
+            e => e.Status == EscrowStatus.PartiallyRefunded && e.RefundedAmount == 25.00m)), Times.Once);
+    }
+
+    [Fact]
+    public async Task PartialRefundEscrowAsync_RefundEntireAmount_ChangesStatusToRefunded()
+    {
+        // Arrange
+        var service = CreateService();
+        var orderId = Guid.NewGuid();
+        var sellerId = Guid.NewGuid();
+
+        var existingEntry = new EscrowEntry
+        {
+            Id = Guid.NewGuid(),
+            OrderId = orderId,
+            SellerId = sellerId,
+            Amount = 100.00m,
+            RefundedAmount = 0m,
+            Status = EscrowStatus.Held,
+            Currency = "USD"
+        };
+
+        _mockRepository
+            .Setup(r => r.GetByOrderIdAsync(orderId))
+            .ReturnsAsync(new List<EscrowEntry> { existingEntry });
+
+        _mockRepository
+            .Setup(r => r.UpdateAsync(It.IsAny<EscrowEntry>()))
+            .Returns(Task.CompletedTask);
+
+        var command = new PartialRefundEscrowCommand
+        {
+            OrderId = orderId,
+            SellerId = sellerId,
+            Amount = 100.00m // Full amount
+        };
+
+        // Act
+        var result = await service.PartialRefundEscrowAsync(command);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.NotNull(result.Entry);
+        Assert.Equal(100.00m, result.RefundedAmount);
+        Assert.Equal(0m, result.RemainingAmount);
+        Assert.Equal(EscrowStatus.Refunded, result.Entry.Status);
+    }
+
+    [Fact]
+    public async Task PartialRefundEscrowAsync_MultiplePartialRefunds_AccumulatesCorrectly()
+    {
+        // Arrange
+        var service = CreateService();
+        var orderId = Guid.NewGuid();
+        var sellerId = Guid.NewGuid();
+
+        var existingEntry = new EscrowEntry
+        {
+            Id = Guid.NewGuid(),
+            OrderId = orderId,
+            SellerId = sellerId,
+            Amount = 100.00m,
+            RefundedAmount = 40.00m, // Already partially refunded
+            Status = EscrowStatus.PartiallyRefunded,
+            Currency = "USD"
+        };
+
+        _mockRepository
+            .Setup(r => r.GetByOrderIdAsync(orderId))
+            .ReturnsAsync(new List<EscrowEntry> { existingEntry });
+
+        _mockRepository
+            .Setup(r => r.UpdateAsync(It.IsAny<EscrowEntry>()))
+            .Returns(Task.CompletedTask);
+
+        var command = new PartialRefundEscrowCommand
+        {
+            OrderId = orderId,
+            SellerId = sellerId,
+            Amount = 30.00m // Additional refund
+        };
+
+        // Act
+        var result = await service.PartialRefundEscrowAsync(command);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.NotNull(result.Entry);
+        Assert.Equal(30.00m, result.RefundedAmount);
+        Assert.Equal(30.00m, result.RemainingAmount); // 100 - 40 - 30
+        Assert.Equal(70.00m, result.Entry.RefundedAmount); // 40 + 30
+    }
+
+    [Fact]
+    public async Task PartialRefundEscrowAsync_AmountExceedsRemaining_ReturnsFailure()
+    {
+        // Arrange
+        var service = CreateService();
+        var orderId = Guid.NewGuid();
+        var sellerId = Guid.NewGuid();
+
+        var existingEntry = new EscrowEntry
+        {
+            Id = Guid.NewGuid(),
+            OrderId = orderId,
+            SellerId = sellerId,
+            Amount = 100.00m,
+            RefundedAmount = 80.00m,
+            Status = EscrowStatus.PartiallyRefunded,
+            Currency = "USD"
+        };
+
+        _mockRepository
+            .Setup(r => r.GetByOrderIdAsync(orderId))
+            .ReturnsAsync(new List<EscrowEntry> { existingEntry });
+
+        var command = new PartialRefundEscrowCommand
+        {
+            OrderId = orderId,
+            SellerId = sellerId,
+            Amount = 30.00m // Exceeds remaining 20
+        };
+
+        // Act
+        var result = await service.PartialRefundEscrowAsync(command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains(result.Errors, e => e.Contains("exceeds remaining escrow amount"));
+    }
+
+    [Fact]
+    public async Task PartialRefundEscrowAsync_EscrowAlreadyReleased_ReturnsFailure()
+    {
+        // Arrange
+        var service = CreateService();
+        var orderId = Guid.NewGuid();
+        var sellerId = Guid.NewGuid();
+
+        var existingEntry = new EscrowEntry
+        {
+            Id = Guid.NewGuid(),
+            OrderId = orderId,
+            SellerId = sellerId,
+            Amount = 100.00m,
+            RefundedAmount = 0m,
+            Status = EscrowStatus.Released
+        };
+
+        _mockRepository
+            .Setup(r => r.GetByOrderIdAsync(orderId))
+            .ReturnsAsync(new List<EscrowEntry> { existingEntry });
+
+        var command = new PartialRefundEscrowCommand
+        {
+            OrderId = orderId,
+            SellerId = sellerId,
+            Amount = 25.00m
+        };
+
+        // Act
+        var result = await service.PartialRefundEscrowAsync(command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains(result.Errors, e => e.Contains("already been released"));
+    }
+
+    [Fact]
+    public async Task PartialRefundEscrowAsync_EscrowFullyRefunded_ReturnsFailure()
+    {
+        // Arrange
+        var service = CreateService();
+        var orderId = Guid.NewGuid();
+        var sellerId = Guid.NewGuid();
+
+        var existingEntry = new EscrowEntry
+        {
+            Id = Guid.NewGuid(),
+            OrderId = orderId,
+            SellerId = sellerId,
+            Amount = 100.00m,
+            RefundedAmount = 100.00m,
+            Status = EscrowStatus.Refunded
+        };
+
+        _mockRepository
+            .Setup(r => r.GetByOrderIdAsync(orderId))
+            .ReturnsAsync(new List<EscrowEntry> { existingEntry });
+
+        var command = new PartialRefundEscrowCommand
+        {
+            OrderId = orderId,
+            SellerId = sellerId,
+            Amount = 25.00m
+        };
+
+        // Act
+        var result = await service.PartialRefundEscrowAsync(command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains(result.Errors, e => e.Contains("already been fully refunded"));
+    }
+
+    [Fact]
+    public async Task PartialRefundEscrowAsync_ZeroAmount_ReturnsFailure()
+    {
+        // Arrange
+        var service = CreateService();
+        var command = new PartialRefundEscrowCommand
+        {
+            OrderId = Guid.NewGuid(),
+            SellerId = Guid.NewGuid(),
+            Amount = 0m
+        };
+
+        // Act
+        var result = await service.PartialRefundEscrowAsync(command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains(result.Errors, e => e.Contains("Refund amount must be greater than zero"));
+    }
+
+    [Fact]
+    public async Task PartialRefundEscrowAsync_NegativeAmount_ReturnsFailure()
+    {
+        // Arrange
+        var service = CreateService();
+        var command = new PartialRefundEscrowCommand
+        {
+            OrderId = Guid.NewGuid(),
+            SellerId = Guid.NewGuid(),
+            Amount = -25.00m
+        };
+
+        // Act
+        var result = await service.PartialRefundEscrowAsync(command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains(result.Errors, e => e.Contains("Refund amount must be greater than zero"));
+    }
+
+    [Fact]
+    public async Task PartialRefundEscrowAsync_SellerNotFound_ReturnsFailure()
+    {
+        // Arrange
+        var service = CreateService();
+        var orderId = Guid.NewGuid();
+        var existingSellerId = Guid.NewGuid();
+        var requestedSellerId = Guid.NewGuid();
+
+        var existingEntry = new EscrowEntry
+        {
+            Id = Guid.NewGuid(),
+            OrderId = orderId,
+            SellerId = existingSellerId,
+            Amount = 100.00m,
+            RefundedAmount = 0m,
+            Status = EscrowStatus.Held
+        };
+
+        _mockRepository
+            .Setup(r => r.GetByOrderIdAsync(orderId))
+            .ReturnsAsync(new List<EscrowEntry> { existingEntry });
+
+        var command = new PartialRefundEscrowCommand
+        {
+            OrderId = orderId,
+            SellerId = requestedSellerId,
+            Amount = 25.00m
+        };
+
+        // Act
+        var result = await service.PartialRefundEscrowAsync(command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains(result.Errors, e => e.Contains("No escrow entry found for the specified seller"));
+    }
+
+    [Fact]
+    public async Task PartialRefundEscrowAsync_NoEntriesForOrder_ReturnsFailure()
+    {
+        // Arrange
+        var service = CreateService();
+        var orderId = Guid.NewGuid();
+
+        _mockRepository
+            .Setup(r => r.GetByOrderIdAsync(orderId))
+            .ReturnsAsync(new List<EscrowEntry>());
+
+        var command = new PartialRefundEscrowCommand
+        {
+            OrderId = orderId,
+            SellerId = Guid.NewGuid(),
+            Amount = 25.00m
+        };
+
+        // Act
+        var result = await service.PartialRefundEscrowAsync(command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains(result.Errors, e => e.Contains("No escrow entries found for the specified order"));
+    }
+
+    [Fact]
+    public async Task PartialRefundEscrowAsync_MissingOrderId_ReturnsFailure()
+    {
+        // Arrange
+        var service = CreateService();
+        var command = new PartialRefundEscrowCommand
+        {
+            OrderId = Guid.Empty,
+            SellerId = Guid.NewGuid(),
+            Amount = 25.00m
+        };
+
+        // Act
+        var result = await service.PartialRefundEscrowAsync(command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains(result.Errors, e => e.Contains("Order ID is required"));
+    }
+
+    [Fact]
+    public async Task PartialRefundEscrowAsync_MissingSellerId_ReturnsFailure()
+    {
+        // Arrange
+        var service = CreateService();
+        var command = new PartialRefundEscrowCommand
+        {
+            OrderId = Guid.NewGuid(),
+            SellerId = Guid.Empty,
+            Amount = 25.00m
+        };
+
+        // Act
+        var result = await service.PartialRefundEscrowAsync(command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains(result.Errors, e => e.Contains("Seller ID is required"));
+    }
+
+    [Fact]
+    public async Task PartialRefundEscrowAsync_SetsTimestampsCorrectly()
+    {
+        // Arrange
+        var service = CreateService();
+        var orderId = Guid.NewGuid();
+        var sellerId = Guid.NewGuid();
+        var originalCreatedAt = DateTimeOffset.UtcNow.AddDays(-1);
+
+        var existingEntry = new EscrowEntry
+        {
+            Id = Guid.NewGuid(),
+            OrderId = orderId,
+            SellerId = sellerId,
+            Amount = 100.00m,
+            RefundedAmount = 0m,
+            Status = EscrowStatus.Held,
+            Currency = "USD",
+            CreatedAt = originalCreatedAt,
+            LastUpdatedAt = originalCreatedAt
+        };
+
+        _mockRepository
+            .Setup(r => r.GetByOrderIdAsync(orderId))
+            .ReturnsAsync(new List<EscrowEntry> { existingEntry });
+
+        _mockRepository
+            .Setup(r => r.UpdateAsync(It.IsAny<EscrowEntry>()))
+            .Returns(Task.CompletedTask);
+
+        var beforeTime = DateTimeOffset.UtcNow;
+
+        var command = new PartialRefundEscrowCommand
+        {
+            OrderId = orderId,
+            SellerId = sellerId,
+            Amount = 25.00m
+        };
+
+        // Act
+        var result = await service.PartialRefundEscrowAsync(command);
+
+        var afterTime = DateTimeOffset.UtcNow;
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.NotNull(result.Entry);
+        Assert.NotNull(result.Entry.RefundedAt);
+        Assert.True(result.Entry.RefundedAt >= beforeTime && result.Entry.RefundedAt <= afterTime);
+        Assert.True(result.Entry.LastUpdatedAt >= beforeTime && result.Entry.LastUpdatedAt <= afterTime);
+        Assert.Equal(originalCreatedAt, result.Entry.CreatedAt);
+    }
+
+    #endregion
 }

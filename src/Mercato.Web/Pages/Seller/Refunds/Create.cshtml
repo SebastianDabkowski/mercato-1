@@ -1,0 +1,140 @@
+@page
+@model Mercato.Web.Pages.Seller.Refunds.CreateModel
+@{
+    ViewData["Title"] = "Issue Refund";
+    Layout = "~/Pages/Shared/_SellerLayout.cshtml";
+}
+
+<h1>Issue Refund</h1>
+
+<div class="alert alert-info">
+    <strong>Order ID:</strong> <code>@Model.OrderId</code>
+</div>
+
+@if (!string.IsNullOrEmpty(Model.ErrorMessage))
+{
+    <div class="alert alert-danger">
+        <strong>Error:</strong> @Model.ErrorMessage
+    </div>
+}
+
+@if (Model.SellerEscrowEntry != null)
+{
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Your Order Summary</h5>
+                </div>
+                <div class="card-body">
+                    <dl class="row">
+                        <dt class="col-sm-4">Original Amount</dt>
+                        <dd class="col-sm-8">@Model.SellerEscrowEntry.Amount.ToString("C")</dd>
+
+                        <dt class="col-sm-4">Already Refunded</dt>
+                        <dd class="col-sm-8 text-danger">@Model.SellerEscrowEntry.RefundedAmount.ToString("C")</dd>
+
+                        <dt class="col-sm-4">Available for Refund</dt>
+                        <dd class="col-sm-8">
+                            <strong class="text-success">@((Model.SellerEscrowEntry.Amount - Model.SellerEscrowEntry.RefundedAmount).ToString("C"))</strong>
+                        </dd>
+
+                        <dt class="col-sm-4">Escrow Status</dt>
+                        <dd class="col-sm-8">
+                            @switch (Model.SellerEscrowEntry.Status)
+                            {
+                                case Mercato.Payments.Domain.Entities.EscrowStatus.Held:
+                                    <span class="badge bg-primary">Held in Escrow</span>
+                                    break;
+                                case Mercato.Payments.Domain.Entities.EscrowStatus.PartiallyRefunded:
+                                    <span class="badge bg-warning text-dark">Partially Refunded</span>
+                                    break;
+                                case Mercato.Payments.Domain.Entities.EscrowStatus.Refunded:
+                                    <span class="badge bg-danger">Fully Refunded</span>
+                                    break;
+                                case Mercato.Payments.Domain.Entities.EscrowStatus.Released:
+                                    <span class="badge bg-success">Released to You</span>
+                                    break;
+                            }
+                        </dd>
+                    </dl>
+                </div>
+            </div>
+
+            @if (!Model.IsEligible)
+            {
+                <div class="alert alert-warning">
+                    <h6>Unable to Process Refund</h6>
+                    <p class="mb-0">@Model.IneligibilityReason</p>
+                </div>
+            }
+            else
+            {
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Refund Details</h5>
+                    </div>
+                    <div class="card-body">
+                        <form method="post">
+                            <input type="hidden" asp-for="OrderId" />
+                            <input type="hidden" asp-for="PaymentTransactionId" />
+
+                            <div class="mb-3">
+                                <label asp-for="Amount" class="form-label">Refund Amount <span class="text-danger">*</span></label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input asp-for="Amount" class="form-control" type="number" step="0.01" min="0.01" max="@Model.MaxRefundableAmount" required />
+                                </div>
+                                <div class="form-text">Maximum refundable: @Model.MaxRefundableAmount.ToString("C")</div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label asp-for="Reason" class="form-label">Reason <span class="text-danger">*</span></label>
+                                <textarea asp-for="Reason" class="form-control" rows="3" required placeholder="Explain why you are issuing this refund..."></textarea>
+                            </div>
+
+                            <div class="alert alert-warning">
+                                <i class="bi bi-exclamation-triangle"></i>
+                                <strong>Important:</strong> Refunds are final and cannot be reversed. This amount will be returned to the buyer.
+                            </div>
+
+                            <div class="d-flex justify-content-between">
+                                <a asp-page="/Seller/Orders/Details" asp-route-orderId="@Model.OrderId" class="btn btn-outline-secondary">
+                                    &laquo; Cancel
+                                </a>
+                                <button type="submit" class="btn btn-danger">
+                                    <i class="bi bi-arrow-counterclockwise"></i> Issue Refund
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Refund Policy</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="mb-0">
+                        <li>Refunds can be issued within the seller refund window</li>
+                        <li>Partial refunds are allowed up to the remaining escrow amount</li>
+                        <li>Commission will be proportionally adjusted</li>
+                        <li>All refunds are audited and logged</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+else
+{
+    <div class="alert alert-warning">
+        No escrow entry found for your store on this order.
+    </div>
+    <a asp-page="/Seller/Orders/Index" class="btn btn-outline-secondary">
+        &laquo; Back to Orders
+    </a>
+}

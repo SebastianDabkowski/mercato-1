@@ -69,4 +69,14 @@ public class EscrowEntry
     /// Gets or sets a note for auditing purposes.
     /// </summary>
     public string? AuditNote { get; set; }
+
+    /// <summary>
+    /// Gets or sets the amount that has been refunded (for partial refunds).
+    /// </summary>
+    public decimal RefundedAmount { get; set; }
+
+    /// <summary>
+    /// Gets or sets the remaining amount after partial refunds.
+    /// </summary>
+    public decimal RemainingAmount => Amount - RefundedAmount;
 }

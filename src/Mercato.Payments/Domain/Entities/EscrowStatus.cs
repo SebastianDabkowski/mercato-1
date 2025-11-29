@@ -16,7 +16,12 @@ public enum EscrowStatus
     Released = 1,
 
     /// <summary>
-    /// Funds have been refunded to the buyer.
+    /// Funds have been fully refunded to the buyer.
     /// </summary>
-    Refunded = 2
+    Refunded = 2,
+
+    /// <summary>
+    /// Funds have been partially refunded to the buyer.
+    /// </summary>
+    PartiallyRefunded = 3
 }
