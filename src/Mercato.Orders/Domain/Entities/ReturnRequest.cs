@@ -67,6 +67,23 @@ public class ReturnRequest
     public ICollection<CaseItem> CaseItems { get; set; } = new List<CaseItem>();
 
     /// <summary>
+    /// Navigation property to the messages in this case's messaging thread.
+    /// </summary>
+    public ICollection<CaseMessage> Messages { get; set; } = new List<CaseMessage>();
+
+    /// <summary>
+    /// Gets or sets a value indicating whether there is new activity on this case
+    /// that the other party has not yet viewed.
+    /// </summary>
+    public bool HasNewActivity { get; set; }
+
+    /// <summary>
+    /// Gets or sets the user ID of the last user who added activity to this case.
+    /// Used to determine which party should see the "new activity" indicator.
+    /// </summary>
+    public string? LastActivityByUserId { get; set; }
+
+    /// <summary>
     /// Gets a value indicating whether this case applies to specific items or the entire sub-order.
     /// </summary>
     public bool HasSelectedItems => CaseItems.Count > 0;

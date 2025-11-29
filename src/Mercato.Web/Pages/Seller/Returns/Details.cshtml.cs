@@ -4,22 +4,24 @@ using Mercato.Orders.Application.Services;
 using Mercato.Orders.Domain.Entities;
 using Mercato.Payments.Application.Services;
 using Mercato.Payments.Domain.Entities;
+using Mercato.Seller.Application.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
 
-namespace Mercato.Web.Pages.Buyer.Cases;
+namespace Mercato.Web.Pages.Seller.Returns;
 
 /// <summary>
-/// Page model for the buyer's case details page.
+/// Page model for the seller's case details page with messaging.
 /// </summary>
-[Authorize(Roles = "Buyer")]
+[Authorize(Roles = "Seller")]
 public class DetailsModel : PageModel
 {
     private readonly IOrderService _orderService;
     private readonly IRefundService _refundService;
+    private readonly IStoreProfileService _storeProfileService;
     private readonly ILogger<DetailsModel> _logger;
 
     /// <summary>
@@ -27,14 +29,17 @@ public class DetailsModel : PageModel
     /// </summary>
     /// <param name="orderService">The order service.</param>
     /// <param name="refundService">The refund service.</param>
+    /// <param name="storeProfileService">The store profile service.</param>
     /// <param name="logger">The logger.</param>
     public DetailsModel(
         IOrderService orderService,
         IRefundService refundService,
+        IStoreProfileService storeProfileService,
         ILogger<DetailsModel> logger)
     {
         _orderService = orderService;
         _refundService = refundService;
+        _storeProfileService = storeProfileService;
         _logger = logger;
     }
 
@@ -42,6 +47,11 @@ public class DetailsModel : PageModel
     /// Gets the return request (case).
     /// </summary>
     public ReturnRequest? Case { get; private set; }
+
+    /// <summary>
+    /// Gets the seller's store.
+    /// </summary>
+    public Mercato.Seller.Domain.Entities.Store? Store { get; private set; }
 
     /// <summary>
     /// Gets the refunds linked to the order.
@@ -81,22 +91,21 @@ public class DetailsModel : PageModel
     /// </summary>
     /// <param name="id">The case (return request) ID.</param>
     /// <returns>The page result.</returns>
-    public async Task<IActionResult> OnGetAsync(Guid? id)
+    public async Task<IActionResult> OnGetAsync(Guid id)
     {
-        var buyerId = GetBuyerId();
-        if (string.IsNullOrEmpty(buyerId))
+        var sellerId = GetSellerId();
+        if (string.IsNullOrEmpty(sellerId))
         {
             return Forbid();
         }
 
-        if (!id.HasValue || id.Value == Guid.Empty)
+        Store = await _storeProfileService.GetStoreBySellerIdAsync(sellerId);
+        if (Store == null)
         {
-            TempData["Error"] = "Case not found.";
-            return RedirectToPage("Index");
+            return RedirectToPage("/Seller/Onboarding/Index");
         }
 
-        var caseId = id.Value;
-        var result = await _orderService.GetReturnRequestAsync(caseId, buyerId);
+        var result = await _orderService.GetReturnRequestForSellerAsync(id, Store.Id);
 
         if (!result.Succeeded)
         {
@@ -125,14 +134,14 @@ public class DetailsModel : PageModel
         // Load messages
         if (Case != null)
         {
-            var messagesResult = await _orderService.GetCaseMessagesAsync(caseId, buyerId, "Buyer");
+            var messagesResult = await _orderService.GetCaseMessagesAsync(id, sellerId, "Seller", Store.Id);
             if (messagesResult.Succeeded)
             {
                 Messages = messagesResult.Messages;
             }
 
             // Mark activity as viewed
-            await _orderService.MarkCaseActivityViewedAsync(caseId, buyerId, "Buyer");
+            await _orderService.MarkCaseActivityViewedAsync(id, sellerId, "Seller", Store.Id);
         }
 
         return Page();
@@ -145,14 +154,20 @@ public class DetailsModel : PageModel
     /// <returns>The page result.</returns>
     public async Task<IActionResult> OnPostAsync(Guid id)
     {
-        var buyerId = GetBuyerId();
-        if (string.IsNullOrEmpty(buyerId))
+        var sellerId = GetSellerId();
+        if (string.IsNullOrEmpty(sellerId))
         {
             return Forbid();
         }
 
+        Store = await _storeProfileService.GetStoreBySellerIdAsync(sellerId);
+        if (Store == null)
+        {
+            return RedirectToPage("/Seller/Onboarding/Index");
+        }
+
         // Load the case for display regardless of validation
-        var caseResult = await _orderService.GetReturnRequestAsync(id, buyerId);
+        var caseResult = await _orderService.GetReturnRequestForSellerAsync(id, Store.Id);
         if (!caseResult.Succeeded)
         {
             if (caseResult.IsNotAuthorized)
@@ -177,7 +192,7 @@ public class DetailsModel : PageModel
         }
 
         // Load existing messages
-        var messagesResult = await _orderService.GetCaseMessagesAsync(id, buyerId, "Buyer");
+        var messagesResult = await _orderService.GetCaseMessagesAsync(id, sellerId, "Seller", Store.Id);
         if (messagesResult.Succeeded)
         {
             Messages = messagesResult.Messages;
@@ -191,12 +206,12 @@ public class DetailsModel : PageModel
         var command = new AddCaseMessageCommand
         {
             ReturnRequestId = id,
-            SenderUserId = buyerId,
-            SenderRole = "Buyer",
+            SenderUserId = sellerId,
+            SenderRole = "Seller",
             Content = NewMessageContent!
         };
 
-        var result = await _orderService.AddCaseMessageAsync(command);
+        var result = await _orderService.AddCaseMessageAsync(command, Store.Id);
 
         if (!result.Succeeded)
         {
@@ -212,7 +227,7 @@ public class DetailsModel : PageModel
         NewMessageContent = null;
 
         // Reload messages after adding
-        messagesResult = await _orderService.GetCaseMessagesAsync(id, buyerId, "Buyer");
+        messagesResult = await _orderService.GetCaseMessagesAsync(id, sellerId, "Seller", Store.Id);
         if (messagesResult.Succeeded)
         {
             Messages = messagesResult.Messages;
@@ -243,50 +258,13 @@ public class DetailsModel : PageModel
     /// <returns>The display text.</returns>
     public static string GetStatusDisplayText(ReturnStatus status) => status switch
     {
-        ReturnStatus.Requested => "Pending Seller Review",
-        ReturnStatus.UnderReview => "In Progress",
+        ReturnStatus.Requested => "Pending Review",
+        ReturnStatus.UnderReview => "Under Review",
         ReturnStatus.Approved => "Approved",
         ReturnStatus.Rejected => "Rejected",
         ReturnStatus.Completed => "Resolved",
         _ => status.ToString()
     };
-
-    /// <summary>
-    /// Gets a user-friendly resolution summary based on the case status.
-    /// </summary>
-    /// <param name="status">The return status.</param>
-    /// <returns>The resolution summary.</returns>
-    public static string GetResolutionSummary(ReturnStatus status) => status switch
-    {
-        ReturnStatus.Approved => "Your return request has been approved by the seller.",
-        ReturnStatus.Rejected => "Your return request has been declined by the seller.",
-        ReturnStatus.Completed => "This case has been resolved.",
-        _ => string.Empty
-    };
-
-    /// <summary>
-    /// Gets a user-friendly resolution summary based on the case status and resolution type.
-    /// </summary>
-    /// <param name="status">The return status.</param>
-    /// <param name="resolutionType">The resolution type.</param>
-    /// <returns>The resolution summary.</returns>
-    public static string GetResolutionSummaryForType(ReturnStatus status, CaseResolutionType? resolutionType)
-    {
-        if (!resolutionType.HasValue)
-        {
-            return GetResolutionSummary(status);
-        }
-
-        return resolutionType.Value switch
-        {
-            CaseResolutionType.FullRefund => "A full refund has been issued for your order.",
-            CaseResolutionType.PartialRefund => "A partial refund has been issued for your order.",
-            CaseResolutionType.Replacement => "A replacement item will be sent to you.",
-            CaseResolutionType.Repair => "Your item will be repaired and returned to you.",
-            CaseResolutionType.NoRefund => "Your return request has been declined.",
-            _ => GetResolutionSummary(status)
-        };
-    }
 
     /// <summary>
     /// Gets display text for a case resolution type.
@@ -319,43 +297,9 @@ public class DetailsModel : PageModel
     };
 
     /// <summary>
-    /// Gets the CSS class for a refund status badge.
+    /// Number of characters to display for short IDs.
     /// </summary>
-    /// <param name="status">The refund status.</param>
-    /// <returns>The CSS class name.</returns>
-    public static string GetRefundStatusBadgeClass(RefundStatus status) => status switch
-    {
-        RefundStatus.Pending => "bg-warning text-dark",
-        RefundStatus.Processing => "bg-info",
-        RefundStatus.Completed => "bg-success",
-        RefundStatus.Failed => "bg-danger",
-        RefundStatus.Cancelled => "bg-secondary",
-        _ => "bg-secondary"
-    };
-
-    /// <summary>
-    /// Gets the display text for a refund status.
-    /// </summary>
-    /// <param name="status">The refund status.</param>
-    /// <returns>The display text.</returns>
-    public static string GetRefundStatusDisplayText(RefundStatus status) => status switch
-    {
-        RefundStatus.Pending => "Pending",
-        RefundStatus.Processing => "Processing",
-        RefundStatus.Completed => "Completed",
-        RefundStatus.Failed => "Failed",
-        RefundStatus.Cancelled => "Cancelled",
-        _ => status.ToString()
-    };
-
-    /// <summary>
-    /// Gets a user-friendly case type display text.
-    /// </summary>
-    /// <returns>The case type display text.</returns>
-    public static string GetCaseType()
-    {
-        return "Return Request";
-    }
+    private const int ShortIdLength = 8;
 
     /// <summary>
     /// Formats a case ID for display (first 8 characters, uppercase).
@@ -364,20 +308,10 @@ public class DetailsModel : PageModel
     /// <returns>The formatted case ID.</returns>
     public static string FormatCaseId(Guid caseId)
     {
-        return caseId.ToString()[..8].ToUpperInvariant();
+        return caseId.ToString()[..ShortIdLength].ToUpperInvariant();
     }
 
-    /// <summary>
-    /// Formats a refund ID for display (first 8 characters, uppercase).
-    /// </summary>
-    /// <param name="refundId">The refund ID.</param>
-    /// <returns>The formatted refund ID.</returns>
-    public static string FormatRefundId(Guid refundId)
-    {
-        return refundId.ToString()[..8].ToUpperInvariant();
-    }
-
-    private string? GetBuyerId()
+    private string? GetSellerId()
     {
         return User.FindFirstValue(ClaimTypes.NameIdentifier);
     }

@@ -23,6 +23,7 @@ public class OrderServiceTests
     private readonly Mock<ISellerSubOrderRepository> _mockSellerSubOrderRepository;
     private readonly Mock<IReturnRequestRepository> _mockReturnRequestRepository;
     private readonly Mock<IShippingStatusHistoryRepository> _mockShippingStatusHistoryRepository;
+    private readonly Mock<ICaseMessageRepository> _mockCaseMessageRepository;
     private readonly Mock<IOrderConfirmationEmailService> _mockEmailService;
     private readonly Mock<IShippingNotificationService> _mockShippingNotificationService;
     private readonly Mock<IRefundService> _mockRefundService;
@@ -35,6 +36,7 @@ public class OrderServiceTests
         _mockSellerSubOrderRepository = new Mock<ISellerSubOrderRepository>(MockBehavior.Strict);
         _mockReturnRequestRepository = new Mock<IReturnRequestRepository>(MockBehavior.Strict);
         _mockShippingStatusHistoryRepository = new Mock<IShippingStatusHistoryRepository>(MockBehavior.Strict);
+        _mockCaseMessageRepository = new Mock<ICaseMessageRepository>(MockBehavior.Strict);
         _mockEmailService = new Mock<IOrderConfirmationEmailService>(MockBehavior.Strict);
         _mockShippingNotificationService = new Mock<IShippingNotificationService>(MockBehavior.Strict);
         _mockRefundService = new Mock<IRefundService>(MockBehavior.Strict);
@@ -45,6 +47,7 @@ public class OrderServiceTests
             _mockSellerSubOrderRepository.Object,
             _mockReturnRequestRepository.Object,
             _mockShippingStatusHistoryRepository.Object,
+            _mockCaseMessageRepository.Object,
             _mockEmailService.Object,
             _mockShippingNotificationService.Object,
             _mockRefundService.Object,

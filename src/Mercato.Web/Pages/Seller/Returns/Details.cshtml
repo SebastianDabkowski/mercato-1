@@ -1,0 +1,317 @@
+@page "{id:guid}"
+@model Mercato.Web.Pages.Seller.Returns.DetailsModel
+@using Mercato.Orders.Application.Queries
+@using Mercato.Orders.Domain.Entities
+@{
+    ViewData["Title"] = Model.Case != null ? $"Case {Model.Case.CaseNumber}" : "Case Details";
+}
+
+<div class="container py-4">
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-page="/Seller/Orders/Index">Orders</a></li>
+            @if (Model.Case?.SellerSubOrderId != null)
+            {
+                <li class="breadcrumb-item"><a asp-page="/Seller/Orders/Details" asp-route-id="@Model.Case.SellerSubOrderId">Order Details</a></li>
+            }
+            <li class="breadcrumb-item active" aria-current="page">Case Details</li>
+        </ol>
+    </nav>
+
+    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+    {
+        <div class="alert alert-danger">@Model.ErrorMessage</div>
+    }
+    else if (Model.Case != null)
+    {
+        var caseItem = Model.Case;
+        
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1 class="mb-1">Case @caseItem.CaseNumber</h1>
+                <p class="text-muted mb-0">Submitted on @caseItem.CreatedAt.ToString("MMMM dd, yyyy 'at' h:mm tt")</p>
+            </div>
+            <span class="badge fs-6 @DetailsModel.GetStatusBadgeClass(caseItem.Status)">
+                @DetailsModel.GetStatusDisplayText(caseItem.Status)
+            </span>
+        </div>
+
+        <div class="row">
+            @* Left Column - Case Details & Messaging *@
+            <div class="col-lg-8">
+                @* Case Details *@
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-file-text me-2"></i>Case Details</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <strong>Case Type:</strong>
+                            <span class="badge bg-light text-dark border ms-2">@caseItem.CaseType</span>
+                        </div>
+                        <div class="mb-3">
+                            <strong>Buyer's Reason:</strong>
+                            <p class="mt-2 mb-0 bg-light p-3 rounded">@caseItem.Reason</p>
+                        </div>
+                        @if (caseItem.SellerSubOrder?.Items?.Any() == true)
+                        {
+                            <hr>
+                            <strong>Items:</strong>
+                            <div class="table-responsive mt-2">
+                                <table class="table table-sm mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Product</th>
+                                            <th class="text-center">Qty</th>
+                                            <th class="text-end">Price</th>
+                                            <th class="text-end">Total</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var item in caseItem.SellerSubOrder.Items)
+                                        {
+                                            <tr>
+                                                <td>@item.ProductTitle</td>
+                                                <td class="text-center">@item.Quantity</td>
+                                                <td class="text-end">@item.UnitPrice.ToString("C")</td>
+                                                <td class="text-end">@item.TotalPrice.ToString("C")</td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                    <tfoot class="table-light">
+                                        <tr>
+                                            <td colspan="3" class="text-end"><strong>Sub-Order Total:</strong></td>
+                                            <td class="text-end"><strong class="text-primary">@caseItem.SellerSubOrder.TotalAmount.ToString("C")</strong></td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                @* Resolution Section *@
+                @if (caseItem.Status == ReturnStatus.Completed && caseItem.ResolutionType.HasValue)
+                {
+                    <div class="card mb-4">
+                        <div class="card-header bg-success bg-opacity-10">
+                            <h5 class="mb-0"><i class="bi bi-check-circle text-success me-2"></i>Resolution</h5>
+                        </div>
+                        <div class="card-body">
+                            <p class="mb-2">
+                                <strong>Resolution Type:</strong>
+                                <span class="badge ms-2 @DetailsModel.GetResolutionTypeBadgeClass(caseItem.ResolutionType.Value)">
+                                    @DetailsModel.GetResolutionTypeDisplayText(caseItem.ResolutionType.Value)
+                                </span>
+                            </p>
+                            @if (!string.IsNullOrEmpty(caseItem.ResolutionReason))
+                            {
+                                <p class="mb-2"><strong>Resolution Reason:</strong></p>
+                                <p class="bg-light p-3 rounded mb-0">@caseItem.ResolutionReason</p>
+                            }
+                            @if (caseItem.RefundAmount.HasValue)
+                            {
+                                <p class="mt-2 mb-0">
+                                    <strong>Refund Amount:</strong>
+                                    <span class="text-success ms-2">@caseItem.RefundAmount.Value.ToString("C")</span>
+                                </p>
+                            }
+                        </div>
+                    </div>
+                }
+
+                @* Messaging Thread *@
+                <div class="card mb-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="bi bi-chat-dots me-2"></i>Messages</h5>
+                        <span class="badge bg-secondary">@Model.Messages.Count message(s)</span>
+                    </div>
+                    <div class="card-body">
+                        @if (!string.IsNullOrEmpty(Model.SuccessMessage))
+                        {
+                            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                                <i class="bi bi-check-circle me-2"></i>@Model.SuccessMessage
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        }
+
+                        @* Messages List *@
+                        <div class="messaging-thread mb-4" style="max-height: 400px; overflow-y: auto;">
+                            @if (Model.Messages.Count == 0)
+                            {
+                                <div class="text-center text-muted py-4">
+                                    <i class="bi bi-chat-square-text fs-1 d-block mb-2"></i>
+                                    <p class="mb-0">No messages yet. Start the conversation by sending a message below.</p>
+                                </div>
+                            }
+                            else
+                            {
+                                @foreach (var message in Model.Messages)
+                                {
+                                    var isCurrentUser = message.SenderRole == "Seller";
+                                    var alignClass = isCurrentUser ? "justify-content-end" : "justify-content-start";
+                                    var bgClass = message.SenderRole switch
+                                    {
+                                        "Seller" => "bg-primary text-white",
+                                        "Buyer" => "bg-light border",
+                                        "Admin" => "bg-warning text-dark",
+                                        _ => "bg-secondary text-white"
+                                    };
+                                    var roleIcon = message.SenderRole switch
+                                    {
+                                        "Seller" => "bi-shop",
+                                        "Buyer" => "bi-person",
+                                        "Admin" => "bi-shield-check",
+                                        _ => "bi-person"
+                                    };
+                                    
+                                    <div class="d-flex @alignClass mb-3">
+                                        <div class="message-bubble @bgClass rounded-3 p-3" style="max-width: 75%;">
+                                            <div class="d-flex align-items-center mb-1">
+                                                <i class="bi @roleIcon me-1"></i>
+                                                <small class="fw-bold">@message.SenderRole</small>
+                                            </div>
+                                            <p class="mb-1">@message.Content</p>
+                                            <small class="@(isCurrentUser ? "text-white-50" : "text-muted")">
+                                                @message.CreatedAt.ToString("MMM dd, yyyy 'at' h:mm tt")
+                                            </small>
+                                        </div>
+                                    </div>
+                                }
+                            }
+                        </div>
+
+                        @* New Message Form *@
+                        @if (caseItem.Status != ReturnStatus.Completed && caseItem.Status != ReturnStatus.Rejected)
+                        {
+                            <form method="post" asp-route-id="@caseItem.Id">
+                                <div class="mb-3">
+                                    <label for="NewMessageContent" class="form-label">Send a Message to Buyer</label>
+                                    <textarea class="form-control" id="NewMessageContent" name="NewMessageContent" 
+                                              rows="3" maxlength="2000" placeholder="Type your message here..."
+                                              asp-for="NewMessageContent"></textarea>
+                                    <span asp-validation-for="NewMessageContent" class="text-danger"></span>
+                                    <small class="text-muted">Maximum 2000 characters</small>
+                                </div>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-send me-1"></i>Send Message
+                                </button>
+                            </form>
+                        }
+                        else
+                        {
+                            <div class="alert alert-info mb-0">
+                                <i class="bi bi-info-circle me-2"></i>
+                                This case has been @(caseItem.Status == ReturnStatus.Completed ? "resolved" : "closed"). No more messages can be sent.
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            @* Right Column - Summary & Actions *@
+            <div class="col-lg-4">
+                @* Case Summary *@
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-info-circle me-2"></i>Case Summary</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted">Case Number:</span>
+                            <span class="font-monospace">@caseItem.CaseNumber</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted">Type:</span>
+                            <span>@caseItem.CaseType</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted">Status:</span>
+                            <span class="badge @DetailsModel.GetStatusBadgeClass(caseItem.Status)">
+                                @DetailsModel.GetStatusDisplayText(caseItem.Status)
+                            </span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted">Submitted:</span>
+                            <span>@caseItem.CreatedAt.ToString("MMM dd, yyyy")</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-0">
+                            <span class="text-muted">Last Updated:</span>
+                            <span>@caseItem.LastUpdatedAt.ToString("MMM dd, yyyy")</span>
+                        </div>
+                        @if (caseItem.SellerSubOrder != null)
+                        {
+                            <hr>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="text-muted">Sub-Order:</span>
+                                <a asp-page="/Seller/Orders/Details" asp-route-id="@caseItem.SellerSubOrderId" 
+                                   class="font-monospace">@caseItem.SellerSubOrder.SubOrderNumber</a>
+                            </div>
+                            <div class="d-flex justify-content-between mb-0">
+                                <span class="text-muted">Amount:</span>
+                                <span class="text-primary fw-bold">@caseItem.SellerSubOrder.TotalAmount.ToString("C")</span>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                @* Actions *@
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-lightning me-2"></i>Actions</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-grid gap-2">
+                            @if (caseItem.Status != ReturnStatus.Completed && caseItem.Status != ReturnStatus.Rejected)
+                            {
+                                <a asp-page="Resolve" asp-route-id="@caseItem.Id" class="btn btn-success">
+                                    <i class="bi bi-check-circle me-1"></i>Resolve Case
+                                </a>
+                            }
+                            @if (caseItem.SellerSubOrderId != Guid.Empty)
+                            {
+                                <a asp-page="/Seller/Orders/Details" asp-route-id="@caseItem.SellerSubOrderId" class="btn btn-outline-primary">
+                                    <i class="bi bi-box me-1"></i>View Order Details
+                                </a>
+                            }
+                            <a asp-page="/Seller/Orders/Index" class="btn btn-outline-secondary">
+                                <i class="bi bi-arrow-left me-1"></i>Back to Orders
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                @* Buyer Info *@
+                @if (caseItem.SellerSubOrder?.Order != null)
+                {
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="bi bi-person me-2"></i>Buyer Information</h5>
+                        </div>
+                        <div class="card-body">
+                            <p class="mb-1"><strong>@caseItem.SellerSubOrder.Order.DeliveryFullName</strong></p>
+                            <p class="mb-1 text-muted">@caseItem.SellerSubOrder.Order.BuyerEmail</p>
+                            <p class="mb-0 text-muted small">
+                                @caseItem.SellerSubOrder.Order.DeliveryAddressLine1<br>
+                                @if (!string.IsNullOrEmpty(caseItem.SellerSubOrder.Order.DeliveryAddressLine2))
+                                {
+                                    @caseItem.SellerSubOrder.Order.DeliveryAddressLine2<br>
+                                }
+                                @caseItem.SellerSubOrder.Order.DeliveryCity, @caseItem.SellerSubOrder.Order.DeliveryState @caseItem.SellerSubOrder.Order.DeliveryPostalCode<br>
+                                @caseItem.SellerSubOrder.Order.DeliveryCountry
+                            </p>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="alert alert-warning">
+            <h5>Case Not Found</h5>
+            <p>We couldn't find the case you're looking for.</p>
+            <a asp-page="/Seller/Orders/Index" class="btn btn-primary">Back to Orders</a>
+        </div>
+    }
+</div>
