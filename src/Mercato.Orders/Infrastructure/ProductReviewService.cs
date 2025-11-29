@@ -141,6 +141,32 @@ public class ProductReviewService : IProductReviewService
     }
 
     /// <inheritdoc />
+    public async Task<GetProductReviewsPagedResult> GetReviewsByProductIdPagedAsync(GetProductReviewsQuery query)
+    {
+        var validationErrors = ValidateGetProductReviewsQuery(query);
+        if (validationErrors.Count > 0)
+        {
+            return GetProductReviewsPagedResult.Failure(validationErrors);
+        }
+
+        try
+        {
+            var (reviews, totalCount, averageRating) = await _productReviewRepository.GetPagedByProductIdAsync(
+                query.ProductId,
+                query.Page,
+                query.PageSize,
+                query.SortBy);
+
+            return GetProductReviewsPagedResult.Success(reviews, totalCount, averageRating, query.Page, query.PageSize);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting paged reviews for product {ProductId}", query.ProductId);
+            return GetProductReviewsPagedResult.Failure("An error occurred while getting the reviews.");
+        }
+    }
+
+    /// <inheritdoc />
     public async Task<GetProductReviewsResult> GetReviewsByBuyerIdAsync(string buyerId)
     {
         if (string.IsNullOrEmpty(buyerId))
@@ -247,6 +273,31 @@ public class ProductReviewService : IProductReviewService
         else if (command.ReviewText.Length > 2000)
         {
             errors.Add("Review text must not exceed 2000 characters.");
+        }
+
+        return errors;
+    }
+
+    /// <summary>
+    /// Validates the get product reviews query.
+    /// </summary>
+    private static List<string> ValidateGetProductReviewsQuery(GetProductReviewsQuery query)
+    {
+        var errors = new List<string>();
+
+        if (query.ProductId == Guid.Empty)
+        {
+            errors.Add("Product ID is required.");
+        }
+
+        if (query.Page < 1)
+        {
+            errors.Add("Page must be at least 1.");
+        }
+
+        if (query.PageSize < 1 || query.PageSize > 100)
+        {
+            errors.Add("Page size must be between 1 and 100.");
         }
 
         return errors;

@@ -229,3 +229,135 @@ public class CanSubmitReviewResult
         Errors = ["Not authorized to check review eligibility for this item."]
     };
 }
+
+/// <summary>
+/// Query for getting paginated product reviews.
+/// </summary>
+public class GetProductReviewsQuery
+{
+    /// <summary>
+    /// Gets or sets the product ID to get reviews for.
+    /// </summary>
+    public Guid ProductId { get; set; }
+
+    /// <summary>
+    /// Gets or sets the page number (1-based). Defaults to 1.
+    /// </summary>
+    public int Page { get; set; } = 1;
+
+    /// <summary>
+    /// Gets or sets the page size. Defaults to 10.
+    /// </summary>
+    public int PageSize { get; set; } = 10;
+
+    /// <summary>
+    /// Gets or sets the sort option. Defaults to Newest.
+    /// </summary>
+    public ReviewSortOption SortBy { get; set; } = ReviewSortOption.Newest;
+}
+
+/// <summary>
+/// Result of getting paginated product reviews.
+/// </summary>
+public class GetProductReviewsPagedResult
+{
+    /// <summary>
+    /// Gets a value indicating whether the operation succeeded.
+    /// </summary>
+    public bool Succeeded { get; private init; }
+
+    /// <summary>
+    /// Gets the list of errors if the operation failed.
+    /// </summary>
+    public IReadOnlyList<string> Errors { get; private init; } = [];
+
+    /// <summary>
+    /// Gets the list of product reviews for the current page.
+    /// </summary>
+    public IReadOnlyList<ProductReview> Reviews { get; private init; } = [];
+
+    /// <summary>
+    /// Gets the total count of reviews for the product.
+    /// </summary>
+    public int TotalCount { get; private init; }
+
+    /// <summary>
+    /// Gets the average rating for the product. Null if no reviews exist.
+    /// </summary>
+    public double? AverageRating { get; private init; }
+
+    /// <summary>
+    /// Gets the current page number (1-based).
+    /// </summary>
+    public int Page { get; private init; }
+
+    /// <summary>
+    /// Gets the page size.
+    /// </summary>
+    public int PageSize { get; private init; }
+
+    /// <summary>
+    /// Gets the total number of pages.
+    /// </summary>
+    public int TotalPages { get; private init; }
+
+    /// <summary>
+    /// Gets a value indicating whether there is a next page.
+    /// </summary>
+    public bool HasNextPage { get; private init; }
+
+    /// <summary>
+    /// Gets a value indicating whether there is a previous page.
+    /// </summary>
+    public bool HasPreviousPage { get; private init; }
+
+    /// <summary>
+    /// Creates a successful result.
+    /// </summary>
+    /// <param name="reviews">The product reviews for the current page.</param>
+    /// <param name="totalCount">The total count of reviews.</param>
+    /// <param name="averageRating">The average rating.</param>
+    /// <param name="page">The current page number.</param>
+    /// <param name="pageSize">The page size.</param>
+    /// <returns>A successful result.</returns>
+    public static GetProductReviewsPagedResult Success(
+        IReadOnlyList<ProductReview> reviews,
+        int totalCount,
+        double? averageRating,
+        int page,
+        int pageSize)
+    {
+        var totalPages = pageSize > 0 ? (int)Math.Ceiling((double)totalCount / pageSize) : 0;
+        return new GetProductReviewsPagedResult
+        {
+            Succeeded = true,
+            Errors = [],
+            Reviews = reviews,
+            TotalCount = totalCount,
+            AverageRating = averageRating,
+            Page = page,
+            PageSize = pageSize,
+            TotalPages = totalPages,
+            HasNextPage = page < totalPages,
+            HasPreviousPage = page > 1
+        };
+    }
+
+    /// <summary>
+    /// Creates a failed result with the specified errors.
+    /// </summary>
+    /// <param name="errors">The list of error messages.</param>
+    /// <returns>A failed result.</returns>
+    public static GetProductReviewsPagedResult Failure(IReadOnlyList<string> errors) => new()
+    {
+        Succeeded = false,
+        Errors = errors
+    };
+
+    /// <summary>
+    /// Creates a failed result with a single error message.
+    /// </summary>
+    /// <param name="error">The error message.</param>
+    /// <returns>A failed result.</returns>
+    public static GetProductReviewsPagedResult Failure(string error) => Failure([error]);
+}

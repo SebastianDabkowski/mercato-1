@@ -53,6 +53,43 @@ public class ProductReviewRepository : IProductReviewRepository
     }
 
     /// <inheritdoc />
+    public async Task<(IReadOnlyList<ProductReview> reviews, int totalCount, double? averageRating)> GetPagedByProductIdAsync(
+        Guid productId,
+        int page,
+        int pageSize,
+        ReviewSortOption sortBy)
+    {
+        var baseQuery = _context.ProductReviews
+            .Where(r => r.ProductId == productId && r.Status == ReviewStatus.Published);
+
+        // Get total count and average rating
+        var totalCount = await baseQuery.CountAsync();
+        double? averageRating = totalCount > 0 
+            ? await baseQuery.AverageAsync(r => (double)r.Rating) 
+            : null;
+
+        // Apply sorting
+        IQueryable<ProductReview> sortedQuery = sortBy switch
+        {
+            ReviewSortOption.HighestRating => baseQuery
+                .OrderByDescending(r => r.Rating)
+                .ThenByDescending(r => r.CreatedAt),
+            ReviewSortOption.LowestRating => baseQuery
+                .OrderBy(r => r.Rating)
+                .ThenByDescending(r => r.CreatedAt),
+            _ => baseQuery.OrderByDescending(r => r.CreatedAt) // Newest is default
+        };
+
+        // Apply pagination
+        var reviews = await sortedQuery
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        return (reviews, totalCount, averageRating);
+    }
+
+    /// <inheritdoc />
     public async Task<IReadOnlyList<ProductReview>> GetByOrderIdAsync(Guid orderId)
     {
         return await _context.ProductReviews

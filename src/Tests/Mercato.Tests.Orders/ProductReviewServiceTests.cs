@@ -544,6 +544,279 @@ public class ProductReviewServiceTests
 
     #endregion
 
+    #region GetReviewsByProductIdPagedAsync Tests
+
+    [Fact]
+    public async Task GetReviewsByProductIdPagedAsync_ValidQuery_ReturnsPagedReviews()
+    {
+        // Arrange
+        var reviews = new List<ProductReview>
+        {
+            CreateTestReviewWithRating(5),
+            CreateTestReviewWithRating(4)
+        };
+
+        _mockProductReviewRepository.Setup(r => r.GetPagedByProductIdAsync(
+                TestProductId, 1, 10, ReviewSortOption.Newest))
+            .ReturnsAsync((reviews, 2, 4.5));
+
+        var query = new GetProductReviewsQuery
+        {
+            ProductId = TestProductId,
+            Page = 1,
+            PageSize = 10,
+            SortBy = ReviewSortOption.Newest
+        };
+
+        // Act
+        var result = await _service.GetReviewsByProductIdPagedAsync(query);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.Equal(2, result.Reviews.Count);
+        Assert.Equal(2, result.TotalCount);
+        Assert.Equal(4.5, result.AverageRating);
+        Assert.Equal(1, result.Page);
+        Assert.Equal(10, result.PageSize);
+        Assert.Equal(1, result.TotalPages);
+        Assert.False(result.HasNextPage);
+        Assert.False(result.HasPreviousPage);
+    }
+
+    [Fact]
+    public async Task GetReviewsByProductIdPagedAsync_WithPagination_CalculatesPagesCorrectly()
+    {
+        // Arrange
+        var reviews = new List<ProductReview>
+        {
+            CreateTestReviewWithRating(5),
+            CreateTestReviewWithRating(4)
+        };
+
+        _mockProductReviewRepository.Setup(r => r.GetPagedByProductIdAsync(
+                TestProductId, 2, 2, ReviewSortOption.Newest))
+            .ReturnsAsync((reviews, 5, 4.2));
+
+        var query = new GetProductReviewsQuery
+        {
+            ProductId = TestProductId,
+            Page = 2,
+            PageSize = 2,
+            SortBy = ReviewSortOption.Newest
+        };
+
+        // Act
+        var result = await _service.GetReviewsByProductIdPagedAsync(query);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.Equal(5, result.TotalCount);
+        Assert.Equal(2, result.Page);
+        Assert.Equal(2, result.PageSize);
+        Assert.Equal(3, result.TotalPages); // 5 reviews / 2 per page = 3 pages
+        Assert.True(result.HasNextPage);
+        Assert.True(result.HasPreviousPage);
+    }
+
+    [Fact]
+    public async Task GetReviewsByProductIdPagedAsync_EmptyProductId_ReturnsFailure()
+    {
+        // Arrange
+        var query = new GetProductReviewsQuery
+        {
+            ProductId = Guid.Empty,
+            Page = 1,
+            PageSize = 10
+        };
+
+        // Act
+        var result = await _service.GetReviewsByProductIdPagedAsync(query);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains("Product ID is required.", result.Errors);
+    }
+
+    [Fact]
+    public async Task GetReviewsByProductIdPagedAsync_InvalidPage_ReturnsFailure()
+    {
+        // Arrange
+        var query = new GetProductReviewsQuery
+        {
+            ProductId = TestProductId,
+            Page = 0,
+            PageSize = 10
+        };
+
+        // Act
+        var result = await _service.GetReviewsByProductIdPagedAsync(query);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains("Page must be at least 1.", result.Errors);
+    }
+
+    [Fact]
+    public async Task GetReviewsByProductIdPagedAsync_InvalidPageSize_ReturnsFailure()
+    {
+        // Arrange
+        var query = new GetProductReviewsQuery
+        {
+            ProductId = TestProductId,
+            Page = 1,
+            PageSize = 0
+        };
+
+        // Act
+        var result = await _service.GetReviewsByProductIdPagedAsync(query);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains("Page size must be between 1 and 100.", result.Errors);
+    }
+
+    [Fact]
+    public async Task GetReviewsByProductIdPagedAsync_PageSizeTooLarge_ReturnsFailure()
+    {
+        // Arrange
+        var query = new GetProductReviewsQuery
+        {
+            ProductId = TestProductId,
+            Page = 1,
+            PageSize = 101
+        };
+
+        // Act
+        var result = await _service.GetReviewsByProductIdPagedAsync(query);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains("Page size must be between 1 and 100.", result.Errors);
+    }
+
+    [Fact]
+    public async Task GetReviewsByProductIdPagedAsync_NoReviews_ReturnsEmptyResult()
+    {
+        // Arrange
+        _mockProductReviewRepository.Setup(r => r.GetPagedByProductIdAsync(
+                TestProductId, 1, 10, ReviewSortOption.Newest))
+            .ReturnsAsync((new List<ProductReview>(), 0, null));
+
+        var query = new GetProductReviewsQuery
+        {
+            ProductId = TestProductId,
+            Page = 1,
+            PageSize = 10
+        };
+
+        // Act
+        var result = await _service.GetReviewsByProductIdPagedAsync(query);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.Empty(result.Reviews);
+        Assert.Equal(0, result.TotalCount);
+        Assert.Null(result.AverageRating);
+        Assert.Equal(0, result.TotalPages);
+        Assert.False(result.HasNextPage);
+        Assert.False(result.HasPreviousPage);
+    }
+
+    [Fact]
+    public async Task GetReviewsByProductIdPagedAsync_HighestRatingSort_PassesSortOption()
+    {
+        // Arrange
+        var reviews = new List<ProductReview>
+        {
+            CreateTestReviewWithRating(5),
+            CreateTestReviewWithRating(4)
+        };
+
+        _mockProductReviewRepository.Setup(r => r.GetPagedByProductIdAsync(
+                TestProductId, 1, 10, ReviewSortOption.HighestRating))
+            .ReturnsAsync((reviews, 2, 4.5));
+
+        var query = new GetProductReviewsQuery
+        {
+            ProductId = TestProductId,
+            Page = 1,
+            PageSize = 10,
+            SortBy = ReviewSortOption.HighestRating
+        };
+
+        // Act
+        var result = await _service.GetReviewsByProductIdPagedAsync(query);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        _mockProductReviewRepository.Verify(r => r.GetPagedByProductIdAsync(
+            TestProductId, 1, 10, ReviewSortOption.HighestRating), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetReviewsByProductIdPagedAsync_LowestRatingSort_PassesSortOption()
+    {
+        // Arrange
+        var reviews = new List<ProductReview>
+        {
+            CreateTestReviewWithRating(1),
+            CreateTestReviewWithRating(2)
+        };
+
+        _mockProductReviewRepository.Setup(r => r.GetPagedByProductIdAsync(
+                TestProductId, 1, 10, ReviewSortOption.LowestRating))
+            .ReturnsAsync((reviews, 2, 1.5));
+
+        var query = new GetProductReviewsQuery
+        {
+            ProductId = TestProductId,
+            Page = 1,
+            PageSize = 10,
+            SortBy = ReviewSortOption.LowestRating
+        };
+
+        // Act
+        var result = await _service.GetReviewsByProductIdPagedAsync(query);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        _mockProductReviewRepository.Verify(r => r.GetPagedByProductIdAsync(
+            TestProductId, 1, 10, ReviewSortOption.LowestRating), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetReviewsByProductIdPagedAsync_CalculatesAverageRating_ReturnsCorrectValue()
+    {
+        // Arrange
+        var reviews = new List<ProductReview>
+        {
+            CreateTestReviewWithRating(5),
+            CreateTestReviewWithRating(3),
+            CreateTestReviewWithRating(4)
+        };
+
+        // Average of 5, 3, 4 = 4.0
+        _mockProductReviewRepository.Setup(r => r.GetPagedByProductIdAsync(
+                TestProductId, 1, 10, ReviewSortOption.Newest))
+            .ReturnsAsync((reviews, 3, 4.0));
+
+        var query = new GetProductReviewsQuery
+        {
+            ProductId = TestProductId,
+            Page = 1,
+            PageSize = 10
+        };
+
+        // Act
+        var result = await _service.GetReviewsByProductIdPagedAsync(query);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.Equal(4.0, result.AverageRating);
+    }
+
+    #endregion
+
     #region Helper Methods
 
     private static SellerSubOrderItem CreateTestItem(SellerSubOrderItemStatus status)
@@ -621,6 +894,25 @@ public class ProductReviewServiceTests
             BuyerId = TestBuyerId,
             Rating = 5,
             ReviewText = "Great product!",
+            Status = ReviewStatus.Published,
+            CreatedAt = DateTimeOffset.UtcNow,
+            LastUpdatedAt = DateTimeOffset.UtcNow
+        };
+    }
+
+    private static ProductReview CreateTestReviewWithRating(int rating)
+    {
+        return new ProductReview
+        {
+            Id = Guid.NewGuid(),
+            OrderId = TestOrderId,
+            SellerSubOrderId = TestSubOrderId,
+            SellerSubOrderItemId = Guid.NewGuid(),
+            ProductId = TestProductId,
+            StoreId = TestStoreId,
+            BuyerId = TestBuyerId,
+            Rating = rating,
+            ReviewText = $"Review with {rating} stars.",
             Status = ReviewStatus.Published,
             CreatedAt = DateTimeOffset.UtcNow,
             LastUpdatedAt = DateTimeOffset.UtcNow

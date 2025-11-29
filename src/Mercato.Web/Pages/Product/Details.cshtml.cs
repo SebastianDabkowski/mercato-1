@@ -2,6 +2,9 @@ using System.Security.Claims;
 using System.Text.Json;
 using Mercato.Cart.Application.Commands;
 using Mercato.Cart.Application.Services;
+using Mercato.Orders.Application.Commands;
+using Mercato.Orders.Application.Services;
+using Mercato.Orders.Domain.Entities;
 using Mercato.Product.Application.Services;
 using Mercato.Product.Domain.Entities;
 using Mercato.Seller.Application.Services;
@@ -19,10 +22,12 @@ public class DetailsModel : PageModel
     private readonly ICategoryService _categoryService;
     private readonly IStoreProfileService _storeProfileService;
     private readonly ICartService _cartService;
+    private readonly IProductReviewService _productReviewService;
     private readonly ILogger<DetailsModel> _logger;
 
     private const string PlaceholderImage = "/images/placeholder.png";
     private const string GuestCartCookieName = "GuestCartId";
+    private const int DefaultReviewsPageSize = 10;
     private static readonly string[] AllowedImagePrefixes = ["/uploads/", "/images/"];
 
     /// <summary>
@@ -32,18 +37,21 @@ public class DetailsModel : PageModel
     /// <param name="categoryService">The category service.</param>
     /// <param name="storeProfileService">The store profile service.</param>
     /// <param name="cartService">The cart service.</param>
+    /// <param name="productReviewService">The product review service.</param>
     /// <param name="logger">The logger.</param>
     public DetailsModel(
         IProductService productService,
         ICategoryService categoryService,
         IStoreProfileService storeProfileService,
         ICartService cartService,
+        IProductReviewService productReviewService,
         ILogger<DetailsModel> logger)
     {
         _productService = productService;
         _categoryService = categoryService;
         _storeProfileService = storeProfileService;
         _cartService = cartService;
+        _productReviewService = productReviewService;
         _logger = logger;
     }
 
@@ -63,10 +71,27 @@ public class DetailsModel : PageModel
     public Mercato.Seller.Domain.Entities.Store? Store { get; private set; }
 
     /// <summary>
+    /// Gets the paginated reviews result for the product.
+    /// </summary>
+    public GetProductReviewsPagedResult? ReviewsResult { get; private set; }
+
+    /// <summary>
     /// Gets or sets the referrer URL for "Back to results" navigation.
     /// </summary>
     [BindProperty(SupportsGet = true)]
     public string? ReturnUrl { get; set; }
+
+    /// <summary>
+    /// Gets or sets the reviews page number (1-based).
+    /// </summary>
+    [BindProperty(SupportsGet = true)]
+    public int ReviewsPage { get; set; } = 1;
+
+    /// <summary>
+    /// Gets or sets the reviews sort option.
+    /// </summary>
+    [BindProperty(SupportsGet = true)]
+    public string? ReviewsSortBy { get; set; }
 
     /// <summary>
     /// Handles GET requests for the product details page.
@@ -93,6 +118,9 @@ public class DetailsModel : PageModel
 
         // Load store information
         Store = await _storeProfileService.GetStoreByIdAsync(Product.StoreId);
+
+        // Load product reviews with pagination and sorting
+        await LoadProductReviewsAsync(id);
 
         return Page();
     }
@@ -193,6 +221,46 @@ public class DetailsModel : PageModel
         {
             return PlaceholderImage;
         }
+    }
+
+    /// <summary>
+    /// Generates a star rating display string.
+    /// </summary>
+    /// <param name="rating">The rating value (1-5).</param>
+    /// <returns>A string of filled and empty star icons.</returns>
+    public static string GetStarRating(int rating)
+    {
+        var clampedRating = Math.Clamp(rating, 0, 5);
+        return new string('★', clampedRating) + new string('☆', 5 - clampedRating);
+    }
+
+    private async Task LoadProductReviewsAsync(Guid productId)
+    {
+        // Parse the sort option
+        var sortBy = ParseSortOption(ReviewsSortBy);
+
+        // Ensure valid page number
+        var page = Math.Max(1, ReviewsPage);
+
+        var query = new GetProductReviewsQuery
+        {
+            ProductId = productId,
+            Page = page,
+            PageSize = DefaultReviewsPageSize,
+            SortBy = sortBy
+        };
+
+        ReviewsResult = await _productReviewService.GetReviewsByProductIdPagedAsync(query);
+    }
+
+    private static ReviewSortOption ParseSortOption(string? sortBy)
+    {
+        return sortBy?.ToLowerInvariant() switch
+        {
+            "highest" => ReviewSortOption.HighestRating,
+            "lowest" => ReviewSortOption.LowestRating,
+            _ => ReviewSortOption.Newest
+        };
     }
 
     private string GetOrCreateGuestCartId()

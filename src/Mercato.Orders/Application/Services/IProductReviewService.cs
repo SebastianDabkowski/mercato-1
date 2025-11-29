@@ -22,6 +22,13 @@ public interface IProductReviewService
     Task<GetProductReviewsResult> GetReviewsByProductIdAsync(Guid productId);
 
     /// <summary>
+    /// Gets paginated product reviews for a specific product with sorting and average rating.
+    /// </summary>
+    /// <param name="query">The query with pagination and sorting options.</param>
+    /// <returns>The result containing paginated reviews and metadata.</returns>
+    Task<GetProductReviewsPagedResult> GetReviewsByProductIdPagedAsync(GetProductReviewsQuery query);
+
+    /// <summary>
     /// Gets all product reviews submitted by a specific buyer.
     /// </summary>
     /// <param name="buyerId">The buyer ID.</param>
