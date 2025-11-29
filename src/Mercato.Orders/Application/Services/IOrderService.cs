@@ -1,4 +1,5 @@
 using Mercato.Orders.Application.Commands;
+using Mercato.Orders.Application.Queries;
 
 namespace Mercato.Orders.Application.Services;
 
@@ -44,6 +45,20 @@ public interface IOrderService
     /// <param name="buyerId">The buyer ID.</param>
     /// <returns>The result containing the buyer's orders.</returns>
     Task<GetOrdersResult> GetOrdersForBuyerAsync(string buyerId);
+
+    /// <summary>
+    /// Gets filtered and paginated orders for a specific buyer.
+    /// </summary>
+    /// <param name="query">The filter query parameters.</param>
+    /// <returns>The result containing the filtered and paginated orders.</returns>
+    Task<GetFilteredOrdersResult> GetFilteredOrdersForBuyerAsync(BuyerOrderFilterQuery query);
+
+    /// <summary>
+    /// Gets distinct sellers from a buyer's orders for filter dropdowns.
+    /// </summary>
+    /// <param name="buyerId">The buyer ID.</param>
+    /// <returns>A list of distinct store IDs and names.</returns>
+    Task<IReadOnlyList<(Guid StoreId, string StoreName)>> GetDistinctSellersForBuyerAsync(string buyerId);
 
     /// <summary>
     /// Sends a confirmation email for an order.

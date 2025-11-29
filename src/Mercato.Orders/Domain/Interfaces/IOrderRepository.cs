@@ -36,6 +36,33 @@ public interface IOrderRepository
     Task<Order?> GetByPaymentTransactionIdAsync(Guid transactionId);
 
     /// <summary>
+    /// Gets a filtered and paginated list of orders for a buyer.
+    /// </summary>
+    /// <param name="buyerId">The buyer ID.</param>
+    /// <param name="statuses">Optional list of statuses to filter by.</param>
+    /// <param name="fromDate">Optional start date for date range filter (inclusive).</param>
+    /// <param name="toDate">Optional end date for date range filter (inclusive).</param>
+    /// <param name="storeId">Optional store ID to filter orders that contain sub-orders for this seller.</param>
+    /// <param name="page">Page number (1-based).</param>
+    /// <param name="pageSize">Page size.</param>
+    /// <returns>A tuple containing the list of orders for the current page and the total count.</returns>
+    Task<(IReadOnlyList<Order> Orders, int TotalCount)> GetFilteredByBuyerIdAsync(
+        string buyerId,
+        IReadOnlyList<OrderStatus>? statuses,
+        DateTimeOffset? fromDate,
+        DateTimeOffset? toDate,
+        Guid? storeId,
+        int page,
+        int pageSize);
+
+    /// <summary>
+    /// Gets distinct sellers (stores) from a buyer's orders.
+    /// </summary>
+    /// <param name="buyerId">The buyer ID.</param>
+    /// <returns>A list of distinct store IDs and names.</returns>
+    Task<IReadOnlyList<(Guid StoreId, string StoreName)>> GetDistinctSellersByBuyerIdAsync(string buyerId);
+
+    /// <summary>
     /// Adds a new order to the repository.
     /// </summary>
     /// <param name="order">The order to add.</param>

@@ -45,6 +45,9 @@ public class OrderDbContext : DbContext
             entity.HasIndex(e => e.OrderNumber).IsUnique();
             entity.HasIndex(e => e.BuyerId);
             entity.HasIndex(e => e.PaymentTransactionId);
+            // Composite index for buyer order filtering (status, date range)
+            entity.HasIndex(e => new { e.BuyerId, e.CreatedAt, e.Status })
+                .HasDatabaseName("IX_Orders_BuyerId_CreatedAt_Status");
             entity.Property(e => e.ItemsSubtotal).HasPrecision(18, 2);
             entity.Property(e => e.ShippingTotal).HasPrecision(18, 2);
             entity.Property(e => e.TotalAmount).HasPrecision(18, 2);
