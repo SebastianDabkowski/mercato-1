@@ -33,6 +33,11 @@ public class OrderDbContext : DbContext
     /// </summary>
     public DbSet<SellerSubOrderItem> SellerSubOrderItems { get; set; }
 
+    /// <summary>
+    /// Gets or sets the return requests DbSet.
+    /// </summary>
+    public DbSet<ReturnRequest> ReturnRequests { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -101,6 +106,19 @@ public class OrderDbContext : DbContext
             entity.Property(e => e.ProductImageUrl).HasMaxLength(500);
             entity.HasIndex(e => e.SellerSubOrderId);
             entity.HasIndex(e => e.ProductId);
+        });
+
+        modelBuilder.Entity<ReturnRequest>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.BuyerId).IsRequired().HasMaxLength(450);
+            entity.Property(e => e.Reason).IsRequired().HasMaxLength(2000);
+            entity.Property(e => e.SellerNotes).HasMaxLength(2000);
+            entity.HasIndex(e => e.SellerSubOrderId).IsUnique();
+            entity.HasIndex(e => e.BuyerId);
+            entity.HasOne(e => e.SellerSubOrder)
+                .WithOne()
+                .HasForeignKey<ReturnRequest>(e => e.SellerSubOrderId);
         });
     }
 }

@@ -51,6 +51,11 @@ public class DetailsModel : PageModel
     public Order? ParentOrder { get; private set; }
 
     /// <summary>
+    /// Gets the return request for this sub-order, if one exists.
+    /// </summary>
+    public ReturnRequest? ReturnRequest { get; private set; }
+
+    /// <summary>
     /// Gets the error message to display.
     /// </summary>
     public string? ErrorMessage { get; private set; }
@@ -104,6 +109,10 @@ public class DetailsModel : PageModel
 
             SubOrder = result.SellerSubOrder;
             ParentOrder = SubOrder?.Order;
+
+            // Load return request if exists
+            await LoadReturnRequestAsync(id);
+
             return Page();
         }
         catch (Exception ex)
@@ -239,6 +248,28 @@ public class DetailsModel : PageModel
     public bool CanUpdateTracking => SubOrder != null &&
         SubOrder.Status == SellerSubOrderStatus.Shipped;
 
+    private async Task LoadReturnRequestAsync(Guid subOrderId)
+    {
+        if (Store == null)
+        {
+            return;
+        }
+
+        try
+        {
+            var result = await _orderService.GetReturnRequestForSellerSubOrderAsync(subOrderId, Store.Id);
+            if (result.Succeeded)
+            {
+                ReturnRequest = result.ReturnRequest;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error loading return request for sub-order {SubOrderId}", subOrderId);
+            // Don't fail the page load if return request can't be loaded
+        }
+    }
+
     private async Task<IActionResult> LoadSubOrderAndReturnPage(Guid id)
     {
         if (Store != null)
@@ -249,6 +280,8 @@ public class DetailsModel : PageModel
                 SubOrder = result.SellerSubOrder;
                 ParentOrder = SubOrder?.Order;
             }
+
+            await LoadReturnRequestAsync(id);
         }
         return Page();
     }
@@ -312,6 +345,36 @@ public class DetailsModel : PageModel
         SellerSubOrderStatus.Cancelled => "Payment Cancelled",
         SellerSubOrderStatus.Refunded => "Refunded",
         _ => "Paid"
+    };
+
+    /// <summary>
+    /// Gets the CSS class for a return status badge.
+    /// </summary>
+    /// <param name="status">The return status.</param>
+    /// <returns>The CSS class name.</returns>
+    public static string GetReturnStatusBadgeClass(ReturnStatus status) => status switch
+    {
+        ReturnStatus.Requested => "bg-warning text-dark",
+        ReturnStatus.UnderReview => "bg-info",
+        ReturnStatus.Approved => "bg-success",
+        ReturnStatus.Rejected => "bg-danger",
+        ReturnStatus.Completed => "bg-dark",
+        _ => "bg-secondary"
+    };
+
+    /// <summary>
+    /// Gets the display text for a return status.
+    /// </summary>
+    /// <param name="status">The return status.</param>
+    /// <returns>The display text.</returns>
+    public static string GetReturnStatusDisplayText(ReturnStatus status) => status switch
+    {
+        ReturnStatus.Requested => "Requested",
+        ReturnStatus.UnderReview => "Under Review",
+        ReturnStatus.Approved => "Approved",
+        ReturnStatus.Rejected => "Rejected",
+        ReturnStatus.Completed => "Completed",
+        _ => status.ToString()
     };
 
     private string? GetSellerId()

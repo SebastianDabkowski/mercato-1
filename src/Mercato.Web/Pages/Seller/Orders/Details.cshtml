@@ -103,6 +103,51 @@
                     </div>
                 </div>
 
+                @* Return Request Section *@
+                @if (Model.ReturnRequest != null)
+                {
+                    var returnRequest = Model.ReturnRequest;
+                    <div class="card mb-4 border-warning">
+                        <div class="card-header bg-warning bg-opacity-10">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <h5 class="mb-0">
+                                    <i class="bi bi-arrow-counterclockwise me-2"></i>Return Request
+                                </h5>
+                                <span class="badge @DetailsModel.GetReturnStatusBadgeClass(returnRequest.Status)">
+                                    @DetailsModel.GetReturnStatusDisplayText(returnRequest.Status)
+                                </span>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <strong>Request Date:</strong>
+                                    <span class="ms-2">@returnRequest.CreatedAt.ToString("MMMM dd, yyyy 'at' h:mm tt")</span>
+                                </div>
+                                <div class="col-md-6">
+                                    <strong>Last Updated:</strong>
+                                    <span class="ms-2">@returnRequest.LastUpdatedAt.ToString("MMMM dd, yyyy 'at' h:mm tt")</span>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <strong>Buyer's Reason:</strong>
+                                <p class="mb-0 mt-2 p-3 bg-light rounded">@returnRequest.Reason</p>
+                            </div>
+                            @if (!string.IsNullOrEmpty(returnRequest.SellerNotes))
+                            {
+                                <div class="mb-3">
+                                    <strong>Your Notes:</strong>
+                                    <p class="mb-0 mt-2 p-3 bg-light rounded">@returnRequest.SellerNotes</p>
+                                </div>
+                            }
+                            <div class="alert alert-info mb-0">
+                                <i class="bi bi-info-circle me-2"></i>
+                                <strong>Note:</strong> Return status updates will be available in Phase 2.
+                            </div>
+                        </div>
+                    </div>
+                }
+
                 @* Update Status Form *@
                 @if (Model.CanUpdateStatus)
                 {

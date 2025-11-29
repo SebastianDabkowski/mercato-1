@@ -5,6 +5,7 @@ using Mercato.Orders.Domain.Entities;
 using Mercato.Orders.Domain.Interfaces;
 using Mercato.Orders.Infrastructure;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Moq;
 
 namespace Mercato.Tests.Orders;
@@ -19,6 +20,7 @@ public class OrderServiceTests
 
     private readonly Mock<IOrderRepository> _mockOrderRepository;
     private readonly Mock<ISellerSubOrderRepository> _mockSellerSubOrderRepository;
+    private readonly Mock<IReturnRequestRepository> _mockReturnRequestRepository;
     private readonly Mock<IOrderConfirmationEmailService> _mockEmailService;
     private readonly Mock<ILogger<OrderService>> _mockLogger;
     private readonly OrderService _service;
@@ -27,12 +29,16 @@ public class OrderServiceTests
     {
         _mockOrderRepository = new Mock<IOrderRepository>(MockBehavior.Strict);
         _mockSellerSubOrderRepository = new Mock<ISellerSubOrderRepository>(MockBehavior.Strict);
+        _mockReturnRequestRepository = new Mock<IReturnRequestRepository>(MockBehavior.Strict);
         _mockEmailService = new Mock<IOrderConfirmationEmailService>(MockBehavior.Strict);
         _mockLogger = new Mock<ILogger<OrderService>>();
+        var returnSettings = Options.Create(new ReturnSettings { ReturnWindowDays = 30 });
         _service = new OrderService(
             _mockOrderRepository.Object,
             _mockSellerSubOrderRepository.Object,
+            _mockReturnRequestRepository.Object,
             _mockEmailService.Object,
+            returnSettings,
             _mockLogger.Object);
     }
 

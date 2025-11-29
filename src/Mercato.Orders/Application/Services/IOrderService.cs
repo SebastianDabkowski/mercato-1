@@ -128,4 +128,54 @@ public interface IOrderService
     /// <param name="query">The filter query parameters.</param>
     /// <returns>The CSV file as a byte array.</returns>
     Task<byte[]> ExportSellerSubOrdersToCsvAsync(Guid storeId, SellerSubOrderFilterQuery query);
+
+    /// <summary>
+    /// Creates a new return request for a seller sub-order.
+    /// </summary>
+    /// <param name="command">The create return request command.</param>
+    /// <returns>The result of the create operation.</returns>
+    Task<CreateReturnRequestResult> CreateReturnRequestAsync(CreateReturnRequestCommand command);
+
+    /// <summary>
+    /// Gets a return request by its unique identifier.
+    /// </summary>
+    /// <param name="returnRequestId">The return request ID.</param>
+    /// <param name="buyerId">The buyer ID for authorization.</param>
+    /// <returns>The return request if found and authorized.</returns>
+    Task<GetReturnRequestResult> GetReturnRequestAsync(Guid returnRequestId, string buyerId);
+
+    /// <summary>
+    /// Gets all return requests for a specific buyer.
+    /// </summary>
+    /// <param name="buyerId">The buyer ID.</param>
+    /// <returns>The result containing the buyer's return requests.</returns>
+    Task<GetReturnRequestsResult> GetReturnRequestsForBuyerAsync(string buyerId);
+
+    /// <summary>
+    /// Gets the return request for a specific seller sub-order.
+    /// </summary>
+    /// <param name="subOrderId">The seller sub-order ID.</param>
+    /// <param name="storeId">The store ID for authorization.</param>
+    /// <returns>The return request if found and authorized.</returns>
+    Task<GetReturnRequestResult> GetReturnRequestForSellerSubOrderAsync(Guid subOrderId, Guid storeId);
+
+    /// <summary>
+    /// Updates the status of a return request.
+    /// </summary>
+    /// <param name="returnRequestId">The return request ID.</param>
+    /// <param name="storeId">The store ID for authorization.</param>
+    /// <param name="command">The update command.</param>
+    /// <returns>The result of the update operation.</returns>
+    Task<UpdateReturnRequestStatusResult> UpdateReturnRequestStatusAsync(
+        Guid returnRequestId,
+        Guid storeId,
+        UpdateReturnRequestStatusCommand command);
+
+    /// <summary>
+    /// Checks whether a return can be initiated for a seller sub-order.
+    /// </summary>
+    /// <param name="subOrderId">The seller sub-order ID.</param>
+    /// <param name="buyerId">The buyer ID for authorization.</param>
+    /// <returns>The result indicating whether a return can be initiated.</returns>
+    Task<CanInitiateReturnResult> CanInitiateReturnAsync(Guid subOrderId, string buyerId);
 }

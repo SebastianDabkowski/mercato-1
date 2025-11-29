@@ -5,6 +5,7 @@ using Mercato.Orders.Application.Services;
 using Mercato.Orders.Domain.Entities;
 using Mercato.Orders.Domain.Interfaces;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Mercato.Orders.Infrastructure;
 
@@ -15,7 +16,9 @@ public class OrderService : IOrderService
 {
     private readonly IOrderRepository _orderRepository;
     private readonly ISellerSubOrderRepository _sellerSubOrderRepository;
+    private readonly IReturnRequestRepository _returnRequestRepository;
     private readonly IOrderConfirmationEmailService _emailService;
+    private readonly ReturnSettings _returnSettings;
     private readonly ILogger<OrderService> _logger;
 
     /// <summary>
@@ -23,17 +26,23 @@ public class OrderService : IOrderService
     /// </summary>
     /// <param name="orderRepository">The order repository.</param>
     /// <param name="sellerSubOrderRepository">The seller sub-order repository.</param>
+    /// <param name="returnRequestRepository">The return request repository.</param>
     /// <param name="emailService">The email service.</param>
+    /// <param name="returnSettings">The return settings.</param>
     /// <param name="logger">The logger.</param>
     public OrderService(
         IOrderRepository orderRepository,
         ISellerSubOrderRepository sellerSubOrderRepository,
+        IReturnRequestRepository returnRequestRepository,
         IOrderConfirmationEmailService emailService,
+        IOptions<ReturnSettings> returnSettings,
         ILogger<OrderService> logger)
     {
         _orderRepository = orderRepository;
         _sellerSubOrderRepository = sellerSubOrderRepository;
+        _returnRequestRepository = returnRequestRepository;
         _emailService = emailService;
+        _returnSettings = returnSettings.Value;
         _logger = logger;
     }
 
@@ -833,5 +842,323 @@ public class OrderService : IOrderService
         }
 
         return field;
+    }
+
+    /// <inheritdoc />
+    public async Task<CreateReturnRequestResult> CreateReturnRequestAsync(CreateReturnRequestCommand command)
+    {
+        var validationErrors = ValidateCreateReturnRequestCommand(command);
+        if (validationErrors.Count > 0)
+        {
+            return CreateReturnRequestResult.Failure(validationErrors);
+        }
+
+        try
+        {
+            var subOrder = await _sellerSubOrderRepository.GetByIdAsync(command.SellerSubOrderId);
+            if (subOrder == null)
+            {
+                return CreateReturnRequestResult.Failure("Sub-order not found.");
+            }
+
+            // Check authorization - buyer must own the parent order
+            if (subOrder.Order == null || subOrder.Order.BuyerId != command.BuyerId)
+            {
+                return CreateReturnRequestResult.NotAuthorized();
+            }
+
+            // Check if sub-order is delivered
+            if (subOrder.Status != SellerSubOrderStatus.Delivered)
+            {
+                return CreateReturnRequestResult.Failure("Return can only be initiated for delivered orders.");
+            }
+
+            // Check return window
+            if (!IsWithinReturnWindow(subOrder.DeliveredAt))
+            {
+                return CreateReturnRequestResult.Failure(
+                    $"Return window has expired. Returns must be initiated within {_returnSettings.ReturnWindowDays} days of delivery.");
+            }
+
+            // Check if a return request already exists
+            var existingRequest = await _returnRequestRepository.GetBySellerSubOrderIdAsync(command.SellerSubOrderId);
+            if (existingRequest != null)
+            {
+                return CreateReturnRequestResult.Failure("A return request already exists for this sub-order.");
+            }
+
+            var now = DateTimeOffset.UtcNow;
+            var returnRequest = new ReturnRequest
+            {
+                Id = Guid.NewGuid(),
+                SellerSubOrderId = command.SellerSubOrderId,
+                BuyerId = command.BuyerId,
+                Status = ReturnStatus.Requested,
+                Reason = command.Reason,
+                CreatedAt = now,
+                LastUpdatedAt = now
+            };
+
+            await _returnRequestRepository.AddAsync(returnRequest);
+
+            _logger.LogInformation(
+                "Created return request {ReturnRequestId} for sub-order {SubOrderNumber} by buyer {BuyerId}",
+                returnRequest.Id, subOrder.SubOrderNumber, command.BuyerId);
+
+            return CreateReturnRequestResult.Success(returnRequest.Id);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating return request for sub-order {SubOrderId}", command.SellerSubOrderId);
+            return CreateReturnRequestResult.Failure("An error occurred while creating the return request.");
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<GetReturnRequestResult> GetReturnRequestAsync(Guid returnRequestId, string buyerId)
+    {
+        if (string.IsNullOrEmpty(buyerId))
+        {
+            return GetReturnRequestResult.Failure("Buyer ID is required.");
+        }
+
+        try
+        {
+            var returnRequest = await _returnRequestRepository.GetByIdAsync(returnRequestId);
+            if (returnRequest == null)
+            {
+                return GetReturnRequestResult.Failure("Return request not found.");
+            }
+
+            if (returnRequest.BuyerId != buyerId)
+            {
+                return GetReturnRequestResult.NotAuthorized();
+            }
+
+            return GetReturnRequestResult.Success(returnRequest);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting return request {ReturnRequestId}", returnRequestId);
+            return GetReturnRequestResult.Failure("An error occurred while getting the return request.");
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<GetReturnRequestsResult> GetReturnRequestsForBuyerAsync(string buyerId)
+    {
+        if (string.IsNullOrEmpty(buyerId))
+        {
+            return GetReturnRequestsResult.Failure("Buyer ID is required.");
+        }
+
+        try
+        {
+            var returnRequests = await _returnRequestRepository.GetByBuyerIdAsync(buyerId);
+            return GetReturnRequestsResult.Success(returnRequests);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting return requests for buyer {BuyerId}", buyerId);
+            return GetReturnRequestsResult.Failure("An error occurred while getting the return requests.");
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<GetReturnRequestResult> GetReturnRequestForSellerSubOrderAsync(Guid subOrderId, Guid storeId)
+    {
+        if (storeId == Guid.Empty)
+        {
+            return GetReturnRequestResult.Failure("Store ID is required.");
+        }
+
+        try
+        {
+            var subOrder = await _sellerSubOrderRepository.GetByIdAsync(subOrderId);
+            if (subOrder == null)
+            {
+                return GetReturnRequestResult.Failure("Sub-order not found.");
+            }
+
+            if (subOrder.StoreId != storeId)
+            {
+                return GetReturnRequestResult.NotAuthorized();
+            }
+
+            var returnRequest = await _returnRequestRepository.GetBySellerSubOrderIdAsync(subOrderId);
+            if (returnRequest == null)
+            {
+                return GetReturnRequestResult.Failure("Return request not found.");
+            }
+
+            return GetReturnRequestResult.Success(returnRequest);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting return request for sub-order {SubOrderId}", subOrderId);
+            return GetReturnRequestResult.Failure("An error occurred while getting the return request.");
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<UpdateReturnRequestStatusResult> UpdateReturnRequestStatusAsync(
+        Guid returnRequestId,
+        Guid storeId,
+        UpdateReturnRequestStatusCommand command)
+    {
+        if (storeId == Guid.Empty)
+        {
+            return UpdateReturnRequestStatusResult.Failure("Store ID is required.");
+        }
+
+        try
+        {
+            var returnRequest = await _returnRequestRepository.GetByIdAsync(returnRequestId);
+            if (returnRequest == null)
+            {
+                return UpdateReturnRequestStatusResult.Failure("Return request not found.");
+            }
+
+            // Check authorization - store must own the sub-order
+            if (returnRequest.SellerSubOrder == null || returnRequest.SellerSubOrder.StoreId != storeId)
+            {
+                return UpdateReturnRequestStatusResult.NotAuthorized();
+            }
+
+            var validationErrors = ValidateReturnStatusTransition(returnRequest.Status, command.NewStatus);
+            if (validationErrors.Count > 0)
+            {
+                return UpdateReturnRequestStatusResult.Failure(validationErrors);
+            }
+
+            var now = DateTimeOffset.UtcNow;
+            returnRequest.Status = command.NewStatus;
+            returnRequest.LastUpdatedAt = now;
+            returnRequest.SellerNotes = command.SellerNotes;
+
+            await _returnRequestRepository.UpdateAsync(returnRequest);
+
+            _logger.LogInformation(
+                "Updated return request {ReturnRequestId} status to {Status}",
+                returnRequestId, command.NewStatus);
+
+            return UpdateReturnRequestStatusResult.Success();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating return request status for {ReturnRequestId}", returnRequestId);
+            return UpdateReturnRequestStatusResult.Failure("An error occurred while updating the return request status.");
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<CanInitiateReturnResult> CanInitiateReturnAsync(Guid subOrderId, string buyerId)
+    {
+        if (string.IsNullOrEmpty(buyerId))
+        {
+            return CanInitiateReturnResult.Failure("Buyer ID is required.");
+        }
+
+        try
+        {
+            var subOrder = await _sellerSubOrderRepository.GetByIdAsync(subOrderId);
+            if (subOrder == null)
+            {
+                return CanInitiateReturnResult.Failure("Sub-order not found.");
+            }
+
+            // Check authorization - buyer must own the parent order
+            if (subOrder.Order == null || subOrder.Order.BuyerId != buyerId)
+            {
+                return CanInitiateReturnResult.NotAuthorized();
+            }
+
+            // Check if sub-order is delivered
+            if (subOrder.Status != SellerSubOrderStatus.Delivered)
+            {
+                return CanInitiateReturnResult.No("Return can only be initiated for delivered orders.");
+            }
+
+            // Check return window
+            if (!IsWithinReturnWindow(subOrder.DeliveredAt))
+            {
+                return CanInitiateReturnResult.No(
+                    $"Return window has expired. Returns must be initiated within {_returnSettings.ReturnWindowDays} days of delivery.");
+            }
+
+            // Check if a return request already exists
+            var existingRequest = await _returnRequestRepository.GetBySellerSubOrderIdAsync(subOrderId);
+            if (existingRequest != null)
+            {
+                return CanInitiateReturnResult.No("A return request already exists for this sub-order.");
+            }
+
+            return CanInitiateReturnResult.Yes();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error checking return eligibility for sub-order {SubOrderId}", subOrderId);
+            return CanInitiateReturnResult.Failure("An error occurred while checking return eligibility.");
+        }
+    }
+
+    private bool IsWithinReturnWindow(DateTimeOffset? deliveredAt)
+    {
+        if (!deliveredAt.HasValue)
+        {
+            return false;
+        }
+
+        var returnDeadline = deliveredAt.Value.AddDays(_returnSettings.ReturnWindowDays);
+        return DateTimeOffset.UtcNow <= returnDeadline;
+    }
+
+    private static List<string> ValidateCreateReturnRequestCommand(CreateReturnRequestCommand command)
+    {
+        var errors = new List<string>();
+
+        if (command.SellerSubOrderId == Guid.Empty)
+        {
+            errors.Add("Seller sub-order ID is required.");
+        }
+
+        if (string.IsNullOrEmpty(command.BuyerId))
+        {
+            errors.Add("Buyer ID is required.");
+        }
+
+        if (string.IsNullOrEmpty(command.Reason))
+        {
+            errors.Add("Return reason is required.");
+        }
+        else if (command.Reason.Length > 2000)
+        {
+            errors.Add("Return reason must not exceed 2000 characters.");
+        }
+
+        return errors;
+    }
+
+    private static List<string> ValidateReturnStatusTransition(ReturnStatus currentStatus, ReturnStatus newStatus)
+    {
+        var errors = new List<string>();
+
+        // Define valid status transitions
+        var validTransitions = new Dictionary<ReturnStatus, ReturnStatus[]>
+        {
+            { ReturnStatus.Requested, [ReturnStatus.UnderReview, ReturnStatus.Approved, ReturnStatus.Rejected] },
+            { ReturnStatus.UnderReview, [ReturnStatus.Approved, ReturnStatus.Rejected] },
+            { ReturnStatus.Approved, [ReturnStatus.Completed] },
+            { ReturnStatus.Rejected, [] },
+            { ReturnStatus.Completed, [] }
+        };
+
+        if (!validTransitions.TryGetValue(currentStatus, out var allowedStatuses) ||
+            !allowedStatuses.Contains(newStatus))
+        {
+            errors.Add($"Cannot transition from {currentStatus} to {newStatus}.");
+        }
+
+        return errors;
     }
 }
