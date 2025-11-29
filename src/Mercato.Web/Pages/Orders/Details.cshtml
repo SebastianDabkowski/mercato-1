@@ -96,7 +96,7 @@
                                             }
                                             <tr>
                                                 <td colspan="4" class="text-end text-muted">
-                                                    Shipping@(!string.IsNullOrEmpty(subOrder.ShippingMethodName) ? $" ({subOrder.ShippingMethodName})" : ""):
+                                                    @DetailsModel.FormatShippingLabel(subOrder.ShippingMethodName)
                                                 </td>
                                                 <td class="text-end text-muted">@subOrder.ShippingCost.ToString("C")</td>
                                             </tr>
