@@ -62,11 +62,18 @@ public class ProductReviewRepository : IProductReviewRepository
         var baseQuery = _context.ProductReviews
             .Where(r => r.ProductId == productId && r.Status == ReviewStatus.Published);
 
-        // Get total count and average rating
-        var totalCount = await baseQuery.CountAsync();
-        double? averageRating = totalCount > 0 
-            ? await baseQuery.AverageAsync(r => (double)r.Rating) 
-            : null;
+        // Get total count and average rating in a single query using GroupBy
+        var aggregateData = await baseQuery
+            .GroupBy(r => 1)
+            .Select(g => new
+            {
+                TotalCount = g.Count(),
+                AverageRating = g.Average(r => (double?)r.Rating)
+            })
+            .FirstOrDefaultAsync();
+
+        var totalCount = aggregateData?.TotalCount ?? 0;
+        var averageRating = aggregateData?.AverageRating;
 
         // Apply sorting
         IQueryable<ProductReview> sortedQuery = sortBy switch

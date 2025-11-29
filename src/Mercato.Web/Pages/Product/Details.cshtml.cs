@@ -224,6 +224,19 @@ public class DetailsModel : PageModel
     }
 
     /// <summary>
+    /// Pre-computed star rating strings for performance.
+    /// </summary>
+    private static readonly string[] StarRatings =
+    [
+        "☆☆☆☆☆", // 0 stars
+        "★☆☆☆☆", // 1 star
+        "★★☆☆☆", // 2 stars
+        "★★★☆☆", // 3 stars
+        "★★★★☆", // 4 stars
+        "★★★★★"  // 5 stars
+    ];
+
+    /// <summary>
     /// Generates a star rating display string.
     /// </summary>
     /// <param name="rating">The rating value (1-5).</param>
@@ -231,7 +244,7 @@ public class DetailsModel : PageModel
     public static string GetStarRating(int rating)
     {
         var clampedRating = Math.Clamp(rating, 0, 5);
-        return new string('★', clampedRating) + new string('☆', 5 - clampedRating);
+        return StarRatings[clampedRating];
     }
 
     private async Task LoadProductReviewsAsync(Guid productId)

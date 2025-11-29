@@ -204,30 +204,9 @@
                             }
                             <label for="reviewsSortBy" class="form-label mb-0">Sort by:</label>
                             <select name="reviewsSortBy" id="reviewsSortBy" class="form-select" style="width: auto;" onchange="this.form.submit()">
-                                @if (isNewest)
-                                {
-                                    <option value="newest" selected>Newest</option>
-                                }
-                                else
-                                {
-                                    <option value="newest">Newest</option>
-                                }
-                                @if (isHighest)
-                                {
-                                    <option value="highest" selected>Highest Rating</option>
-                                }
-                                else
-                                {
-                                    <option value="highest">Highest Rating</option>
-                                }
-                                @if (isLowest)
-                                {
-                                    <option value="lowest" selected>Lowest Rating</option>
-                                }
-                                else
-                                {
-                                    <option value="lowest">Lowest Rating</option>
-                                }
+                                <option value="newest" selected="@isNewest">Newest</option>
+                                <option value="highest" selected="@isHighest">Highest Rating</option>
+                                <option value="lowest" selected="@isLowest">Lowest Rating</option>
                             </select>
                         </form>
                     </div>
