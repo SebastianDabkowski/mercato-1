@@ -53,8 +53,10 @@
                             @foreach (var entry in Model.EscrowEntries)
                             {
                                 var remaining = entry.Amount - entry.RefundedAmount;
+                                var sellerIdDisplay = entry.SellerId.ToString();
+                                sellerIdDisplay = sellerIdDisplay.Length > 8 ? sellerIdDisplay[..8] + "..." : sellerIdDisplay;
                                 <tr>
-                                    <td><code>@entry.SellerId.ToString()[..8]...</code></td>
+                                    <td><code>@sellerIdDisplay</code></td>
                                     <td>
                                         @switch (entry.Status)
                                         {
@@ -133,7 +135,9 @@
                                     @foreach (var entry in Model.EscrowEntries.Where(e => e.Status == Mercato.Payments.Domain.Entities.EscrowStatus.Held || e.Status == Mercato.Payments.Domain.Entities.EscrowStatus.PartiallyRefunded))
                                     {
                                         var remaining = entry.Amount - entry.RefundedAmount;
-                                        <option value="@entry.SellerId">@entry.SellerId.ToString()[..8]... - Available: @remaining.ToString("C")</option>
+                                        var sellerIdDisplay = entry.SellerId.ToString();
+                                        sellerIdDisplay = sellerIdDisplay.Length > 8 ? sellerIdDisplay[..8] + "..." : sellerIdDisplay;
+                                        <option value="@entry.SellerId">@sellerIdDisplay - Available: @remaining.ToString("C")</option>
                                     }
                                 </select>
                             </div>

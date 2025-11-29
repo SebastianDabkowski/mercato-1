@@ -95,13 +95,15 @@ public class RefundService : IRefundService
 
         try
         {
-            foreach (var entry in escrowResult.Entries.Where(e => e.Status == EscrowStatus.Held || e.Status == EscrowStatus.PartiallyRefunded))
+            // Filter to only refundable entries once
+            var refundableEntries = escrowResult.Entries
+                .Where(e => e.Status == EscrowStatus.Held || e.Status == EscrowStatus.PartiallyRefunded)
+                .Where(e => e.Amount - e.RefundedAmount > 0)
+                .ToList();
+
+            foreach (var entry in refundableEntries)
             {
                 var remainingAmount = entry.Amount - entry.RefundedAmount;
-                if (remainingAmount <= 0)
-                {
-                    continue;
-                }
 
                 // Refund escrow
                 var escrowRefundResult = await _escrowService.RefundEscrowAsync(new RefundEscrowCommand
@@ -188,10 +190,12 @@ public class RefundService : IRefundService
                 return ProcessRefundResult.Failure("No escrow entries found for the order.");
             }
 
-            // Use the first seller with available balance (this is a simplified approach)
+            // Select the seller with sufficient balance deterministically (by SellerId)
             var availableEntry = escrowResult.Entries
                 .Where(e => e.Status == EscrowStatus.Held || e.Status == EscrowStatus.PartiallyRefunded)
-                .FirstOrDefault(e => e.Amount - e.RefundedAmount >= command.Amount);
+                .Where(e => e.Amount - e.RefundedAmount >= command.Amount)
+                .OrderBy(e => e.SellerId)
+                .FirstOrDefault();
 
             if (availableEntry == null)
             {
