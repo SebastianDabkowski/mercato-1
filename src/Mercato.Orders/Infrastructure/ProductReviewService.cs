@@ -12,6 +12,7 @@ namespace Mercato.Orders.Infrastructure;
 public class ProductReviewService : IProductReviewService
 {
     private readonly IProductReviewRepository _productReviewRepository;
+    private readonly IReviewReportRepository _reviewReportRepository;
     private readonly ISellerSubOrderRepository _sellerSubOrderRepository;
     private readonly ILogger<ProductReviewService> _logger;
 
@@ -21,17 +22,25 @@ public class ProductReviewService : IProductReviewService
     private const int RateLimitSeconds = 60;
 
     /// <summary>
+    /// The maximum length for additional details in a review report.
+    /// </summary>
+    private const int MaxAdditionalDetailsLength = 1000;
+
+    /// <summary>
     /// Initializes a new instance of the <see cref="ProductReviewService"/> class.
     /// </summary>
     /// <param name="productReviewRepository">The product review repository.</param>
+    /// <param name="reviewReportRepository">The review report repository.</param>
     /// <param name="sellerSubOrderRepository">The seller sub-order repository.</param>
     /// <param name="logger">The logger.</param>
     public ProductReviewService(
         IProductReviewRepository productReviewRepository,
+        IReviewReportRepository reviewReportRepository,
         ISellerSubOrderRepository sellerSubOrderRepository,
         ILogger<ProductReviewService> logger)
     {
         _productReviewRepository = productReviewRepository;
+        _reviewReportRepository = reviewReportRepository;
         _sellerSubOrderRepository = sellerSubOrderRepository;
         _logger = logger;
     }
@@ -298,6 +307,89 @@ public class ProductReviewService : IProductReviewService
         if (query.PageSize < 1 || query.PageSize > 100)
         {
             errors.Add("Page size must be between 1 and 100.");
+        }
+
+        return errors;
+    }
+
+    /// <inheritdoc />
+    public async Task<ReportReviewResult> ReportReviewAsync(ReportReviewCommand command)
+    {
+        var validationErrors = ValidateReportReviewCommand(command);
+        if (validationErrors.Count > 0)
+        {
+            return ReportReviewResult.Failure(validationErrors);
+        }
+
+        try
+        {
+            // Check if the review exists
+            var review = await _productReviewRepository.GetByIdAsync(command.ReviewId);
+            if (review == null)
+            {
+                return ReportReviewResult.Failure("Review not found.");
+            }
+
+            // Check if the user has already reported this review
+            var existingReport = await _reviewReportRepository.ExistsAsync(command.ReviewId, command.ReporterId);
+            if (existingReport)
+            {
+                return ReportReviewResult.Failure("You have already reported this review.");
+            }
+
+            var now = DateTimeOffset.UtcNow;
+            var reportId = Guid.NewGuid();
+
+            var report = new ReviewReport
+            {
+                Id = reportId,
+                ReviewId = command.ReviewId,
+                ReporterId = command.ReporterId,
+                Reason = command.Reason,
+                AdditionalDetails = command.AdditionalDetails,
+                CreatedAt = now
+            };
+
+            await _reviewReportRepository.AddAsync(report);
+
+            _logger.LogInformation(
+                "Created review report {ReportId} for review {ReviewId} by user {ReporterId} with reason {Reason}",
+                reportId, command.ReviewId, command.ReporterId, command.Reason);
+
+            return ReportReviewResult.Success(reportId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error reporting review {ReviewId}", command.ReviewId);
+            return ReportReviewResult.Failure("An error occurred while reporting the review.");
+        }
+    }
+
+    /// <summary>
+    /// Validates the report review command.
+    /// </summary>
+    private static List<string> ValidateReportReviewCommand(ReportReviewCommand command)
+    {
+        var errors = new List<string>();
+
+        if (command.ReviewId == Guid.Empty)
+        {
+            errors.Add("Review ID is required.");
+        }
+
+        if (string.IsNullOrEmpty(command.ReporterId))
+        {
+            errors.Add("Reporter ID is required.");
+        }
+
+        if (!Enum.IsDefined(typeof(ReportReason), command.Reason))
+        {
+            errors.Add("Invalid report reason.");
+        }
+
+        if (command.AdditionalDetails != null && command.AdditionalDetails.Length > MaxAdditionalDetailsLength)
+        {
+            errors.Add($"Additional details must not exceed {MaxAdditionalDetailsLength} characters.");
         }
 
         return errors;

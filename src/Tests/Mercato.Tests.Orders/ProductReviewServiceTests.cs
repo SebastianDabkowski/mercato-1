@@ -17,6 +17,7 @@ public class ProductReviewServiceTests
     private static readonly Guid TestStoreId = Guid.NewGuid();
 
     private readonly Mock<IProductReviewRepository> _mockProductReviewRepository;
+    private readonly Mock<IReviewReportRepository> _mockReviewReportRepository;
     private readonly Mock<ISellerSubOrderRepository> _mockSellerSubOrderRepository;
     private readonly Mock<ILogger<ProductReviewService>> _mockLogger;
     private readonly ProductReviewService _service;
@@ -24,11 +25,13 @@ public class ProductReviewServiceTests
     public ProductReviewServiceTests()
     {
         _mockProductReviewRepository = new Mock<IProductReviewRepository>(MockBehavior.Strict);
+        _mockReviewReportRepository = new Mock<IReviewReportRepository>(MockBehavior.Strict);
         _mockSellerSubOrderRepository = new Mock<ISellerSubOrderRepository>(MockBehavior.Strict);
         _mockLogger = new Mock<ILogger<ProductReviewService>>();
 
         _service = new ProductReviewService(
             _mockProductReviewRepository.Object,
+            _mockReviewReportRepository.Object,
             _mockSellerSubOrderRepository.Object,
             _mockLogger.Object);
     }
@@ -813,6 +816,221 @@ public class ProductReviewServiceTests
         // Assert
         Assert.True(result.Succeeded);
         Assert.Equal(4.0, result.AverageRating);
+    }
+
+    #endregion
+
+    #region ReportReviewAsync Tests
+
+    [Fact]
+    public async Task ReportReviewAsync_ValidReport_CreatesReport()
+    {
+        // Arrange
+        var reviewId = Guid.NewGuid();
+        var review = CreateTestReview();
+        review.Id = reviewId;
+
+        var command = new ReportReviewCommand
+        {
+            ReviewId = reviewId,
+            ReporterId = "reporter-user-id",
+            Reason = ReportReason.Spam,
+            AdditionalDetails = "This review is spam."
+        };
+
+        _mockProductReviewRepository.Setup(r => r.GetByIdAsync(reviewId))
+            .ReturnsAsync(review);
+        _mockReviewReportRepository.Setup(r => r.ExistsAsync(reviewId, "reporter-user-id"))
+            .ReturnsAsync(false);
+        _mockReviewReportRepository.Setup(r => r.AddAsync(It.IsAny<ReviewReport>()))
+            .ReturnsAsync((ReviewReport rr) => rr);
+
+        // Act
+        var result = await _service.ReportReviewAsync(command);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.NotNull(result.ReportId);
+        _mockReviewReportRepository.Verify(r => r.AddAsync(It.Is<ReviewReport>(rr =>
+            rr.ReviewId == reviewId &&
+            rr.ReporterId == "reporter-user-id" &&
+            rr.Reason == ReportReason.Spam &&
+            rr.AdditionalDetails == "This review is spam.")), Times.Once);
+    }
+
+    [Fact]
+    public async Task ReportReviewAsync_ReviewNotFound_ReturnsFailure()
+    {
+        // Arrange
+        var reviewId = Guid.NewGuid();
+        var command = new ReportReviewCommand
+        {
+            ReviewId = reviewId,
+            ReporterId = "reporter-user-id",
+            Reason = ReportReason.Abuse
+        };
+
+        _mockProductReviewRepository.Setup(r => r.GetByIdAsync(reviewId))
+            .ReturnsAsync((ProductReview?)null);
+
+        // Act
+        var result = await _service.ReportReviewAsync(command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains("Review not found.", result.Errors);
+    }
+
+    [Fact]
+    public async Task ReportReviewAsync_DuplicateReport_ReturnsFailure()
+    {
+        // Arrange
+        var reviewId = Guid.NewGuid();
+        var review = CreateTestReview();
+        review.Id = reviewId;
+
+        var command = new ReportReviewCommand
+        {
+            ReviewId = reviewId,
+            ReporterId = "reporter-user-id",
+            Reason = ReportReason.FalseInformation
+        };
+
+        _mockProductReviewRepository.Setup(r => r.GetByIdAsync(reviewId))
+            .ReturnsAsync(review);
+        _mockReviewReportRepository.Setup(r => r.ExistsAsync(reviewId, "reporter-user-id"))
+            .ReturnsAsync(true);
+
+        // Act
+        var result = await _service.ReportReviewAsync(command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains("You have already reported this review.", result.Errors);
+    }
+
+    [Fact]
+    public async Task ReportReviewAsync_EmptyReviewId_ReturnsFailure()
+    {
+        // Arrange
+        var command = new ReportReviewCommand
+        {
+            ReviewId = Guid.Empty,
+            ReporterId = "reporter-user-id",
+            Reason = ReportReason.Other
+        };
+
+        // Act
+        var result = await _service.ReportReviewAsync(command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains("Review ID is required.", result.Errors);
+    }
+
+    [Fact]
+    public async Task ReportReviewAsync_EmptyReporterId_ReturnsFailure()
+    {
+        // Arrange
+        var command = new ReportReviewCommand
+        {
+            ReviewId = Guid.NewGuid(),
+            ReporterId = "",
+            Reason = ReportReason.Abuse
+        };
+
+        // Act
+        var result = await _service.ReportReviewAsync(command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains("Reporter ID is required.", result.Errors);
+    }
+
+    [Fact]
+    public async Task ReportReviewAsync_TooLongAdditionalDetails_ReturnsFailure()
+    {
+        // Arrange
+        var command = new ReportReviewCommand
+        {
+            ReviewId = Guid.NewGuid(),
+            ReporterId = "reporter-user-id",
+            Reason = ReportReason.Other,
+            AdditionalDetails = new string('a', 1001)
+        };
+
+        // Act
+        var result = await _service.ReportReviewAsync(command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains("Additional details must not exceed 1000 characters.", result.Errors);
+    }
+
+    [Theory]
+    [InlineData(ReportReason.Abuse)]
+    [InlineData(ReportReason.Spam)]
+    [InlineData(ReportReason.FalseInformation)]
+    [InlineData(ReportReason.Other)]
+    public async Task ReportReviewAsync_AllReasons_CreatesReport(ReportReason reason)
+    {
+        // Arrange
+        var reviewId = Guid.NewGuid();
+        var review = CreateTestReview();
+        review.Id = reviewId;
+
+        var command = new ReportReviewCommand
+        {
+            ReviewId = reviewId,
+            ReporterId = "reporter-user-id",
+            Reason = reason
+        };
+
+        _mockProductReviewRepository.Setup(r => r.GetByIdAsync(reviewId))
+            .ReturnsAsync(review);
+        _mockReviewReportRepository.Setup(r => r.ExistsAsync(reviewId, "reporter-user-id"))
+            .ReturnsAsync(false);
+        _mockReviewReportRepository.Setup(r => r.AddAsync(It.IsAny<ReviewReport>()))
+            .ReturnsAsync((ReviewReport rr) => rr);
+
+        // Act
+        var result = await _service.ReportReviewAsync(command);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.NotNull(result.ReportId);
+    }
+
+    [Fact]
+    public async Task ReportReviewAsync_NoAdditionalDetails_CreatesReport()
+    {
+        // Arrange
+        var reviewId = Guid.NewGuid();
+        var review = CreateTestReview();
+        review.Id = reviewId;
+
+        var command = new ReportReviewCommand
+        {
+            ReviewId = reviewId,
+            ReporterId = "reporter-user-id",
+            Reason = ReportReason.Abuse,
+            AdditionalDetails = null
+        };
+
+        _mockProductReviewRepository.Setup(r => r.GetByIdAsync(reviewId))
+            .ReturnsAsync(review);
+        _mockReviewReportRepository.Setup(r => r.ExistsAsync(reviewId, "reporter-user-id"))
+            .ReturnsAsync(false);
+        _mockReviewReportRepository.Setup(r => r.AddAsync(It.IsAny<ReviewReport>()))
+            .ReturnsAsync((ReviewReport rr) => rr);
+
+        // Act
+        var result = await _service.ReportReviewAsync(command);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        _mockReviewReportRepository.Verify(r => r.AddAsync(It.Is<ReviewReport>(rr =>
+            rr.AdditionalDetails == null)), Times.Once);
     }
 
     #endregion

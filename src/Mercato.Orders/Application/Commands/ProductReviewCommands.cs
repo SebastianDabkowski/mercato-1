@@ -361,3 +361,96 @@ public class GetProductReviewsPagedResult
     /// <returns>A failed result.</returns>
     public static GetProductReviewsPagedResult Failure(string error) => Failure([error]);
 }
+
+/// <summary>
+/// Command for reporting a product review.
+/// </summary>
+public class ReportReviewCommand
+{
+    /// <summary>
+    /// Gets or sets the review ID to report.
+    /// </summary>
+    public Guid ReviewId { get; set; }
+
+    /// <summary>
+    /// Gets or sets the reporter (buyer) ID.
+    /// </summary>
+    public string ReporterId { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the reason for the report.
+    /// </summary>
+    public ReportReason Reason { get; set; }
+
+    /// <summary>
+    /// Gets or sets additional details about the report (optional, max 1000 characters).
+    /// </summary>
+    public string? AdditionalDetails { get; set; }
+}
+
+/// <summary>
+/// Result of reporting a product review.
+/// </summary>
+public class ReportReviewResult
+{
+    /// <summary>
+    /// Gets a value indicating whether the operation succeeded.
+    /// </summary>
+    public bool Succeeded { get; private init; }
+
+    /// <summary>
+    /// Gets the list of errors if the operation failed.
+    /// </summary>
+    public IReadOnlyList<string> Errors { get; private init; } = [];
+
+    /// <summary>
+    /// Gets a value indicating whether the user is not authorized.
+    /// </summary>
+    public bool IsNotAuthorized { get; private init; }
+
+    /// <summary>
+    /// Gets the ID of the created review report.
+    /// </summary>
+    public Guid? ReportId { get; private init; }
+
+    /// <summary>
+    /// Creates a successful result.
+    /// </summary>
+    /// <param name="reportId">The ID of the created report.</param>
+    /// <returns>A successful result.</returns>
+    public static ReportReviewResult Success(Guid reportId) => new()
+    {
+        Succeeded = true,
+        Errors = [],
+        ReportId = reportId
+    };
+
+    /// <summary>
+    /// Creates a failed result with the specified errors.
+    /// </summary>
+    /// <param name="errors">The list of error messages.</param>
+    /// <returns>A failed result.</returns>
+    public static ReportReviewResult Failure(IReadOnlyList<string> errors) => new()
+    {
+        Succeeded = false,
+        Errors = errors
+    };
+
+    /// <summary>
+    /// Creates a failed result with a single error message.
+    /// </summary>
+    /// <param name="error">The error message.</param>
+    /// <returns>A failed result.</returns>
+    public static ReportReviewResult Failure(string error) => Failure([error]);
+
+    /// <summary>
+    /// Creates a not authorized result.
+    /// </summary>
+    /// <returns>A not authorized result.</returns>
+    public static ReportReviewResult NotAuthorized() => new()
+    {
+        Succeeded = false,
+        IsNotAuthorized = true,
+        Errors = ["Not authorized to report this review."]
+    };
+}

@@ -174,6 +174,22 @@
         <div id="reviews-section" class="mt-5">
             <h4 class="mb-3">Customer Reviews</h4>
             
+            @* Report feedback alerts *@
+            @if (TempData["ReportSuccess"] != null)
+            {
+                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    @TempData["ReportSuccess"]
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            }
+            @if (TempData["ReportError"] != null)
+            {
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    @TempData["ReportError"]
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            }
+
             @if (Model.ReviewsResult != null && Model.ReviewsResult.Succeeded)
             {
                 @if (Model.ReviewsResult.TotalCount > 0)
@@ -219,11 +235,60 @@
                                 <div class="card-body">
                                     <div class="d-flex justify-content-between align-items-start mb-2">
                                         <span class="text-warning">@DetailsModel.GetStarRating(review.Rating)</span>
-                                        <small class="text-muted">@review.CreatedAt.ToString("MMM d, yyyy")</small>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <small class="text-muted">@review.CreatedAt.ToString("MMM d, yyyy")</small>
+                                            @if (User.Identity?.IsAuthenticated == true)
+                                            {
+                                                <button type="button" class="btn btn-link btn-sm text-muted p-0" 
+                                                        data-bs-toggle="modal" 
+                                                        data-bs-target="#reportModal-@review.Id"
+                                                        title="Report this review">
+                                                    <i class="bi bi-flag"></i> Report
+                                                </button>
+                                            }
+                                        </div>
                                     </div>
                                     <p class="card-text mb-0">@review.ReviewText</p>
                                 </div>
                             </div>
+
+                            @* Report Modal for each review *@
+                            @if (User.Identity?.IsAuthenticated == true)
+                            {
+                                <div class="modal fade" id="reportModal-@review.Id" tabindex="-1" aria-labelledby="reportModalLabel-@review.Id" aria-hidden="true">
+                                    <div class="modal-dialog">
+                                        <div class="modal-content">
+                                            <form method="post" asp-page-handler="ReportReview">
+                                                <input type="hidden" name="reviewId" value="@review.Id" />
+                                                <div class="modal-header">
+                                                    <h5 class="modal-title" id="reportModalLabel-@review.Id">Report Review</h5>
+                                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                </div>
+                                                <div class="modal-body">
+                                                    <div class="mb-3">
+                                                        <label for="reason-@review.Id" class="form-label">Reason for reporting</label>
+                                                        <select name="reason" id="reason-@review.Id" class="form-select" required>
+                                                            <option value="">Select a reason...</option>
+                                                            <option value="Abuse">Abusive content</option>
+                                                            <option value="Spam">Spam or promotional content</option>
+                                                            <option value="FalseInformation">False or misleading information</option>
+                                                            <option value="Other">Other</option>
+                                                        </select>
+                                                    </div>
+                                                    <div class="mb-3">
+                                                        <label for="additionalDetails-@review.Id" class="form-label">Additional details (optional)</label>
+                                                        <textarea name="additionalDetails" id="additionalDetails-@review.Id" class="form-control" rows="3" maxlength="1000" placeholder="Please provide any additional context..."></textarea>
+                                                    </div>
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                    <button type="submit" class="btn btn-danger">Submit Report</button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
                         }
                     </div>
 
