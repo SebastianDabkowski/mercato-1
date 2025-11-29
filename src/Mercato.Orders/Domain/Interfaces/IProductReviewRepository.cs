@@ -84,4 +84,29 @@ public interface IProductReviewRepository
     /// <param name="buyerId">The buyer ID.</param>
     /// <returns>The timestamp of the last review; null if no reviews exist.</returns>
     Task<DateTimeOffset?> GetBuyerLastReviewTimeAsync(string buyerId);
+
+    /// <summary>
+    /// Gets filtered and paginated product reviews for admin moderation.
+    /// </summary>
+    /// <param name="searchText">Optional search text to filter reviews by content.</param>
+    /// <param name="statuses">Optional list of statuses to filter by.</param>
+    /// <param name="fromDate">Optional start date for date range filter.</param>
+    /// <param name="toDate">Optional end date for date range filter.</param>
+    /// <param name="page">The page number (1-based).</param>
+    /// <param name="pageSize">The number of reviews per page.</param>
+    /// <returns>A tuple containing the reviews for the current page and total count.</returns>
+    Task<(IReadOnlyList<ProductReview> reviews, int totalCount)> GetAllFilteredAsync(
+        string? searchText,
+        IReadOnlyList<ReviewStatus>? statuses,
+        DateTimeOffset? fromDate,
+        DateTimeOffset? toDate,
+        int page,
+        int pageSize);
+
+    /// <summary>
+    /// Gets product reviews by status.
+    /// </summary>
+    /// <param name="status">The review status to filter by.</param>
+    /// <returns>A list of product reviews with the specified status.</returns>
+    Task<IReadOnlyList<ProductReview>> GetByStatusAsync(ReviewStatus status);
 }
