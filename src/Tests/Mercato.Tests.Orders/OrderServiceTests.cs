@@ -1288,4 +1288,379 @@ public class OrderServiceTests
     }
 
     #endregion
+
+    #region GetFilteredSellerSubOrdersAsync Tests
+
+    [Fact]
+    public async Task GetFilteredSellerSubOrdersAsync_ValidQuery_ReturnsFilteredSubOrders()
+    {
+        // Arrange
+        var subOrders = new List<SellerSubOrder> { CreateTestSellerSubOrder() };
+        var query = new SellerSubOrderFilterQuery
+        {
+            StoreId = TestStoreId,
+            Page = 1,
+            PageSize = 10
+        };
+
+        _mockSellerSubOrderRepository.Setup(r => r.GetFilteredByStoreIdAsync(
+                TestStoreId, null, null, null, null, 1, 10))
+            .ReturnsAsync((subOrders, 1));
+
+        // Act
+        var result = await _service.GetFilteredSellerSubOrdersAsync(query);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.Single(result.SubOrders);
+        Assert.Equal(1, result.TotalCount);
+        Assert.Equal(1, result.Page);
+        Assert.Equal(10, result.PageSize);
+    }
+
+    [Fact]
+    public async Task GetFilteredSellerSubOrdersAsync_WithStatusFilter_ReturnsMatchingSubOrders()
+    {
+        // Arrange
+        var subOrders = new List<SellerSubOrder> { CreateTestSellerSubOrder() };
+        var statuses = new List<SellerSubOrderStatus> { SellerSubOrderStatus.Paid, SellerSubOrderStatus.Preparing };
+        var query = new SellerSubOrderFilterQuery
+        {
+            StoreId = TestStoreId,
+            Statuses = statuses,
+            Page = 1,
+            PageSize = 10
+        };
+
+        _mockSellerSubOrderRepository.Setup(r => r.GetFilteredByStoreIdAsync(
+                TestStoreId, statuses, null, null, null, 1, 10))
+            .ReturnsAsync((subOrders, 1));
+
+        // Act
+        var result = await _service.GetFilteredSellerSubOrdersAsync(query);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.Single(result.SubOrders);
+        _mockSellerSubOrderRepository.Verify(r => r.GetFilteredByStoreIdAsync(
+            TestStoreId, statuses, null, null, null, 1, 10), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetFilteredSellerSubOrdersAsync_WithDateRange_ReturnsMatchingSubOrders()
+    {
+        // Arrange
+        var subOrders = new List<SellerSubOrder> { CreateTestSellerSubOrder() };
+        var fromDate = DateTimeOffset.UtcNow.AddDays(-7);
+        var toDate = DateTimeOffset.UtcNow;
+        var query = new SellerSubOrderFilterQuery
+        {
+            StoreId = TestStoreId,
+            FromDate = fromDate,
+            ToDate = toDate,
+            Page = 1,
+            PageSize = 10
+        };
+
+        _mockSellerSubOrderRepository.Setup(r => r.GetFilteredByStoreIdAsync(
+                TestStoreId, null, fromDate, toDate, null, 1, 10))
+            .ReturnsAsync((subOrders, 1));
+
+        // Act
+        var result = await _service.GetFilteredSellerSubOrdersAsync(query);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        _mockSellerSubOrderRepository.Verify(r => r.GetFilteredByStoreIdAsync(
+            TestStoreId, null, fromDate, toDate, null, 1, 10), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetFilteredSellerSubOrdersAsync_WithBuyerSearchTerm_ReturnsMatchingSubOrders()
+    {
+        // Arrange
+        var subOrders = new List<SellerSubOrder> { CreateTestSellerSubOrder() };
+        var searchTerm = "buyer@test.com";
+        var query = new SellerSubOrderFilterQuery
+        {
+            StoreId = TestStoreId,
+            BuyerSearchTerm = searchTerm,
+            Page = 1,
+            PageSize = 10
+        };
+
+        _mockSellerSubOrderRepository.Setup(r => r.GetFilteredByStoreIdAsync(
+                TestStoreId, null, null, null, searchTerm, 1, 10))
+            .ReturnsAsync((subOrders, 1));
+
+        // Act
+        var result = await _service.GetFilteredSellerSubOrdersAsync(query);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        _mockSellerSubOrderRepository.Verify(r => r.GetFilteredByStoreIdAsync(
+            TestStoreId, null, null, null, searchTerm, 1, 10), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetFilteredSellerSubOrdersAsync_EmptyStoreId_ReturnsFailure()
+    {
+        // Arrange
+        var query = new SellerSubOrderFilterQuery
+        {
+            StoreId = Guid.Empty,
+            Page = 1,
+            PageSize = 10
+        };
+
+        // Act
+        var result = await _service.GetFilteredSellerSubOrdersAsync(query);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains("Store ID is required.", result.Errors);
+    }
+
+    [Fact]
+    public async Task GetFilteredSellerSubOrdersAsync_InvalidPage_ReturnsFailure()
+    {
+        // Arrange
+        var query = new SellerSubOrderFilterQuery
+        {
+            StoreId = TestStoreId,
+            Page = 0,
+            PageSize = 10
+        };
+
+        // Act
+        var result = await _service.GetFilteredSellerSubOrdersAsync(query);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains("Page number must be at least 1.", result.Errors);
+    }
+
+    [Fact]
+    public async Task GetFilteredSellerSubOrdersAsync_InvalidPageSize_ReturnsFailure()
+    {
+        // Arrange
+        var query = new SellerSubOrderFilterQuery
+        {
+            StoreId = TestStoreId,
+            Page = 1,
+            PageSize = 0
+        };
+
+        // Act
+        var result = await _service.GetFilteredSellerSubOrdersAsync(query);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains("Page size must be between 1 and 10000.", result.Errors);
+    }
+
+    [Fact]
+    public async Task GetFilteredSellerSubOrdersAsync_FromDateAfterToDate_ReturnsFailure()
+    {
+        // Arrange
+        var query = new SellerSubOrderFilterQuery
+        {
+            StoreId = TestStoreId,
+            FromDate = DateTimeOffset.UtcNow,
+            ToDate = DateTimeOffset.UtcNow.AddDays(-7),
+            Page = 1,
+            PageSize = 10
+        };
+
+        // Act
+        var result = await _service.GetFilteredSellerSubOrdersAsync(query);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains("From date cannot be after to date.", result.Errors);
+    }
+
+    [Fact]
+    public async Task GetFilteredSellerSubOrdersAsync_Pagination_ReturnsCorrectTotalPages()
+    {
+        // Arrange
+        var subOrders = new List<SellerSubOrder> { CreateTestSellerSubOrder() };
+        var query = new SellerSubOrderFilterQuery
+        {
+            StoreId = TestStoreId,
+            Page = 1,
+            PageSize = 10
+        };
+
+        _mockSellerSubOrderRepository.Setup(r => r.GetFilteredByStoreIdAsync(
+                TestStoreId, null, null, null, null, 1, 10))
+            .ReturnsAsync((subOrders, 25));
+
+        // Act
+        var result = await _service.GetFilteredSellerSubOrdersAsync(query);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.Equal(25, result.TotalCount);
+        Assert.Equal(3, result.TotalPages);
+        Assert.True(result.HasNextPage);
+        Assert.False(result.HasPreviousPage);
+    }
+
+    #endregion
+
+    #region GetDistinctBuyersForStoreAsync Tests
+
+    [Fact]
+    public async Task GetDistinctBuyersForStoreAsync_ValidStoreId_ReturnsBuyers()
+    {
+        // Arrange
+        var buyers = new List<(string BuyerId, string BuyerEmail)>
+        {
+            ("buyer-1", "buyer1@test.com"),
+            ("buyer-2", "buyer2@test.com")
+        };
+
+        _mockSellerSubOrderRepository.Setup(r => r.GetDistinctBuyersByStoreIdAsync(TestStoreId))
+            .ReturnsAsync(buyers);
+
+        // Act
+        var result = await _service.GetDistinctBuyersForStoreAsync(TestStoreId);
+
+        // Assert
+        Assert.Equal(2, result.Count);
+        Assert.Contains(result, b => b.BuyerId == "buyer-1");
+    }
+
+    [Fact]
+    public async Task GetDistinctBuyersForStoreAsync_EmptyStoreId_ReturnsEmptyList()
+    {
+        // Act
+        var result = await _service.GetDistinctBuyersForStoreAsync(Guid.Empty);
+
+        // Assert
+        Assert.Empty(result);
+    }
+
+    [Fact]
+    public async Task GetDistinctBuyersForStoreAsync_NoBuyers_ReturnsEmptyList()
+    {
+        // Arrange
+        _mockSellerSubOrderRepository.Setup(r => r.GetDistinctBuyersByStoreIdAsync(TestStoreId))
+            .ReturnsAsync(new List<(string BuyerId, string BuyerEmail)>());
+
+        // Act
+        var result = await _service.GetDistinctBuyersForStoreAsync(TestStoreId);
+
+        // Assert
+        Assert.Empty(result);
+    }
+
+    #endregion
+
+    #region ExportSellerSubOrdersToCsvAsync Tests
+
+    [Fact]
+    public async Task ExportSellerSubOrdersToCsvAsync_ValidQuery_ReturnsCsvBytes()
+    {
+        // Arrange
+        var order = CreateTestOrder();
+        var subOrder = CreateTestSellerSubOrder();
+        subOrder.Order = order;
+        var subOrders = new List<SellerSubOrder> { subOrder };
+        var query = new SellerSubOrderFilterQuery
+        {
+            StoreId = TestStoreId
+        };
+
+        _mockSellerSubOrderRepository.Setup(r => r.GetFilteredByStoreIdAsync(
+                TestStoreId, null, null, null, null, 1, 10000))
+            .ReturnsAsync((subOrders, 1));
+
+        // Act
+        var result = await _service.ExportSellerSubOrdersToCsvAsync(TestStoreId, query);
+
+        // Assert
+        Assert.NotEmpty(result);
+        var csvContent = System.Text.Encoding.UTF8.GetString(result);
+        Assert.Contains("Sub-Order ID", csvContent);
+        Assert.Contains("Sub-Order Number", csvContent);
+        Assert.Contains(subOrder.SubOrderNumber, csvContent);
+    }
+
+    [Fact]
+    public async Task ExportSellerSubOrdersToCsvAsync_EmptyStoreId_ReturnsEmptyArray()
+    {
+        // Arrange
+        var query = new SellerSubOrderFilterQuery
+        {
+            StoreId = Guid.Empty
+        };
+
+        // Act
+        var result = await _service.ExportSellerSubOrdersToCsvAsync(Guid.Empty, query);
+
+        // Assert
+        Assert.Empty(result);
+    }
+
+    [Fact]
+    public async Task ExportSellerSubOrdersToCsvAsync_NoOrders_ReturnsCsvWithHeaderOnly()
+    {
+        // Arrange
+        var query = new SellerSubOrderFilterQuery
+        {
+            StoreId = TestStoreId
+        };
+
+        _mockSellerSubOrderRepository.Setup(r => r.GetFilteredByStoreIdAsync(
+                TestStoreId, null, null, null, null, 1, 10000))
+            .ReturnsAsync((new List<SellerSubOrder>(), 0));
+
+        // Act
+        var result = await _service.ExportSellerSubOrdersToCsvAsync(TestStoreId, query);
+
+        // Assert
+        Assert.NotEmpty(result);
+        var csvContent = System.Text.Encoding.UTF8.GetString(result);
+        Assert.Contains("Sub-Order ID", csvContent);
+        // Only header line should be present
+        var lines = csvContent.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        Assert.Single(lines);
+    }
+
+    [Fact]
+    public async Task ExportSellerSubOrdersToCsvAsync_WithFilters_AppliesFilters()
+    {
+        // Arrange
+        var order = CreateTestOrder();
+        var subOrder = CreateTestSellerSubOrder();
+        subOrder.Order = order;
+        var subOrders = new List<SellerSubOrder> { subOrder };
+        var statuses = new List<SellerSubOrderStatus> { SellerSubOrderStatus.Paid };
+        var fromDate = DateTimeOffset.UtcNow.AddDays(-7);
+        var toDate = DateTimeOffset.UtcNow;
+        var query = new SellerSubOrderFilterQuery
+        {
+            StoreId = TestStoreId,
+            Statuses = statuses,
+            FromDate = fromDate,
+            ToDate = toDate,
+            BuyerSearchTerm = "test"
+        };
+
+        _mockSellerSubOrderRepository.Setup(r => r.GetFilteredByStoreIdAsync(
+                TestStoreId, statuses, fromDate, toDate, "test", 1, 10000))
+            .ReturnsAsync((subOrders, 1));
+
+        // Act
+        var result = await _service.ExportSellerSubOrdersToCsvAsync(TestStoreId, query);
+
+        // Assert
+        Assert.NotEmpty(result);
+        _mockSellerSubOrderRepository.Verify(r => r.GetFilteredByStoreIdAsync(
+            TestStoreId, statuses, fromDate, toDate, "test", 1, 10000), Times.Once);
+    }
+
+    #endregion
 }

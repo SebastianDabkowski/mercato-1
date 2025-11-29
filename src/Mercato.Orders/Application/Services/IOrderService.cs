@@ -94,4 +94,26 @@ public interface IOrderService
         Guid subOrderId,
         Guid storeId,
         UpdateSellerSubOrderStatusCommand command);
+
+    /// <summary>
+    /// Gets filtered and paginated seller sub-orders for a specific store.
+    /// </summary>
+    /// <param name="query">The filter query parameters.</param>
+    /// <returns>The result containing the filtered and paginated sub-orders.</returns>
+    Task<GetFilteredSellerSubOrdersResult> GetFilteredSellerSubOrdersAsync(SellerSubOrderFilterQuery query);
+
+    /// <summary>
+    /// Gets distinct buyers from a store's sub-orders for filter dropdowns.
+    /// </summary>
+    /// <param name="storeId">The store ID.</param>
+    /// <returns>A list of distinct buyer IDs and emails.</returns>
+    Task<IReadOnlyList<(string BuyerId, string BuyerEmail)>> GetDistinctBuyersForStoreAsync(Guid storeId);
+
+    /// <summary>
+    /// Exports seller sub-orders to CSV format.
+    /// </summary>
+    /// <param name="storeId">The store ID for authorization.</param>
+    /// <param name="query">The filter query parameters.</param>
+    /// <returns>The CSV file as a byte array.</returns>
+    Task<byte[]> ExportSellerSubOrdersToCsvAsync(Guid storeId, SellerSubOrderFilterQuery query);
 }
