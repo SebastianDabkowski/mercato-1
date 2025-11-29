@@ -42,6 +42,13 @@ public interface IPayoutService
     /// <param name="status">Optional status filter.</param>
     /// <returns>The result containing payouts.</returns>
     Task<GetPayoutsResult> GetPayoutsBySellerIdAsync(Guid sellerId, PayoutStatus? status = null);
+
+    /// <summary>
+    /// Gets payouts for a seller with optional filtering by status and date range.
+    /// </summary>
+    /// <param name="query">The filtered query parameters.</param>
+    /// <returns>The result containing filtered payouts.</returns>
+    Task<GetPayoutsResult> GetPayoutsFilteredAsync(GetPayoutsFilteredQuery query);
 }
 
 /// <summary>
@@ -486,4 +493,30 @@ public class GetPayoutsResult
         IsNotAuthorized = true,
         Errors = ["Not authorized."]
     };
+}
+
+/// <summary>
+/// Query parameters for filtering payouts by seller with optional status and date range.
+/// </summary>
+public class GetPayoutsFilteredQuery
+{
+    /// <summary>
+    /// Gets or sets the seller identifier (store ID).
+    /// </summary>
+    public Guid SellerId { get; set; }
+
+    /// <summary>
+    /// Gets or sets the optional payout status filter.
+    /// </summary>
+    public PayoutStatus? Status { get; set; }
+
+    /// <summary>
+    /// Gets or sets the optional start date for filtering by scheduled date.
+    /// </summary>
+    public DateTimeOffset? FromDate { get; set; }
+
+    /// <summary>
+    /// Gets or sets the optional end date for filtering by scheduled date.
+    /// </summary>
+    public DateTimeOffset? ToDate { get; set; }
 }

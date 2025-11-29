@@ -30,6 +30,16 @@ public interface IPayoutRepository
     Task<IReadOnlyList<Payout>> GetBySellerIdAndStatusAsync(Guid sellerId, PayoutStatus status);
 
     /// <summary>
+    /// Gets payouts for a specific seller with optional filtering by status and date range.
+    /// </summary>
+    /// <param name="sellerId">The seller identifier.</param>
+    /// <param name="status">Optional payout status to filter by.</param>
+    /// <param name="fromDate">Optional start date for filtering by scheduled date.</param>
+    /// <param name="toDate">Optional end date for filtering by scheduled date.</param>
+    /// <returns>A read-only list of payouts matching the criteria.</returns>
+    Task<IReadOnlyList<Payout>> GetBySellerIdWithFiltersAsync(Guid sellerId, PayoutStatus? status, DateTimeOffset? fromDate, DateTimeOffset? toDate);
+
+    /// <summary>
     /// Gets all payouts with a specific status.
     /// </summary>
     /// <param name="status">The payout status to filter by.</param>

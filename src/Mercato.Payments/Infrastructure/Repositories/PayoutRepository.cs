@@ -46,6 +46,35 @@ public class PayoutRepository : IPayoutRepository
     }
 
     /// <inheritdoc />
+    public async Task<IReadOnlyList<Payout>> GetBySellerIdWithFiltersAsync(
+        Guid sellerId,
+        PayoutStatus? status,
+        DateTimeOffset? fromDate,
+        DateTimeOffset? toDate)
+    {
+        var query = _dbContext.Payouts.Where(p => p.SellerId == sellerId);
+
+        if (status.HasValue)
+        {
+            query = query.Where(p => p.Status == status.Value);
+        }
+
+        if (fromDate.HasValue)
+        {
+            query = query.Where(p => p.ScheduledAt >= fromDate.Value);
+        }
+
+        if (toDate.HasValue)
+        {
+            query = query.Where(p => p.ScheduledAt <= toDate.Value);
+        }
+
+        return await query
+            .OrderByDescending(p => p.ScheduledAt)
+            .ToListAsync();
+    }
+
+    /// <inheritdoc />
     public async Task<IReadOnlyList<Payout>> GetByStatusAsync(PayoutStatus status)
     {
         return await _dbContext.Payouts

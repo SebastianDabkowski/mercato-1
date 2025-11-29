@@ -1,0 +1,176 @@
+@page
+@model Mercato.Web.Pages.Seller.Payouts.IndexModel
+@using Mercato.Payments.Domain.Entities
+@{
+    ViewData["Title"] = "Payout History";
+}
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1>Payout History</h1>
+            <p class="text-muted mb-0">View your payout history and details</p>
+        </div>
+        <a asp-page="/Seller/Index" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Back to Dashboard
+        </a>
+    </div>
+
+    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+    {
+        <div class="alert alert-danger">@Model.ErrorMessage</div>
+    }
+
+    @if (Model.Store == null)
+    {
+        <div class="alert alert-warning">
+            <h5>No Store Found</h5>
+            <p>You need to set up your store before you can view payouts.</p>
+            <a asp-page="/Seller/Onboarding/Index" class="btn btn-primary">Complete Onboarding</a>
+        </div>
+    }
+    else
+    {
+        @* Filter Section *@
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-funnel me-2"></i>Filter Payouts</h5>
+            </div>
+            <div class="card-body">
+                <form method="get" asp-page="Index">
+                    <div class="row g-3">
+                        @* Status Filter *@
+                        <div class="col-md-3">
+                            <label class="form-label">Status</label>
+                            <select name="Status" class="form-select">
+                                <option value="">All Statuses</option>
+                                @foreach (var status in IndexModel.AllStatuses)
+                                {
+                                    <option value="@status" selected="@(Model.Status == status)">
+                                        @IndexModel.GetStatusDisplayText(status)
+                                    </option>
+                                }
+                            </select>
+                        </div>
+
+                        @* Date Range Filter *@
+                        <div class="col-md-3">
+                            <label class="form-label">From Date</label>
+                            <input type="date" name="FromDate" class="form-control" 
+                                   value="@(Model.FromDate?.ToString("yyyy-MM-dd"))" />
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label">To Date</label>
+                            <input type="date" name="ToDate" class="form-control" 
+                                   value="@(Model.ToDate?.ToString("yyyy-MM-dd"))" />
+                        </div>
+
+                        @* Filter Actions *@
+                        <div class="col-md-3 d-flex align-items-end">
+                            <div class="w-100">
+                                <button type="submit" class="btn btn-primary w-100 mb-1">
+                                    <i class="bi bi-search me-1"></i>Apply
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-3">
+                        <a href="@Model.GetClearFiltersUrl()" class="btn btn-outline-secondary">
+                            <i class="bi bi-x-circle me-1"></i>Clear Filters
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        @* Results *@
+        @if (Model.Payouts.Count == 0)
+        {
+            <div class="text-center py-5">
+                <i class="bi bi-wallet2 text-muted" style="font-size: 4rem;"></i>
+                <h3 class="mt-3 text-muted">No Payouts Found</h3>
+                @if (Model.Status.HasValue || Model.FromDate.HasValue || Model.ToDate.HasValue)
+                {
+                    <p class="text-muted">No payouts match your filter criteria. Try adjusting the filters.</p>
+                    <a href="@Model.GetClearFiltersUrl()" class="btn btn-outline-primary mt-2">
+                        <i class="bi bi-x-circle me-1"></i>Clear Filters
+                    </a>
+                }
+                else
+                {
+                    <p class="text-muted">You don't have any payouts yet. Payouts will appear here once you have funds released from orders.</p>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="card">
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Payout ID</th>
+                                    <th>Scheduled Date</th>
+                                    <th class="text-end">Amount</th>
+                                    <th class="text-center">Status</th>
+                                    <th>Completed Date</th>
+                                    <th class="text-end">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var payout in Model.Payouts)
+                                {
+                                    <tr class="@(payout.Status == PayoutStatus.Failed ? "table-danger" : "")">
+                                        <td>
+                                            <a asp-page="Details" asp-route-id="@payout.Id" class="fw-bold text-decoration-none font-monospace">
+                                                @IndexModel.FormatShortId(payout.Id)
+                                            </a>
+                                        </td>
+                                        <td>@payout.ScheduledAt.ToString("MMM dd, yyyy")</td>
+                                        <td class="text-end">
+                                            <strong>@payout.Amount.ToString("N2") @payout.Currency</strong>
+                                        </td>
+                                        <td class="text-center">
+                                            <span class="badge @IndexModel.GetStatusBadgeClass(payout.Status)">
+                                                @IndexModel.GetStatusDisplayText(payout.Status)
+                                            </span>
+                                        </td>
+                                        <td>
+                                            @if (payout.CompletedAt.HasValue)
+                                            {
+                                                @payout.CompletedAt.Value.ToString("MMM dd, yyyy")
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted">-</span>
+                                            }
+                                        </td>
+                                        <td class="text-end">
+                                            <a asp-page="Details" asp-route-id="@payout.Id" class="btn btn-sm btn-outline-primary">
+                                                <i class="bi bi-eye me-1"></i>View
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    @if (payout.Status == PayoutStatus.Failed && !string.IsNullOrEmpty(payout.ErrorMessage))
+                                    {
+                                        <tr class="table-danger">
+                                            <td colspan="6" class="py-2">
+                                                <small class="text-danger">
+                                                    <i class="bi bi-exclamation-triangle me-1"></i>
+                                                    <strong>Error:</strong> @payout.ErrorMessage
+                                                </small>
+                                            </td>
+                                        </tr>
+                                    }
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        }
+    }
+</div>

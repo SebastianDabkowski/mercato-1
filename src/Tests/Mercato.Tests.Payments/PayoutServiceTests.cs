@@ -909,4 +909,202 @@ public class PayoutServiceTests
     }
 
     #endregion
+
+    #region GetPayoutsFilteredAsync Tests
+
+    [Fact]
+    public async Task GetPayoutsFilteredAsync_ValidQuery_ReturnsPayouts()
+    {
+        // Arrange
+        var service = CreateService();
+        var sellerId = Guid.NewGuid();
+
+        var payouts = new List<Payout>
+        {
+            new Payout { Id = Guid.NewGuid(), SellerId = sellerId, Amount = 100.00m, Status = PayoutStatus.Paid, ScheduledAt = DateTimeOffset.UtcNow.AddDays(-5) },
+            new Payout { Id = Guid.NewGuid(), SellerId = sellerId, Amount = 75.00m, Status = PayoutStatus.Scheduled, ScheduledAt = DateTimeOffset.UtcNow.AddDays(-1) }
+        };
+
+        _mockPayoutRepository
+            .Setup(r => r.GetBySellerIdWithFiltersAsync(sellerId, null, null, null))
+            .ReturnsAsync(payouts);
+
+        var query = new GetPayoutsFilteredQuery { SellerId = sellerId };
+
+        // Act
+        var result = await service.GetPayoutsFilteredAsync(query);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.Equal(2, result.Payouts.Count);
+    }
+
+    [Fact]
+    public async Task GetPayoutsFilteredAsync_WithStatusFilter_ReturnsFilteredPayouts()
+    {
+        // Arrange
+        var service = CreateService();
+        var sellerId = Guid.NewGuid();
+
+        var payouts = new List<Payout>
+        {
+            new Payout { Id = Guid.NewGuid(), SellerId = sellerId, Amount = 100.00m, Status = PayoutStatus.Paid, ScheduledAt = DateTimeOffset.UtcNow.AddDays(-5) }
+        };
+
+        _mockPayoutRepository
+            .Setup(r => r.GetBySellerIdWithFiltersAsync(sellerId, PayoutStatus.Paid, null, null))
+            .ReturnsAsync(payouts);
+
+        var query = new GetPayoutsFilteredQuery
+        {
+            SellerId = sellerId,
+            Status = PayoutStatus.Paid
+        };
+
+        // Act
+        var result = await service.GetPayoutsFilteredAsync(query);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.Single(result.Payouts);
+        Assert.All(result.Payouts, p => Assert.Equal(PayoutStatus.Paid, p.Status));
+    }
+
+    [Fact]
+    public async Task GetPayoutsFilteredAsync_WithDateRangeFilter_ReturnsFilteredPayouts()
+    {
+        // Arrange
+        var service = CreateService();
+        var sellerId = Guid.NewGuid();
+        var fromDate = DateTimeOffset.UtcNow.AddDays(-30);
+        var toDate = DateTimeOffset.UtcNow;
+
+        var payouts = new List<Payout>
+        {
+            new Payout { Id = Guid.NewGuid(), SellerId = sellerId, Amount = 100.00m, Status = PayoutStatus.Paid, ScheduledAt = DateTimeOffset.UtcNow.AddDays(-15) }
+        };
+
+        _mockPayoutRepository
+            .Setup(r => r.GetBySellerIdWithFiltersAsync(sellerId, null, fromDate, toDate))
+            .ReturnsAsync(payouts);
+
+        var query = new GetPayoutsFilteredQuery
+        {
+            SellerId = sellerId,
+            FromDate = fromDate,
+            ToDate = toDate
+        };
+
+        // Act
+        var result = await service.GetPayoutsFilteredAsync(query);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.Single(result.Payouts);
+    }
+
+    [Fact]
+    public async Task GetPayoutsFilteredAsync_WithAllFilters_ReturnsFilteredPayouts()
+    {
+        // Arrange
+        var service = CreateService();
+        var sellerId = Guid.NewGuid();
+        var fromDate = DateTimeOffset.UtcNow.AddDays(-30);
+        var toDate = DateTimeOffset.UtcNow;
+        var status = PayoutStatus.Failed;
+
+        var payouts = new List<Payout>
+        {
+            new Payout 
+            { 
+                Id = Guid.NewGuid(), 
+                SellerId = sellerId, 
+                Amount = 100.00m, 
+                Status = PayoutStatus.Failed, 
+                ScheduledAt = DateTimeOffset.UtcNow.AddDays(-10),
+                ErrorMessage = "Connection timeout"
+            }
+        };
+
+        _mockPayoutRepository
+            .Setup(r => r.GetBySellerIdWithFiltersAsync(sellerId, status, fromDate, toDate))
+            .ReturnsAsync(payouts);
+
+        var query = new GetPayoutsFilteredQuery
+        {
+            SellerId = sellerId,
+            Status = status,
+            FromDate = fromDate,
+            ToDate = toDate
+        };
+
+        // Act
+        var result = await service.GetPayoutsFilteredAsync(query);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.Single(result.Payouts);
+        Assert.Equal(PayoutStatus.Failed, result.Payouts[0].Status);
+    }
+
+    [Fact]
+    public async Task GetPayoutsFilteredAsync_EmptySellerId_ReturnsFailure()
+    {
+        // Arrange
+        var service = CreateService();
+
+        var query = new GetPayoutsFilteredQuery { SellerId = Guid.Empty };
+
+        // Act
+        var result = await service.GetPayoutsFilteredAsync(query);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains(result.Errors, e => e.Contains("Seller ID is required"));
+    }
+
+    [Fact]
+    public async Task GetPayoutsFilteredAsync_FromDateAfterToDate_ReturnsFailure()
+    {
+        // Arrange
+        var service = CreateService();
+        var sellerId = Guid.NewGuid();
+
+        var query = new GetPayoutsFilteredQuery
+        {
+            SellerId = sellerId,
+            FromDate = DateTimeOffset.UtcNow,
+            ToDate = DateTimeOffset.UtcNow.AddDays(-30) // Before FromDate
+        };
+
+        // Act
+        var result = await service.GetPayoutsFilteredAsync(query);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains(result.Errors, e => e.Contains("From date must be before or equal to To date"));
+    }
+
+    [Fact]
+    public async Task GetPayoutsFilteredAsync_NoPayoutsFound_ReturnsEmptyList()
+    {
+        // Arrange
+        var service = CreateService();
+        var sellerId = Guid.NewGuid();
+
+        _mockPayoutRepository
+            .Setup(r => r.GetBySellerIdWithFiltersAsync(sellerId, null, null, null))
+            .ReturnsAsync(new List<Payout>());
+
+        var query = new GetPayoutsFilteredQuery { SellerId = sellerId };
+
+        // Act
+        var result = await service.GetPayoutsFilteredAsync(query);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.Empty(result.Payouts);
+    }
+
+    #endregion
 }
