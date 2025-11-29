@@ -44,12 +44,16 @@ public static class PaymentsModuleExtensions
         // Register SettlementSettings from configuration
         services.Configure<SettlementSettings>(configuration.GetSection("Settlement"));
 
+        // Register InvoiceSettings from configuration
+        services.Configure<InvoiceSettings>(configuration.GetSection("Invoice"));
+
         // Register repositories
         services.AddScoped<IEscrowRepository, EscrowRepository>();
         services.AddScoped<ICommissionRuleRepository, CommissionRuleRepository>();
         services.AddScoped<ICommissionRecordRepository, CommissionRecordRepository>();
         services.AddScoped<IPayoutRepository, PayoutRepository>();
         services.AddScoped<ISettlementRepository, SettlementRepository>();
+        services.AddScoped<ICommissionInvoiceRepository, CommissionInvoiceRepository>();
 
         // Register services
         services.AddScoped<IPaymentStatusMapper, PaymentStatusMapper>();
@@ -58,6 +62,7 @@ public static class PaymentsModuleExtensions
         services.AddScoped<ICommissionService, CommissionService>();
         services.AddScoped<IPayoutService, PayoutService>();
         services.AddScoped<ISettlementService, SettlementService>();
+        services.AddScoped<ICommissionInvoiceService, CommissionInvoiceService>();
 
         return services;
     }
