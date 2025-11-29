@@ -242,7 +242,7 @@ public class IndexModel : PageModel
 
         if (!string.IsNullOrEmpty(Filter))
         {
-            queryParams.Add($"Filter={Filter}");
+            queryParams.Add($"Filter={Uri.EscapeDataString(Filter)}");
         }
 
         return "?" + string.Join("&", queryParams);
