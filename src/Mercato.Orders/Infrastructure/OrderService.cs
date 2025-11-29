@@ -261,18 +261,18 @@ public class OrderService : IOrderService
             }
             else
             {
-                order.Status = OrderStatus.Cancelled;
-                order.CancelledAt = now;
+                order.Status = OrderStatus.Failed;
+                order.FailedAt = now;
 
-                // Update all seller sub-orders to Cancelled status
+                // Update all seller sub-orders to Failed status
                 foreach (var subOrder in order.SellerSubOrders)
                 {
-                    subOrder.Status = SellerSubOrderStatus.Cancelled;
-                    subOrder.CancelledAt = now;
+                    subOrder.Status = SellerSubOrderStatus.Failed;
+                    subOrder.FailedAt = now;
                     subOrder.LastUpdatedAt = now;
                 }
 
-                _logger.LogInformation("Order {OrderNumber} cancelled due to payment failure", order.OrderNumber);
+                _logger.LogInformation("Order {OrderNumber} failed due to payment failure", order.OrderNumber);
             }
 
             await _orderRepository.UpdateAsync(order);
@@ -654,7 +654,8 @@ public class OrderService : IOrderService
             { SellerSubOrderStatus.Shipped, [SellerSubOrderStatus.Delivered] },
             { SellerSubOrderStatus.Delivered, [SellerSubOrderStatus.Refunded] },
             { SellerSubOrderStatus.Cancelled, [SellerSubOrderStatus.Refunded] },
-            { SellerSubOrderStatus.Refunded, [] }
+            { SellerSubOrderStatus.Refunded, [] },
+            { SellerSubOrderStatus.Failed, [] }
         };
 
         if (!validTransitions.TryGetValue(currentStatus, out var allowedStatuses) ||

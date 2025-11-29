@@ -58,6 +58,12 @@ public class PaymentModel : PageModel
     public string SelectedPaymentMethodId { get; set; } = string.Empty;
 
     /// <summary>
+    /// Gets or sets the BLIK code for BLIK payments.
+    /// </summary>
+    [BindProperty]
+    public string? BlikCode { get; set; }
+
+    /// <summary>
     /// Gets the error message to display.
     /// </summary>
     public string? ErrorMessage { get; private set; }
@@ -96,6 +102,16 @@ public class PaymentModel : PageModel
     /// Gets a value indicating whether there are validation issues.
     /// </summary>
     public bool HasValidationIssues => StockIssues.Count > 0 || PriceChanges.Count > 0;
+
+    /// <summary>
+    /// Gets a value indicating whether BLIK code entry is required.
+    /// </summary>
+    public bool RequiresBlikCode { get; private set; }
+
+    /// <summary>
+    /// Gets the BLIK transaction ID for code submission.
+    /// </summary>
+    public string? BlikTransactionId { get; private set; }
 
     /// <summary>
     /// Handles GET requests for the payment page.
@@ -156,6 +172,16 @@ public class PaymentModel : PageModel
         if (defaultMethod != null)
         {
             SelectedPaymentMethodId = defaultMethod.Id;
+        }
+
+        // Check for BLIK code requirement from TempData
+        if (TempData.TryGetValue("RequiresBlikCode", out var requiresBlik) && requiresBlik is bool requiresBlikBool && requiresBlikBool)
+        {
+            RequiresBlikCode = true;
+            BlikTransactionId = TempData["BlikTransactionId"]?.ToString();
+            SelectedPaymentMethodId = "blik";
+            TempData.Keep("RequiresBlikCode");
+            TempData.Keep("BlikTransactionId");
         }
 
         return Page();
@@ -257,7 +283,8 @@ public class PaymentModel : PageModel
             PaymentMethodId = SelectedPaymentMethodId,
             Amount = TotalAmount,
             ReturnUrl = callbackUrl ?? "",
-            CancelUrl = Url.Page("Payment", pageHandler: null, values: null, protocol: Request.Scheme) ?? ""
+            CancelUrl = Url.Page("Payment", pageHandler: null, values: null, protocol: Request.Scheme) ?? "",
+            BlikCode = SelectedPaymentMethodId == "blik" ? BlikCode : null
         });
 
         if (!initiateResult.Succeeded)
@@ -282,6 +309,14 @@ public class PaymentModel : PageModel
         _logger.LogInformation(
             "Payment initiated for buyer {BuyerId}, transaction {TransactionId}",
             buyerId, initiateResult.TransactionId);
+
+        // Handle BLIK code requirement
+        if (initiateResult.RequiresBlikCode)
+        {
+            TempData["RequiresBlikCode"] = true;
+            TempData["BlikTransactionId"] = initiateResult.TransactionId.ToString();
+            return RedirectToPage("Payment");
+        }
 
         // Redirect to payment provider (simulated)
         if (initiateResult.RequiresRedirect && !string.IsNullOrEmpty(initiateResult.RedirectUrl))
@@ -370,5 +405,115 @@ public class PaymentModel : PageModel
     private string? GetBuyerId()
     {
         return User.FindFirstValue(ClaimTypes.NameIdentifier);
+    }
+
+    /// <summary>
+    /// Handles POST requests to submit BLIK code.
+    /// </summary>
+    /// <returns>The page result.</returns>
+    public async Task<IActionResult> OnPostSubmitBlikCodeAsync()
+    {
+        var buyerId = GetBuyerId();
+        if (string.IsNullOrEmpty(buyerId))
+        {
+            return Forbid();
+        }
+
+        // Check for address data from previous step
+        if (!TryLoadDeliveryAddress())
+        {
+            TempData["Error"] = "Please select a delivery address first.";
+            return RedirectToPage("Checkout");
+        }
+
+        // Check for shipping data from previous step
+        if (!TryLoadShippingData())
+        {
+            TempData["Error"] = "Please select shipping methods first.";
+            return RedirectToPage("Shipping");
+        }
+
+        // Load cart
+        CartResult = await _cartService.GetCartAsync(new GetCartQuery { BuyerId = buyerId });
+
+        if (!CartResult.Succeeded || IsCartEmpty)
+        {
+            return RedirectToPage("/Cart/Index");
+        }
+
+        // Get payment methods for display if validation fails
+        var paymentResult = await _paymentService.GetPaymentMethodsAsync();
+        if (paymentResult.Succeeded)
+        {
+            PaymentMethods = paymentResult.Methods.Where(m => m.IsEnabled).ToList();
+        }
+
+        // Calculate total
+        TotalAmount = CartResult.TotalPrice + (ShippingData?.TotalShippingCost ?? 0);
+
+        // Get the transaction ID from TempData
+        var transactionIdStr = TempData["BlikTransactionId"]?.ToString();
+        if (string.IsNullOrEmpty(transactionIdStr) || !Guid.TryParse(transactionIdStr, out var transactionId))
+        {
+            ErrorMessage = "BLIK transaction not found. Please try again.";
+            return Page();
+        }
+
+        // Validate BLIK code
+        if (string.IsNullOrEmpty(BlikCode) || BlikCode.Length != 6 || !BlikCode.All(char.IsDigit))
+        {
+            ErrorMessage = "Please enter a valid 6-digit BLIK code.";
+            RequiresBlikCode = true;
+            BlikTransactionId = transactionIdStr;
+            SelectedPaymentMethodId = "blik";
+            TempData.Keep("CheckoutAddress");
+            TempData.Keep("CheckoutShipping");
+            TempData.Keep("ValidatedItems");
+            TempData["RequiresBlikCode"] = true;
+            TempData["BlikTransactionId"] = transactionIdStr;
+            return Page();
+        }
+
+        // Submit BLIK code
+        var blikResult = await _paymentService.SubmitBlikCodeAsync(new SubmitBlikCodeCommand
+        {
+            TransactionId = transactionId,
+            BuyerId = buyerId,
+            BlikCode = BlikCode
+        });
+
+        if (!blikResult.Succeeded)
+        {
+            if (blikResult.IsNotAuthorized)
+            {
+                return Forbid();
+            }
+
+            ErrorMessage = string.Join(", ", blikResult.Errors);
+            RequiresBlikCode = true;
+            BlikTransactionId = transactionIdStr;
+            SelectedPaymentMethodId = "blik";
+            TempData.Keep("CheckoutAddress");
+            TempData.Keep("CheckoutShipping");
+            TempData.Keep("ValidatedItems");
+            TempData["RequiresBlikCode"] = true;
+            TempData["BlikTransactionId"] = transactionIdStr;
+            return Page();
+        }
+
+        // Store payment transaction ID for callback
+        TempData["PaymentTransactionId"] = transactionId.ToString();
+
+        // Keep checkout data
+        TempData.Keep("CheckoutAddress");
+        TempData.Keep("CheckoutShipping");
+        TempData.Keep("ValidatedItems");
+
+        _logger.LogInformation(
+            "BLIK code submitted for buyer {BuyerId}, transaction {TransactionId}",
+            buyerId, transactionId);
+
+        // Go to callback to complete order
+        return RedirectToPage("PaymentCallback", new { transactionId = transactionId });
     }
 }

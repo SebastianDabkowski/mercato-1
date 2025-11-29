@@ -87,6 +87,11 @@ public class SellerSubOrder
     public DateTimeOffset? RefundedAt { get; set; }
 
     /// <summary>
+    /// Gets or sets the date and time when the sub-order payment failed.
+    /// </summary>
+    public DateTimeOffset? FailedAt { get; set; }
+
+    /// <summary>
     /// Gets or sets the tracking number for shipment.
     /// </summary>
     public string? TrackingNumber { get; set; }

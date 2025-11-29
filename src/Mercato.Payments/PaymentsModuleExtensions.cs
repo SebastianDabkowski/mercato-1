@@ -27,6 +27,9 @@ public static class PaymentsModuleExtensions
         services.AddDbContext<PaymentDbContext>(options =>
             options.UseSqlServer(connectionString));
 
+        // Register PaymentSettings from configuration
+        services.Configure<PaymentSettings>(configuration.GetSection("Payments"));
+
         // Register services
         services.AddScoped<IPaymentService, PaymentService>();
 

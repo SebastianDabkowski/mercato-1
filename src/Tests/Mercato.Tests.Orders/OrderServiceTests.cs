@@ -334,7 +334,7 @@ public class OrderServiceTests
     }
 
     [Fact]
-    public async Task UpdateOrderStatusAsync_PaymentFailed_CancelsOrder()
+    public async Task UpdateOrderStatusAsync_PaymentFailed_FailsOrder()
     {
         // Arrange
         var order = CreateTestOrder();
@@ -351,8 +351,8 @@ public class OrderServiceTests
         // Assert
         Assert.True(result.Succeeded);
         _mockOrderRepository.Verify(r => r.UpdateAsync(It.Is<Order>(o =>
-            o.Status == OrderStatus.Cancelled &&
-            o.CancelledAt != null)), Times.Once);
+            o.Status == OrderStatus.Failed &&
+            o.FailedAt != null)), Times.Once);
     }
 
     [Fact]

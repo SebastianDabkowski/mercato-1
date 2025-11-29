@@ -38,5 +38,10 @@ public enum SellerSubOrderStatus
     /// <summary>
     /// The sub-order has been refunded.
     /// </summary>
-    Refunded = 6
+    Refunded = 6,
+
+    /// <summary>
+    /// Payment for this sub-order failed.
+    /// </summary>
+    Failed = 7
 }
