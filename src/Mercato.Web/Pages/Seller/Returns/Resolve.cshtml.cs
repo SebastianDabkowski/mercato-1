@@ -249,7 +249,7 @@ public class ResolveModel : PageModel
             
             if (result.RefundInitiated && result.LinkedRefundId.HasValue)
             {
-                TempData["Success"] += $" A refund has been initiated (ID: {result.LinkedRefundId.Value.ToString()[..8].ToUpperInvariant()}).";
+                TempData["Success"] += $" A refund has been initiated (ID: {GetShortId(result.LinkedRefundId.Value)}).";
             }
 
             return RedirectToPage("/Seller/Orders/Details", new { id = Case.SellerSubOrderId });
@@ -261,6 +261,18 @@ public class ResolveModel : PageModel
             return Page();
         }
     }
+
+    /// <summary>
+    /// The number of characters to display for short IDs.
+    /// </summary>
+    private const int ShortIdLength = 8;
+
+    /// <summary>
+    /// Gets a short display version of a GUID (first 8 characters, uppercase).
+    /// </summary>
+    /// <param name="id">The GUID to shorten.</param>
+    /// <returns>The short ID string.</returns>
+    public static string GetShortId(Guid id) => id.ToString()[..ShortIdLength].ToUpperInvariant();
 
     /// <summary>
     /// Gets display text for a resolution type.

@@ -204,7 +204,7 @@
                                     {
                                         <div class="mt-2">
                                             <strong>Refund ID:</strong>
-                                            <span class="ms-2 font-monospace">@returnRequest.LinkedRefundId.Value.ToString()[..8].ToUpperInvariant()</span>
+                                            <span class="ms-2 font-monospace">@DetailsModel.GetShortId(returnRequest.LinkedRefundId.Value)</span>
                                         </div>
                                     }
                                 </div>

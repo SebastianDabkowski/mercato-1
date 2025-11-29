@@ -264,7 +264,7 @@
                         <div class="card-body">
                             <div class="d-flex justify-content-between mb-2">
                                 <span class="text-muted">Refund ID:</span>
-                                <span class="font-monospace">@Model.LinkedRefund.RefundId.ToString()[..8].ToUpperInvariant()</span>
+                                <span class="font-monospace">@ResolveModel.GetShortId(Model.LinkedRefund.RefundId)</span>
                             </div>
                             <div class="d-flex justify-content-between mb-2">
                                 <span class="text-muted">Amount:</span>
