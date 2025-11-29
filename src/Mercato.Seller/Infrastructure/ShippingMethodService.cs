@@ -63,6 +63,9 @@ public class ShippingMethodService : IShippingMethodService
             Name = command.Name,
             Description = command.Description,
             AvailableCountries = NormalizeAvailableCountries(command.AvailableCountries),
+            BaseCost = command.BaseCost,
+            EstimatedDeliveryMinDays = command.EstimatedDeliveryMinDays,
+            EstimatedDeliveryMaxDays = command.EstimatedDeliveryMaxDays,
             IsActive = true,
             CreatedAt = DateTimeOffset.UtcNow,
             LastUpdatedAt = DateTimeOffset.UtcNow
@@ -102,6 +105,9 @@ public class ShippingMethodService : IShippingMethodService
         shippingMethod.Name = command.Name;
         shippingMethod.Description = command.Description;
         shippingMethod.AvailableCountries = NormalizeAvailableCountries(command.AvailableCountries);
+        shippingMethod.BaseCost = command.BaseCost;
+        shippingMethod.EstimatedDeliveryMinDays = command.EstimatedDeliveryMinDays;
+        shippingMethod.EstimatedDeliveryMaxDays = command.EstimatedDeliveryMaxDays;
         shippingMethod.IsActive = command.IsActive;
         shippingMethod.LastUpdatedAt = DateTimeOffset.UtcNow;
 
@@ -174,6 +180,7 @@ public class ShippingMethodService : IShippingMethodService
         }
 
         ValidateNameAndDescription(command.Name, command.Description, command.AvailableCountries, errors);
+        ValidateDeliveryDays(command.EstimatedDeliveryMinDays, command.EstimatedDeliveryMaxDays, errors);
 
         return errors;
     }
@@ -198,6 +205,7 @@ public class ShippingMethodService : IShippingMethodService
         }
 
         ValidateNameAndDescription(command.Name, command.Description, command.AvailableCountries, errors);
+        ValidateDeliveryDays(command.EstimatedDeliveryMinDays, command.EstimatedDeliveryMaxDays, errors);
 
         return errors;
     }
@@ -228,6 +236,20 @@ public class ShippingMethodService : IShippingMethodService
         if (!string.IsNullOrEmpty(availableCountries) && availableCountries.Length > 1000)
         {
             errors.Add("Available countries must be at most 1000 characters.");
+        }
+    }
+
+    /// <summary>
+    /// Validates the estimated delivery days range.
+    /// </summary>
+    /// <param name="minDays">The minimum delivery days.</param>
+    /// <param name="maxDays">The maximum delivery days.</param>
+    /// <param name="errors">The list to add errors to.</param>
+    private static void ValidateDeliveryDays(int? minDays, int? maxDays, List<string> errors)
+    {
+        if (minDays.HasValue && maxDays.HasValue && minDays.Value > maxDays.Value)
+        {
+            errors.Add("Minimum delivery days cannot be greater than maximum delivery days.");
         }
     }
 

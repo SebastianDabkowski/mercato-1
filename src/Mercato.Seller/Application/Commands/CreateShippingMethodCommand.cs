@@ -31,4 +31,22 @@ public class CreateShippingMethodCommand
     /// </summary>
     [StringLength(1000, ErrorMessage = "Available countries must be at most 1000 characters.")]
     public string? AvailableCountries { get; set; }
+
+    /// <summary>
+    /// Gets or sets the base shipping cost (flat rate) for this method.
+    /// </summary>
+    [Range(0, 999999.99, ErrorMessage = "Base cost must be between 0 and 999,999.99.")]
+    public decimal BaseCost { get; set; }
+
+    /// <summary>
+    /// Gets or sets the minimum estimated delivery time in business days.
+    /// </summary>
+    [Range(0, 365, ErrorMessage = "Minimum delivery days must be between 0 and 365.")]
+    public int? EstimatedDeliveryMinDays { get; set; }
+
+    /// <summary>
+    /// Gets or sets the maximum estimated delivery time in business days.
+    /// </summary>
+    [Range(0, 365, ErrorMessage = "Maximum delivery days must be between 0 and 365.")]
+    public int? EstimatedDeliveryMaxDays { get; set; }
 }

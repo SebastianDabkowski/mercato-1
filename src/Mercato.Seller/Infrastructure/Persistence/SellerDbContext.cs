@@ -197,6 +197,7 @@ public class SellerDbContext : DbContext
             entity.Property(e => e.Description).HasMaxLength(500);
             entity.Property(e => e.AvailableCountries).HasMaxLength(1000);
             entity.Property(e => e.IsActive).IsRequired();
+            entity.Property(e => e.BaseCost).HasPrecision(18, 2);
 
             entity.HasIndex(e => e.StoreId);
             entity.HasIndex(e => new { e.StoreId, e.IsActive });

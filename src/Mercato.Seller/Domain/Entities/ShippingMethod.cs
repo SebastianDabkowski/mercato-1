@@ -37,6 +37,21 @@ public class ShippingMethod
     public bool IsActive { get; set; } = true;
 
     /// <summary>
+    /// Gets or sets the base shipping cost (flat rate) for this method.
+    /// </summary>
+    public decimal BaseCost { get; set; }
+
+    /// <summary>
+    /// Gets or sets the minimum estimated delivery time in business days.
+    /// </summary>
+    public int? EstimatedDeliveryMinDays { get; set; }
+
+    /// <summary>
+    /// Gets or sets the maximum estimated delivery time in business days.
+    /// </summary>
+    public int? EstimatedDeliveryMaxDays { get; set; }
+
+    /// <summary>
     /// Gets or sets the date and time when the shipping method was created.
     /// </summary>
     public DateTimeOffset CreatedAt { get; set; }
