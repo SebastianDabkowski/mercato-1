@@ -9,6 +9,7 @@ using Mercato.Orders;
 using Mercato.Payments;
 using Mercato.Product;
 using Mercato.Seller;
+using Mercato.Shipping;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -104,6 +105,7 @@ builder.Services.AddProductModule(builder.Configuration, builder.Environment.Con
 builder.Services.AddOrdersModule(builder.Configuration);
 builder.Services.AddCartModule(builder.Configuration);
 builder.Services.AddPaymentsModule(builder.Configuration);
+builder.Services.AddShippingModule(builder.Configuration);
 builder.Services.AddIdentityModule();
 builder.Services.AddAdminModule(builder.Configuration);
 

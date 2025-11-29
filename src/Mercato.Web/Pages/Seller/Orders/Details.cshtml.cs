@@ -2,6 +2,7 @@ using Mercato.Orders.Application.Commands;
 using Mercato.Orders.Application.Services;
 using Mercato.Orders.Domain.Entities;
 using Mercato.Seller.Application.Services;
+using Mercato.Shipping.Application.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -17,6 +18,8 @@ public class DetailsModel : PageModel
 {
     private readonly IOrderService _orderService;
     private readonly IStoreProfileService _storeProfileService;
+    private readonly IShipmentService _shipmentService;
+    private readonly IShippingLabelService _shippingLabelService;
     private readonly ILogger<DetailsModel> _logger;
 
     /// <summary>
@@ -24,14 +27,20 @@ public class DetailsModel : PageModel
     /// </summary>
     /// <param name="orderService">The order service.</param>
     /// <param name="storeProfileService">The store profile service.</param>
+    /// <param name="shipmentService">The shipment service.</param>
+    /// <param name="shippingLabelService">The shipping label service.</param>
     /// <param name="logger">The logger.</param>
     public DetailsModel(
         IOrderService orderService,
         IStoreProfileService storeProfileService,
+        IShipmentService shipmentService,
+        IShippingLabelService shippingLabelService,
         ILogger<DetailsModel> logger)
     {
         _orderService = orderService;
         _storeProfileService = storeProfileService;
+        _shipmentService = shipmentService;
+        _shippingLabelService = shippingLabelService;
         _logger = logger;
     }
 
@@ -54,6 +63,16 @@ public class DetailsModel : PageModel
     /// Gets the return request for this sub-order, if one exists.
     /// </summary>
     public ReturnRequest? ReturnRequest { get; private set; }
+
+    /// <summary>
+    /// Gets the shipment ID associated with this sub-order, if one exists.
+    /// </summary>
+    public Guid? ShipmentId { get; private set; }
+
+    /// <summary>
+    /// Gets a value indicating whether a shipping label is available for download.
+    /// </summary>
+    public bool HasShippingLabel { get; private set; }
 
     /// <summary>
     /// Gets the error message to display.
@@ -119,6 +138,9 @@ public class DetailsModel : PageModel
 
             // Load return request if exists
             await LoadReturnRequestAsync(id);
+
+            // Load shipment info if exists
+            await LoadShipmentInfoAsync(id);
 
             return Page();
         }
@@ -365,6 +387,34 @@ public class DetailsModel : PageModel
         }
     }
 
+    private async Task LoadShipmentInfoAsync(Guid subOrderId)
+    {
+        if (Store == null)
+        {
+            return;
+        }
+
+        try
+        {
+            var result = await _shipmentService.GetShipmentsForSubOrderAsync(subOrderId, Store.Id);
+            if (result.Succeeded && result.Shipments.Count > 0)
+            {
+                // Use the most recent shipment
+                var shipment = result.Shipments.OrderByDescending(s => s.CreatedAt).First();
+                ShipmentId = shipment.Id;
+
+                // Check if a label exists
+                var labelResult = await _shippingLabelService.GetLabelAsync(shipment.Id, Store.Id);
+                HasShippingLabel = labelResult.Succeeded && labelResult.Label != null;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error loading shipment info for sub-order {SubOrderId}", subOrderId);
+            // Don't fail the page load if shipment info can't be loaded
+        }
+    }
+
     private async Task<IActionResult> LoadSubOrderAndReturnPage(Guid id)
     {
         if (Store != null)
@@ -377,6 +427,7 @@ public class DetailsModel : PageModel
             }
 
             await LoadReturnRequestAsync(id);
+            await LoadShipmentInfoAsync(id);
         }
         return Page();
     }
@@ -501,6 +552,101 @@ public class DetailsModel : PageModel
         SellerSubOrderItemStatus.Cancelled => "Cancelled",
         _ => status.ToString()
     };
+
+    /// <summary>
+    /// Handles POST requests to generate a shipping label.
+    /// </summary>
+    /// <param name="id">The seller sub-order ID.</param>
+    /// <param name="shipmentId">The shipment ID.</param>
+    /// <returns>The page result.</returns>
+    public async Task<IActionResult> OnPostGenerateLabelAsync(Guid id, Guid shipmentId)
+    {
+        var sellerId = GetSellerId();
+        if (string.IsNullOrEmpty(sellerId))
+        {
+            return Forbid();
+        }
+
+        try
+        {
+            Store = await _storeProfileService.GetStoreBySellerIdAsync(sellerId);
+            if (Store == null)
+            {
+                ErrorMessage = "Store not found.";
+                return Page();
+            }
+
+            var result = await _shippingLabelService.GenerateLabelAsync(shipmentId, Store.Id);
+            if (!result.Succeeded)
+            {
+                if (result.IsNotAuthorized)
+                {
+                    return Forbid();
+                }
+                ErrorMessage = string.Join(", ", result.Errors);
+                return await LoadSubOrderAndReturnPage(id);
+            }
+
+            SuccessMessage = "Shipping label generated successfully.";
+            return await LoadSubOrderAndReturnPage(id);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error generating shipping label for seller {SellerId}", sellerId);
+            ErrorMessage = "An error occurred while generating the shipping label.";
+            return await LoadSubOrderAndReturnPage(id);
+        }
+    }
+
+    /// <summary>
+    /// Handles GET requests to download a shipping label.
+    /// </summary>
+    /// <param name="id">The seller sub-order ID.</param>
+    /// <param name="shipmentId">The shipment ID.</param>
+    /// <returns>The file result or page result on error.</returns>
+    public async Task<IActionResult> OnGetDownloadLabelAsync(Guid id, Guid shipmentId)
+    {
+        var sellerId = GetSellerId();
+        if (string.IsNullOrEmpty(sellerId))
+        {
+            return Forbid();
+        }
+
+        try
+        {
+            Store = await _storeProfileService.GetStoreBySellerIdAsync(sellerId);
+            if (Store == null)
+            {
+                ErrorMessage = "Store not found.";
+                return Page();
+            }
+
+            var result = await _shippingLabelService.GetLabelAsync(shipmentId, Store.Id);
+            if (!result.Succeeded)
+            {
+                if (result.IsNotAuthorized)
+                {
+                    return Forbid();
+                }
+                ErrorMessage = string.Join(", ", result.Errors);
+                return await LoadSubOrderAndReturnPage(id);
+            }
+
+            if (result.Label == null || result.Label.LabelData == null || result.Label.LabelData.Length == 0)
+            {
+                ErrorMessage = "Shipping label data is not available.";
+                return await LoadSubOrderAndReturnPage(id);
+            }
+
+            return File(result.Label.LabelData, result.Label.ContentType, result.Label.FileName);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error downloading shipping label for seller {SellerId}", sellerId);
+            ErrorMessage = "An error occurred while downloading the shipping label.";
+            return await LoadSubOrderAndReturnPage(id);
+        }
+    }
 
     private string? GetSellerId()
     {

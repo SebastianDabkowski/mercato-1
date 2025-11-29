@@ -35,6 +35,7 @@ public static class ShippingModuleExtensions
         services.AddScoped<IStoreShippingProviderRepository, StoreShippingProviderRepository>();
         services.AddScoped<IShipmentRepository, ShipmentRepository>();
         services.AddScoped<IShipmentStatusUpdateRepository, ShipmentStatusUpdateRepository>();
+        services.AddScoped<IShippingLabelRepository, ShippingLabelRepository>();
 
         // Register gateways
         services.AddScoped<IShippingProviderGateway, MockDhlGateway>();
@@ -44,6 +45,7 @@ public static class ShippingModuleExtensions
         // Register services
         services.AddScoped<IShippingProviderService, ShippingProviderService>();
         services.AddScoped<IShipmentService, ShipmentService>();
+        services.AddScoped<IShippingLabelService, ShippingLabelService>();
 
         return services;
     }

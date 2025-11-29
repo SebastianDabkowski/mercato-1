@@ -32,6 +32,13 @@ public interface IShippingProviderGateway
     /// <param name="request">The cancellation request.</param>
     /// <returns>The result of the cancellation.</returns>
     Task<CancelShipmentGatewayResult> CancelShipmentAsync(CancelShipmentGatewayRequest request);
+
+    /// <summary>
+    /// Gets the shipping label data for a shipment from the provider.
+    /// </summary>
+    /// <param name="request">The label request.</param>
+    /// <returns>The result containing label data.</returns>
+    Task<GetShippingLabelGatewayResult> GetLabelAsync(GetShippingLabelGatewayRequest request);
 }
 
 /// <summary>
@@ -446,4 +453,95 @@ public class PackageDimensions
     /// Gets or sets the height in centimeters.
     /// </summary>
     public decimal HeightCm { get; set; }
+}
+
+/// <summary>
+/// Request to get a shipping label from the provider.
+/// </summary>
+public class GetShippingLabelGatewayRequest
+{
+    /// <summary>
+    /// Gets or sets the tracking number for the shipment.
+    /// </summary>
+    public string TrackingNumber { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the external shipment ID from the provider.
+    /// </summary>
+    public string? ExternalShipmentId { get; set; }
+
+    /// <summary>
+    /// Gets or sets the credential identifier for API authentication.
+    /// </summary>
+    public string? CredentialIdentifier { get; set; }
+
+    /// <summary>
+    /// Gets or sets the desired label format (e.g., "PDF", "PNG", "ZPL").
+    /// </summary>
+    public string LabelFormat { get; set; } = "PDF";
+}
+
+/// <summary>
+/// Result of getting a shipping label from the provider.
+/// </summary>
+public class GetShippingLabelGatewayResult
+{
+    /// <summary>
+    /// Gets a value indicating whether the operation succeeded.
+    /// </summary>
+    public bool Succeeded { get; private init; }
+
+    /// <summary>
+    /// Gets the list of errors if the operation failed.
+    /// </summary>
+    public IReadOnlyList<string> Errors { get; private init; } = [];
+
+    /// <summary>
+    /// Gets the binary label data.
+    /// </summary>
+    public byte[]? LabelData { get; private init; }
+
+    /// <summary>
+    /// Gets the content type of the label (e.g., "application/pdf").
+    /// </summary>
+    public string? ContentType { get; private init; }
+
+    /// <summary>
+    /// Gets the suggested file name for the label.
+    /// </summary>
+    public string? FileName { get; private init; }
+
+    /// <summary>
+    /// Creates a successful result with label data.
+    /// </summary>
+    /// <param name="labelData">The binary label data.</param>
+    /// <param name="contentType">The content type.</param>
+    /// <param name="fileName">The suggested file name.</param>
+    /// <returns>A successful result.</returns>
+    public static GetShippingLabelGatewayResult Success(byte[] labelData, string contentType, string fileName) => new()
+    {
+        Succeeded = true,
+        Errors = [],
+        LabelData = labelData,
+        ContentType = contentType,
+        FileName = fileName
+    };
+
+    /// <summary>
+    /// Creates a failed result.
+    /// </summary>
+    /// <param name="errors">The error messages.</param>
+    /// <returns>A failed result.</returns>
+    public static GetShippingLabelGatewayResult Failure(IReadOnlyList<string> errors) => new()
+    {
+        Succeeded = false,
+        Errors = errors
+    };
+
+    /// <summary>
+    /// Creates a failed result with a single error.
+    /// </summary>
+    /// <param name="error">The error message.</param>
+    /// <returns>A failed result.</returns>
+    public static GetShippingLabelGatewayResult Failure(string error) => Failure([error]);
 }
