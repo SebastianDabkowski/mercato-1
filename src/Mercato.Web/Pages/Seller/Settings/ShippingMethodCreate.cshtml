@@ -1,0 +1,70 @@
+@page
+@model Mercato.Web.Pages.Seller.Settings.ShippingMethodCreateModel
+@{
+    ViewData["Title"] = "Add Shipping Method";
+}
+
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0"><i class="bi bi-plus-lg me-2"></i>Add Shipping Method</h4>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted mb-4">Create a new shipping method for your store. This method will be available to buyers at checkout.</p>
+
+                    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+                    {
+                        <div class="alert alert-danger" role="alert">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>@Model.ErrorMessage
+                        </div>
+                    }
+
+                    <form method="post">
+                        <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+                        <div class="mb-3">
+                            <label asp-for="Name" class="form-label">Method Name <span class="text-danger">*</span></label>
+                            <input asp-for="Name" class="form-control" placeholder="e.g., Standard Courier, Parcel Locker, Express Delivery" />
+                            <span asp-validation-for="Name" class="text-danger"></span>
+                            <div class="form-text">Enter a descriptive name for this shipping method (e.g., "Courier", "Parcel Locker", "Postal Service", "In-Store Pickup").</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="Description" class="form-label">Description</label>
+                            <textarea asp-for="Description" class="form-control" rows="3" placeholder="Describe this shipping method..."></textarea>
+                            <span asp-validation-for="Description" class="text-danger"></span>
+                            <div class="form-text">Provide additional details about this shipping method, such as delivery times or special instructions (up to 500 characters).</div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label asp-for="AvailableCountries" class="form-label">Available Countries</label>
+                            <input asp-for="AvailableCountries" class="form-control" placeholder="e.g., US, CA, GB, DE" />
+                            <span asp-validation-for="AvailableCountries" class="text-danger"></span>
+                            <div class="form-text">Enter comma-separated ISO country codes where this shipping method is available. Leave empty to make it available in all countries.</div>
+                        </div>
+
+                        <div class="alert alert-info" role="alert">
+                            <i class="bi bi-info-circle me-2"></i>
+                            <strong>Tip:</strong> Common country codes include US (United States), CA (Canada), GB (United Kingdom), DE (Germany), FR (France), AU (Australia).
+                        </div>
+
+                        <div class="d-flex justify-content-between mt-4">
+                            <a asp-page="ShippingMethods" class="btn btn-outline-secondary">
+                                <i class="bi bi-arrow-left me-1"></i>Cancel
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-lg me-1"></i>Create Shipping Method
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
