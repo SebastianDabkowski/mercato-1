@@ -256,18 +256,21 @@ public class EscrowService : IEscrowService
         }
         else
         {
+            var hasEmptySellerId = false;
+            var hasInvalidAmount = false;
+
             foreach (var allocation in command.SellerAllocations)
             {
-                if (allocation.SellerId == Guid.Empty)
+                if (allocation.SellerId == Guid.Empty && !hasEmptySellerId)
                 {
                     errors.Add("Seller ID is required for all allocations.");
-                    break;
+                    hasEmptySellerId = true;
                 }
 
-                if (allocation.Amount <= 0)
+                if (allocation.Amount <= 0 && !hasInvalidAmount)
                 {
                     errors.Add("Amount must be greater than zero for all allocations.");
-                    break;
+                    hasInvalidAmount = true;
                 }
             }
         }
