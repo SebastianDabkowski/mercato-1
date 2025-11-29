@@ -2154,4 +2154,59 @@ public class OrderService : IOrderService
             _ => (false, "Invalid user role.")
         };
     }
+
+    /// <inheritdoc />
+    public async Task<GetFilteredCasesResult> GetFilteredCasesForSellerAsync(SellerCaseFilterQuery query)
+    {
+        var validationErrors = ValidateSellerCaseFilterQuery(query);
+        if (validationErrors.Count > 0)
+        {
+            return GetFilteredCasesResult.Failure(validationErrors);
+        }
+
+        try
+        {
+            var (cases, totalCount) = await _returnRequestRepository.GetFilteredByStoreIdAsync(
+                query.StoreId,
+                query.Statuses.Count > 0 ? query.Statuses : null,
+                query.FromDate,
+                query.ToDate,
+                query.Page,
+                query.PageSize);
+
+            return GetFilteredCasesResult.Success(cases, totalCount, query.Page, query.PageSize);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting filtered cases for store {StoreId}", query.StoreId);
+            return GetFilteredCasesResult.Failure("An error occurred while getting the cases.");
+        }
+    }
+
+    private static List<string> ValidateSellerCaseFilterQuery(SellerCaseFilterQuery query)
+    {
+        var errors = new List<string>();
+
+        if (query.StoreId == Guid.Empty)
+        {
+            errors.Add("Store ID is required.");
+        }
+
+        if (query.Page < 1)
+        {
+            errors.Add("Page number must be at least 1.");
+        }
+
+        if (query.PageSize < 1 || query.PageSize > 100)
+        {
+            errors.Add("Page size must be between 1 and 100.");
+        }
+
+        if (query.FromDate.HasValue && query.ToDate.HasValue && query.FromDate > query.ToDate)
+        {
+            errors.Add("From date cannot be after to date.");
+        }
+
+        return errors;
+    }
 }

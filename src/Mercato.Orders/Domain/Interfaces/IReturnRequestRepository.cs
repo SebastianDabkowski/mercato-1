@@ -44,6 +44,24 @@ public interface IReturnRequestRepository
     Task<IReadOnlyList<ReturnRequest>> GetOpenCasesForItemsAsync(IEnumerable<Guid> itemIds);
 
     /// <summary>
+    /// Gets filtered and paginated return requests for a specific store.
+    /// </summary>
+    /// <param name="storeId">The store ID.</param>
+    /// <param name="statuses">Optional list of statuses to filter by.</param>
+    /// <param name="fromDate">Optional start date for date range filter.</param>
+    /// <param name="toDate">Optional end date for date range filter.</param>
+    /// <param name="page">The page number (1-based).</param>
+    /// <param name="pageSize">The page size.</param>
+    /// <returns>A tuple containing the filtered return requests and total count.</returns>
+    Task<(IReadOnlyList<ReturnRequest> ReturnRequests, int TotalCount)> GetFilteredByStoreIdAsync(
+        Guid storeId,
+        IReadOnlyList<ReturnStatus>? statuses,
+        DateTimeOffset? fromDate,
+        DateTimeOffset? toDate,
+        int page,
+        int pageSize);
+
+    /// <summary>
     /// Adds a new return request to the repository.
     /// </summary>
     /// <param name="returnRequest">The return request to add.</param>

@@ -1,4 +1,5 @@
 using Mercato.Orders.Application.Commands;
+using Mercato.Orders.Application.Queries;
 using Mercato.Orders.Application.Services;
 using Mercato.Orders.Domain.Entities;
 using Mercato.Orders.Domain.Interfaces;
@@ -1220,6 +1221,289 @@ public class ReturnRequestServiceTests
         _mockReturnRequestRepository.Verify(r => r.UpdateAsync(It.Is<ReturnRequest>(rr =>
             rr.Status == ReturnStatus.Completed &&
             rr.ResolutionType == CaseResolutionType.Repair)), Times.Once);
+    }
+
+    #endregion
+
+    #region GetFilteredCasesForSellerAsync Tests
+
+    [Fact]
+    public async Task GetFilteredCasesForSellerAsync_ValidQuery_ReturnsCases()
+    {
+        // Arrange
+        var subOrder = CreateTestDeliveredSubOrder();
+        var returnRequests = new List<ReturnRequest>
+        {
+            CreateTestReturnRequestWithSubOrder(subOrder.Id, subOrder),
+            CreateTestReturnRequestWithSubOrder(subOrder.Id, subOrder)
+        };
+        var query = new SellerCaseFilterQuery
+        {
+            StoreId = TestStoreId,
+            Page = 1,
+            PageSize = 10
+        };
+
+        _mockReturnRequestRepository.Setup(r => r.GetFilteredByStoreIdAsync(
+                TestStoreId, null, null, null, 1, 10))
+            .ReturnsAsync((returnRequests, 2));
+
+        // Act
+        var result = await _service.GetFilteredCasesForSellerAsync(query);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.Equal(2, result.Cases.Count);
+        Assert.Equal(2, result.TotalCount);
+        Assert.Equal(1, result.Page);
+        Assert.Equal(10, result.PageSize);
+    }
+
+    [Fact]
+    public async Task GetFilteredCasesForSellerAsync_EmptyStoreId_ReturnsFailure()
+    {
+        // Arrange
+        var query = new SellerCaseFilterQuery
+        {
+            StoreId = Guid.Empty,
+            Page = 1,
+            PageSize = 10
+        };
+
+        // Act
+        var result = await _service.GetFilteredCasesForSellerAsync(query);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains("Store ID is required.", result.Errors);
+    }
+
+    [Fact]
+    public async Task GetFilteredCasesForSellerAsync_WithStatusFilter_ReturnsMatchingCases()
+    {
+        // Arrange
+        var subOrder = CreateTestDeliveredSubOrder();
+        var returnRequests = new List<ReturnRequest>
+        {
+            CreateTestReturnRequestWithSubOrder(subOrder.Id, subOrder)
+        };
+        var statuses = new List<ReturnStatus> { ReturnStatus.Requested, ReturnStatus.UnderReview };
+        var query = new SellerCaseFilterQuery
+        {
+            StoreId = TestStoreId,
+            Statuses = statuses,
+            Page = 1,
+            PageSize = 10
+        };
+
+        _mockReturnRequestRepository.Setup(r => r.GetFilteredByStoreIdAsync(
+                TestStoreId, statuses, null, null, 1, 10))
+            .ReturnsAsync((returnRequests, 1));
+
+        // Act
+        var result = await _service.GetFilteredCasesForSellerAsync(query);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.Single(result.Cases);
+        _mockReturnRequestRepository.Verify(r => r.GetFilteredByStoreIdAsync(
+            TestStoreId, statuses, null, null, 1, 10), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetFilteredCasesForSellerAsync_WithDateRange_ReturnsMatchingCases()
+    {
+        // Arrange
+        var subOrder = CreateTestDeliveredSubOrder();
+        var returnRequests = new List<ReturnRequest>
+        {
+            CreateTestReturnRequestWithSubOrder(subOrder.Id, subOrder)
+        };
+        var fromDate = DateTimeOffset.UtcNow.AddDays(-7);
+        var toDate = DateTimeOffset.UtcNow;
+        var query = new SellerCaseFilterQuery
+        {
+            StoreId = TestStoreId,
+            FromDate = fromDate,
+            ToDate = toDate,
+            Page = 1,
+            PageSize = 10
+        };
+
+        _mockReturnRequestRepository.Setup(r => r.GetFilteredByStoreIdAsync(
+                TestStoreId, null, fromDate, toDate, 1, 10))
+            .ReturnsAsync((returnRequests, 1));
+
+        // Act
+        var result = await _service.GetFilteredCasesForSellerAsync(query);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        _mockReturnRequestRepository.Verify(r => r.GetFilteredByStoreIdAsync(
+            TestStoreId, null, fromDate, toDate, 1, 10), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetFilteredCasesForSellerAsync_InvalidPage_ReturnsFailure()
+    {
+        // Arrange
+        var query = new SellerCaseFilterQuery
+        {
+            StoreId = TestStoreId,
+            Page = 0,
+            PageSize = 10
+        };
+
+        // Act
+        var result = await _service.GetFilteredCasesForSellerAsync(query);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains("Page number must be at least 1.", result.Errors);
+    }
+
+    [Fact]
+    public async Task GetFilteredCasesForSellerAsync_InvalidPageSize_ReturnsFailure()
+    {
+        // Arrange
+        var query = new SellerCaseFilterQuery
+        {
+            StoreId = TestStoreId,
+            Page = 1,
+            PageSize = 0
+        };
+
+        // Act
+        var result = await _service.GetFilteredCasesForSellerAsync(query);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains("Page size must be between 1 and 100.", result.Errors);
+    }
+
+    [Fact]
+    public async Task GetFilteredCasesForSellerAsync_PageSizeTooLarge_ReturnsFailure()
+    {
+        // Arrange
+        var query = new SellerCaseFilterQuery
+        {
+            StoreId = TestStoreId,
+            Page = 1,
+            PageSize = 101
+        };
+
+        // Act
+        var result = await _service.GetFilteredCasesForSellerAsync(query);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains("Page size must be between 1 and 100.", result.Errors);
+    }
+
+    [Fact]
+    public async Task GetFilteredCasesForSellerAsync_FromDateAfterToDate_ReturnsFailure()
+    {
+        // Arrange
+        var query = new SellerCaseFilterQuery
+        {
+            StoreId = TestStoreId,
+            FromDate = DateTimeOffset.UtcNow,
+            ToDate = DateTimeOffset.UtcNow.AddDays(-7),
+            Page = 1,
+            PageSize = 10
+        };
+
+        // Act
+        var result = await _service.GetFilteredCasesForSellerAsync(query);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains("From date cannot be after to date.", result.Errors);
+    }
+
+    [Fact]
+    public async Task GetFilteredCasesForSellerAsync_Pagination_ReturnsCorrectTotalPages()
+    {
+        // Arrange
+        var subOrder = CreateTestDeliveredSubOrder();
+        var returnRequests = new List<ReturnRequest>
+        {
+            CreateTestReturnRequestWithSubOrder(subOrder.Id, subOrder)
+        };
+        var query = new SellerCaseFilterQuery
+        {
+            StoreId = TestStoreId,
+            Page = 1,
+            PageSize = 10
+        };
+
+        _mockReturnRequestRepository.Setup(r => r.GetFilteredByStoreIdAsync(
+                TestStoreId, null, null, null, 1, 10))
+            .ReturnsAsync((returnRequests, 25));
+
+        // Act
+        var result = await _service.GetFilteredCasesForSellerAsync(query);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.Equal(25, result.TotalCount);
+        Assert.Equal(3, result.TotalPages);
+        Assert.True(result.HasNextPage);
+        Assert.False(result.HasPreviousPage);
+    }
+
+    [Fact]
+    public async Task GetFilteredCasesForSellerAsync_MiddlePage_HasPreviousAndNextPages()
+    {
+        // Arrange
+        var subOrder = CreateTestDeliveredSubOrder();
+        var returnRequests = new List<ReturnRequest>
+        {
+            CreateTestReturnRequestWithSubOrder(subOrder.Id, subOrder)
+        };
+        var query = new SellerCaseFilterQuery
+        {
+            StoreId = TestStoreId,
+            Page = 2,
+            PageSize = 10
+        };
+
+        _mockReturnRequestRepository.Setup(r => r.GetFilteredByStoreIdAsync(
+                TestStoreId, null, null, null, 2, 10))
+            .ReturnsAsync((returnRequests, 25));
+
+        // Act
+        var result = await _service.GetFilteredCasesForSellerAsync(query);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.Equal(2, result.Page);
+        Assert.True(result.HasNextPage);
+        Assert.True(result.HasPreviousPage);
+    }
+
+    [Fact]
+    public async Task GetFilteredCasesForSellerAsync_NoResults_ReturnsEmptyList()
+    {
+        // Arrange
+        var query = new SellerCaseFilterQuery
+        {
+            StoreId = TestStoreId,
+            Page = 1,
+            PageSize = 10
+        };
+
+        _mockReturnRequestRepository.Setup(r => r.GetFilteredByStoreIdAsync(
+                TestStoreId, null, null, null, 1, 10))
+            .ReturnsAsync((new List<ReturnRequest>(), 0));
+
+        // Act
+        var result = await _service.GetFilteredCasesForSellerAsync(query);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.Empty(result.Cases);
+        Assert.Equal(0, result.TotalCount);
     }
 
     #endregion

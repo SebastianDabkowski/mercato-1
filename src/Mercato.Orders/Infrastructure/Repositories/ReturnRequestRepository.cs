@@ -78,6 +78,56 @@ public class ReturnRequestRepository : IReturnRequestRepository
     }
 
     /// <inheritdoc />
+    public async Task<(IReadOnlyList<ReturnRequest> ReturnRequests, int TotalCount)> GetFilteredByStoreIdAsync(
+        Guid storeId,
+        IReadOnlyList<ReturnStatus>? statuses,
+        DateTimeOffset? fromDate,
+        DateTimeOffset? toDate,
+        int page,
+        int pageSize)
+    {
+        var query = _context.ReturnRequests
+            .Include(r => r.SellerSubOrder)
+                .ThenInclude(s => s.Order)
+            .Include(r => r.SellerSubOrder)
+                .ThenInclude(s => s.Items)
+            .Include(r => r.CaseItems)
+                .ThenInclude(ci => ci.SellerSubOrderItem)
+            .Where(r => r.SellerSubOrder.StoreId == storeId);
+
+        // Apply status filter
+        if (statuses != null && statuses.Count > 0)
+        {
+            query = query.Where(r => statuses.Contains(r.Status));
+        }
+
+        // Apply date range filter
+        if (fromDate.HasValue)
+        {
+            query = query.Where(r => r.CreatedAt >= fromDate.Value);
+        }
+
+        if (toDate.HasValue)
+        {
+            // Add one day to include the entire "to" day, preserving timezone as UTC
+            var endDate = new DateTimeOffset(toDate.Value.Date.AddDays(1), TimeSpan.Zero);
+            query = query.Where(r => r.CreatedAt < endDate);
+        }
+
+        // Get total count before pagination
+        var totalCount = await query.CountAsync();
+
+        // Apply ordering and pagination
+        var returnRequests = await query
+            .OrderByDescending(r => r.CreatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        return (returnRequests, totalCount);
+    }
+
+    /// <inheritdoc />
     public async Task<IReadOnlyList<ReturnRequest>> GetOpenCasesForItemsAsync(IEnumerable<Guid> itemIds)
     {
         var itemIdList = itemIds.ToList();
