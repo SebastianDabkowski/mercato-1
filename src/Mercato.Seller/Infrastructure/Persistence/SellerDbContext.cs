@@ -55,6 +55,11 @@ public class SellerDbContext : DbContext
     /// </summary>
     public DbSet<ShippingMethod> ShippingMethods { get; set; }
 
+    /// <summary>
+    /// Gets or sets the seller reputations.
+    /// </summary>
+    public DbSet<SellerReputation> SellerReputations { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -201,6 +206,21 @@ public class SellerDbContext : DbContext
 
             entity.HasIndex(e => e.StoreId);
             entity.HasIndex(e => new { e.StoreId, e.IsActive });
+        });
+
+        // Configure SellerReputation entity
+        modelBuilder.Entity<SellerReputation>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.StoreId).IsRequired();
+            entity.Property(e => e.AverageRating).HasPrecision(5, 2);
+            entity.Property(e => e.DisputeRate).HasPrecision(5, 2);
+            entity.Property(e => e.OnTimeShippingRate).HasPrecision(5, 2);
+            entity.Property(e => e.CancellationRate).HasPrecision(5, 2);
+            entity.Property(e => e.ReputationScore).HasPrecision(5, 2);
+            entity.Property(e => e.ReputationLevel).IsRequired();
+
+            entity.HasIndex(e => e.StoreId).IsUnique();
         });
     }
 }
