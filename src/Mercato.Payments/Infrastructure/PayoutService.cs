@@ -334,6 +334,24 @@ public class PayoutService : IPayoutService
         return GetPayoutsResult.Success(payouts);
     }
 
+    /// <inheritdoc />
+    public async Task<GetPayoutsResult> GetPayoutsFilteredAsync(GetPayoutsFilteredQuery query)
+    {
+        var errors = ValidateGetPayoutsFilteredQuery(query);
+        if (errors.Count > 0)
+        {
+            return GetPayoutsResult.Failure(errors);
+        }
+
+        var payouts = await _payoutRepository.GetBySellerIdWithFiltersAsync(
+            query.SellerId,
+            query.Status,
+            query.FromDate,
+            query.ToDate);
+
+        return GetPayoutsResult.Success(payouts);
+    }
+
     private async Task<IReadOnlyList<EscrowEntry>> GetEligibleEscrowEntriesAsync()
     {
         // Get all released escrow entries that haven't been included in a payout yet
@@ -347,6 +365,23 @@ public class PayoutService : IPayoutService
         if (command.ScheduledAt == default)
         {
             errors.Add("Scheduled date is required.");
+        }
+
+        return errors;
+    }
+
+    private static List<string> ValidateGetPayoutsFilteredQuery(GetPayoutsFilteredQuery query)
+    {
+        var errors = new List<string>();
+
+        if (query.SellerId == Guid.Empty)
+        {
+            errors.Add("Seller ID is required.");
+        }
+
+        if (query.FromDate.HasValue && query.ToDate.HasValue && query.FromDate > query.ToDate)
+        {
+            errors.Add("From date must be before or equal to To date.");
         }
 
         return errors;
