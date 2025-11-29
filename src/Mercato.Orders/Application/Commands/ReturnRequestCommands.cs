@@ -3,7 +3,23 @@ using Mercato.Orders.Domain.Entities;
 namespace Mercato.Orders.Application.Commands;
 
 /// <summary>
-/// Command for creating a new return request.
+/// Represents item selection for a return or complaint case.
+/// </summary>
+public class CaseItemSelection
+{
+    /// <summary>
+    /// Gets or sets the seller sub-order item ID.
+    /// </summary>
+    public Guid ItemId { get; set; }
+
+    /// <summary>
+    /// Gets or sets the quantity of items to include in the case.
+    /// </summary>
+    public int Quantity { get; set; }
+}
+
+/// <summary>
+/// Command for creating a new return or complaint case.
 /// </summary>
 public class CreateReturnRequestCommand
 {
@@ -18,9 +34,20 @@ public class CreateReturnRequestCommand
     public string BuyerId { get; set; } = string.Empty;
 
     /// <summary>
-    /// Gets or sets the reason for the return request.
+    /// Gets or sets the type of case (Return or Complaint).
+    /// </summary>
+    public CaseType CaseType { get; set; } = CaseType.Return;
+
+    /// <summary>
+    /// Gets or sets the reason for the return or complaint.
     /// </summary>
     public string Reason { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the selected items for this case.
+    /// If empty, the case applies to all items in the sub-order.
+    /// </summary>
+    public List<CaseItemSelection> SelectedItems { get; set; } = [];
 }
 
 /// <summary>
@@ -49,15 +76,22 @@ public class CreateReturnRequestResult
     public Guid? ReturnRequestId { get; private init; }
 
     /// <summary>
+    /// Gets the human-readable case number.
+    /// </summary>
+    public string? CaseNumber { get; private init; }
+
+    /// <summary>
     /// Creates a successful result.
     /// </summary>
     /// <param name="returnRequestId">The ID of the created return request.</param>
+    /// <param name="caseNumber">The human-readable case number.</param>
     /// <returns>A successful result.</returns>
-    public static CreateReturnRequestResult Success(Guid returnRequestId) => new()
+    public static CreateReturnRequestResult Success(Guid returnRequestId, string caseNumber) => new()
     {
         Succeeded = true,
         Errors = [],
-        ReturnRequestId = returnRequestId
+        ReturnRequestId = returnRequestId,
+        CaseNumber = caseNumber
     };
 
     /// <summary>

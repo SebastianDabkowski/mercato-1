@@ -1,7 +1,7 @@
 namespace Mercato.Orders.Domain.Entities;
 
 /// <summary>
-/// Represents a return request initiated by a buyer for a seller sub-order.
+/// Represents a return or complaint case initiated by a buyer for items in a seller sub-order.
 /// </summary>
 public class ReturnRequest
 {
@@ -9,6 +9,16 @@ public class ReturnRequest
     /// Gets or sets the unique identifier for the return request.
     /// </summary>
     public Guid Id { get; set; }
+
+    /// <summary>
+    /// Gets or sets the human-readable case number for display (e.g., "CASE-A1B2C3D4").
+    /// </summary>
+    public string CaseNumber { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the type of case (Return or Complaint).
+    /// </summary>
+    public CaseType CaseType { get; set; } = CaseType.Return;
 
     /// <summary>
     /// Gets or sets the seller sub-order ID that this return request is for.
@@ -26,7 +36,7 @@ public class ReturnRequest
     public ReturnStatus Status { get; set; } = ReturnStatus.Requested;
 
     /// <summary>
-    /// Gets or sets the reason provided by the buyer for the return.
+    /// Gets or sets the reason provided by the buyer for the return or complaint.
     /// </summary>
     public string Reason { get; set; } = string.Empty;
 
@@ -49,4 +59,15 @@ public class ReturnRequest
     /// Navigation property to the seller sub-order being returned.
     /// </summary>
     public SellerSubOrder SellerSubOrder { get; set; } = null!;
+
+    /// <summary>
+    /// Navigation property to the items included in this case.
+    /// If empty, the case applies to all items in the sub-order.
+    /// </summary>
+    public ICollection<CaseItem> CaseItems { get; set; } = new List<CaseItem>();
+
+    /// <summary>
+    /// Gets a value indicating whether this case applies to specific items or the entire sub-order.
+    /// </summary>
+    public bool HasSelectedItems => CaseItems.Count > 0;
 }

@@ -39,6 +39,11 @@ public class OrderDbContext : DbContext
     public DbSet<ReturnRequest> ReturnRequests { get; set; }
 
     /// <summary>
+    /// Gets or sets the case items DbSet.
+    /// </summary>
+    public DbSet<CaseItem> CaseItems { get; set; }
+
+    /// <summary>
     /// Gets or sets the shipping status histories DbSet.
     /// </summary>
     public DbSet<ShippingStatusHistory> ShippingStatusHistories { get; set; }
@@ -125,14 +130,34 @@ public class OrderDbContext : DbContext
         modelBuilder.Entity<ReturnRequest>(entity =>
         {
             entity.HasKey(e => e.Id);
+            entity.Property(e => e.CaseNumber).IsRequired().HasMaxLength(50);
+            entity.HasIndex(e => e.CaseNumber).IsUnique();
             entity.Property(e => e.BuyerId).IsRequired().HasMaxLength(450);
             entity.Property(e => e.Reason).IsRequired().HasMaxLength(2000);
             entity.Property(e => e.SellerNotes).HasMaxLength(2000);
-            entity.HasIndex(e => e.SellerSubOrderId).IsUnique();
+            entity.HasIndex(e => e.SellerSubOrderId);
             entity.HasIndex(e => e.BuyerId);
             entity.HasOne(e => e.SellerSubOrder)
-                .WithOne()
-                .HasForeignKey<ReturnRequest>(e => e.SellerSubOrderId);
+                .WithMany()
+                .HasForeignKey(e => e.SellerSubOrderId);
+            entity.HasMany(e => e.CaseItems)
+                .WithOne(ci => ci.ReturnRequest)
+                .HasForeignKey(ci => ci.ReturnRequestId);
+            // Ignore computed properties
+            entity.Ignore(e => e.HasSelectedItems);
+        });
+
+        modelBuilder.Entity<CaseItem>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.ReturnRequestId);
+            entity.HasIndex(e => e.SellerSubOrderItemId);
+            // Composite index to efficiently check for existing cases on items
+            entity.HasIndex(e => new { e.SellerSubOrderItemId, e.ReturnRequestId })
+                .HasDatabaseName("IX_CaseItems_ItemId_RequestId");
+            entity.HasOne(e => e.SellerSubOrderItem)
+                .WithMany()
+                .HasForeignKey(e => e.SellerSubOrderItemId);
         });
 
         modelBuilder.Entity<ShippingStatusHistory>(entity =>

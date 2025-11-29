@@ -249,12 +249,24 @@ public class DetailsModel : PageModel
     /// <returns>The display text.</returns>
     public static string GetReturnStatusDisplayText(ReturnStatus status) => status switch
     {
-        ReturnStatus.Requested => "Requested",
+        ReturnStatus.Requested => "Pending seller review",
         ReturnStatus.UnderReview => "Under Review",
         ReturnStatus.Approved => "Approved",
         ReturnStatus.Rejected => "Rejected",
         ReturnStatus.Completed => "Completed",
         _ => status.ToString()
+    };
+
+    /// <summary>
+    /// Gets the display text for a case type.
+    /// </summary>
+    /// <param name="caseType">The case type.</param>
+    /// <returns>The display text.</returns>
+    public static string GetCaseTypeDisplayText(CaseType caseType) => caseType switch
+    {
+        CaseType.Return => "Return Request",
+        CaseType.Complaint => "Product Issue",
+        _ => caseType.ToString()
     };
 
     /// <summary>

@@ -661,6 +661,11 @@ public class OrderService : IOrderService
         return $"{orderNumber}-S{subOrderIndex}";
     }
 
+    private static string GenerateCaseNumber(Guid caseId)
+    {
+        return $"CASE-{caseId.ToString("N")[..8].ToUpperInvariant()}";
+    }
+
     private static List<string> ValidateCreateCommand(CreateOrderCommand command)
     {
         var errors = new List<string>();
@@ -966,42 +971,77 @@ public class OrderService : IOrderService
             // Check if sub-order is delivered
             if (subOrder.Status != SellerSubOrderStatus.Delivered)
             {
-                return CreateReturnRequestResult.Failure("Return can only be initiated for delivered orders.");
+                return CreateReturnRequestResult.Failure("Cases can only be created for delivered orders.");
             }
 
             // Check return window
             if (!IsWithinReturnWindow(subOrder.DeliveredAt))
             {
                 return CreateReturnRequestResult.Failure(
-                    $"Return window has expired. Returns must be initiated within {_returnSettings.ReturnWindowDays} days of delivery.");
+                    $"Return window has expired. Cases must be created within {_returnSettings.ReturnWindowDays} days of delivery.");
             }
 
-            // Check if a return request already exists
-            var existingRequest = await _returnRequestRepository.GetBySellerSubOrderIdAsync(command.SellerSubOrderId);
-            if (existingRequest != null)
+            // Determine which items to include
+            var selectedItemIds = command.SelectedItems.Count > 0
+                ? command.SelectedItems.Select(i => i.ItemId).ToList()
+                : subOrder.Items.Select(i => i.Id).ToList();
+
+            // Validate that all selected items belong to this sub-order
+            var subOrderItemIds = subOrder.Items.Select(i => i.Id).ToHashSet();
+            var invalidItems = selectedItemIds.Where(id => !subOrderItemIds.Contains(id)).ToList();
+            if (invalidItems.Count > 0)
             {
-                return CreateReturnRequestResult.Failure("A return request already exists for this sub-order.");
+                return CreateReturnRequestResult.Failure("One or more selected items do not belong to this sub-order.");
+            }
+
+            // Check if any of the selected items already have an open case
+            var existingOpenCases = await _returnRequestRepository.GetOpenCasesForItemsAsync(selectedItemIds);
+            if (existingOpenCases.Count > 0)
+            {
+                return CreateReturnRequestResult.Failure("One or more selected items already have an open case. Please resolve existing cases before creating a new one.");
             }
 
             var now = DateTimeOffset.UtcNow;
+            var caseId = Guid.NewGuid();
+            var caseNumber = GenerateCaseNumber(caseId);
+
             var returnRequest = new ReturnRequest
             {
-                Id = Guid.NewGuid(),
+                Id = caseId,
+                CaseNumber = caseNumber,
+                CaseType = command.CaseType,
                 SellerSubOrderId = command.SellerSubOrderId,
                 BuyerId = command.BuyerId,
                 Status = ReturnStatus.Requested,
                 Reason = command.Reason,
                 CreatedAt = now,
-                LastUpdatedAt = now
+                LastUpdatedAt = now,
+                CaseItems = command.SelectedItems.Count > 0
+                    ? command.SelectedItems.Select(si => new CaseItem
+                    {
+                        Id = Guid.NewGuid(),
+                        ReturnRequestId = caseId,
+                        SellerSubOrderItemId = si.ItemId,
+                        Quantity = si.Quantity,
+                        CreatedAt = now
+                    }).ToList()
+                    : subOrder.Items.Select(item => new CaseItem
+                    {
+                        Id = Guid.NewGuid(),
+                        ReturnRequestId = caseId,
+                        SellerSubOrderItemId = item.Id,
+                        Quantity = item.Quantity,
+                        CreatedAt = now
+                    }).ToList()
             };
 
             await _returnRequestRepository.AddAsync(returnRequest);
 
             _logger.LogInformation(
-                "Created return request {ReturnRequestId} for sub-order {SubOrderNumber} by buyer {BuyerId}",
-                returnRequest.Id, subOrder.SubOrderNumber, command.BuyerId);
+                "Created {CaseType} case {CaseNumber} for sub-order {SubOrderNumber} by buyer {BuyerId} with {ItemCount} items",
+                command.CaseType, caseNumber, subOrder.SubOrderNumber, command.BuyerId, returnRequest.CaseItems.Count);
 
-            return CreateReturnRequestResult.Success(returnRequest.Id);
+            return CreateReturnRequestResult.Success(returnRequest.Id, caseNumber);
         }
         catch (Exception ex)
         {
@@ -1172,21 +1212,29 @@ public class OrderService : IOrderService
             // Check if sub-order is delivered
             if (subOrder.Status != SellerSubOrderStatus.Delivered)
             {
-                return CanInitiateReturnResult.No("Return can only be initiated for delivered orders.");
+                return CanInitiateReturnResult.No("Cases can only be created for delivered orders.");
             }
 
             // Check return window
             if (!IsWithinReturnWindow(subOrder.DeliveredAt))
             {
                 return CanInitiateReturnResult.No(
-                    $"Return window has expired. Returns must be initiated within {_returnSettings.ReturnWindowDays} days of delivery.");
+                    $"Return window has expired. Cases must be created within {_returnSettings.ReturnWindowDays} days of delivery.");
             }
 
-            // Check if a return request already exists
-            var existingRequest = await _returnRequestRepository.GetBySellerSubOrderIdAsync(subOrderId);
-            if (existingRequest != null)
+            // Check if all items already have open cases
+            var itemIds = subOrder.Items.Select(i => i.Id).ToList();
+            var existingOpenCases = await _returnRequestRepository.GetOpenCasesForItemsAsync(itemIds);
+            
+            // Get all item IDs that already have cases
+            var itemsWithOpenCases = existingOpenCases
+                .SelectMany(c => c.CaseItems.Select(ci => ci.SellerSubOrderItemId))
+                .ToHashSet();
+            
+            // Check if all items have open cases
+            if (itemIds.All(id => itemsWithOpenCases.Contains(id)))
             {
-                return CanInitiateReturnResult.No("A return request already exists for this sub-order.");
+                return CanInitiateReturnResult.No("All items in this sub-order already have open cases.");
             }
 
             return CanInitiateReturnResult.Yes();
@@ -1461,11 +1509,38 @@ public class OrderService : IOrderService
 
         if (string.IsNullOrEmpty(command.Reason))
         {
-            errors.Add("Return reason is required.");
+            errors.Add("Reason is required.");
         }
         else if (command.Reason.Length > 2000)
         {
-            errors.Add("Return reason must not exceed 2000 characters.");
+            errors.Add("Reason must not exceed 2000 characters.");
+        }
+
+        // Validate selected items if provided
+        if (command.SelectedItems.Count > 0)
+        {
+            foreach (var item in command.SelectedItems)
+            {
+                if (item.ItemId == Guid.Empty)
+                {
+                    errors.Add("Selected item ID is required.");
+                }
+                if (item.Quantity <= 0)
+                {
+                    errors.Add("Selected item quantity must be greater than zero.");
+                }
+            }
+
+            // Check for duplicate item selections
+            var duplicateIds = command.SelectedItems
+                .GroupBy(i => i.ItemId)
+                .Where(g => g.Count() > 1)
+                .Select(g => g.Key)
+                .ToList();
+            if (duplicateIds.Count > 0)
+            {
+                errors.Add("Duplicate items selected.");
+            }
         }
 
         return errors;

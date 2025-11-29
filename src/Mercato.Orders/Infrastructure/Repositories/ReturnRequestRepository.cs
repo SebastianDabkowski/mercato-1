@@ -29,6 +29,8 @@ public class ReturnRequestRepository : IReturnRequestRepository
                 .ThenInclude(s => s.Order)
             .Include(r => r.SellerSubOrder)
                 .ThenInclude(s => s.Items)
+            .Include(r => r.CaseItems)
+                .ThenInclude(ci => ci.SellerSubOrderItem)
             .FirstOrDefaultAsync(r => r.Id == id);
     }
 
@@ -40,6 +42,8 @@ public class ReturnRequestRepository : IReturnRequestRepository
                 .ThenInclude(s => s.Order)
             .Include(r => r.SellerSubOrder)
                 .ThenInclude(s => s.Items)
+            .Include(r => r.CaseItems)
+                .ThenInclude(ci => ci.SellerSubOrderItem)
             .FirstOrDefaultAsync(r => r.SellerSubOrderId == sellerSubOrderId);
     }
 
@@ -51,6 +55,8 @@ public class ReturnRequestRepository : IReturnRequestRepository
                 .ThenInclude(s => s.Order)
             .Include(r => r.SellerSubOrder)
                 .ThenInclude(s => s.Items)
+            .Include(r => r.CaseItems)
+                .ThenInclude(ci => ci.SellerSubOrderItem)
             .Where(r => r.BuyerId == buyerId)
             .OrderByDescending(r => r.CreatedAt)
             .ToListAsync();
@@ -64,8 +70,27 @@ public class ReturnRequestRepository : IReturnRequestRepository
                 .ThenInclude(s => s.Order)
             .Include(r => r.SellerSubOrder)
                 .ThenInclude(s => s.Items)
+            .Include(r => r.CaseItems)
+                .ThenInclude(ci => ci.SellerSubOrderItem)
             .Where(r => r.SellerSubOrder.StoreId == storeId)
             .OrderByDescending(r => r.CreatedAt)
+            .ToListAsync();
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<ReturnRequest>> GetOpenCasesForItemsAsync(IEnumerable<Guid> itemIds)
+    {
+        var itemIdList = itemIds.ToList();
+        if (itemIdList.Count == 0)
+        {
+            return [];
+        }
+
+        // Open cases are those not in Completed or Rejected status
+        return await _context.ReturnRequests
+            .Include(r => r.CaseItems)
+            .Where(r => r.Status != ReturnStatus.Completed && r.Status != ReturnStatus.Rejected)
+            .Where(r => r.CaseItems.Any(ci => itemIdList.Contains(ci.SellerSubOrderItemId)))
             .ToListAsync();
     }
 

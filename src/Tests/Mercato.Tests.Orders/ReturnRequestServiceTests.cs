@@ -16,6 +16,8 @@ public class ReturnRequestServiceTests
     private static readonly Guid TestSubOrderId = Guid.NewGuid();
     private static readonly Guid TestStoreId = Guid.NewGuid();
     private static readonly Guid TestReturnRequestId = Guid.NewGuid();
+    private static readonly Guid TestItemId1 = Guid.NewGuid();
+    private static readonly Guid TestItemId2 = Guid.NewGuid();
 
     private readonly Mock<IOrderRepository> _mockOrderRepository;
     private readonly Mock<ISellerSubOrderRepository> _mockSellerSubOrderRepository;
@@ -56,6 +58,7 @@ public class ReturnRequestServiceTests
     {
         // Arrange
         var subOrder = CreateTestDeliveredSubOrder();
+        var itemIds = subOrder.Items.Select(i => i.Id).ToList();
         var command = new CreateReturnRequestCommand
         {
             SellerSubOrderId = subOrder.Id,
@@ -65,8 +68,8 @@ public class ReturnRequestServiceTests
 
         _mockSellerSubOrderRepository.Setup(r => r.GetByIdAsync(subOrder.Id))
             .ReturnsAsync(subOrder);
-        _mockReturnRequestRepository.Setup(r => r.GetBySellerSubOrderIdAsync(subOrder.Id))
-            .ReturnsAsync((ReturnRequest?)null);
+        _mockReturnRequestRepository.Setup(r => r.GetOpenCasesForItemsAsync(It.IsAny<IEnumerable<Guid>>()))
+            .ReturnsAsync(new List<ReturnRequest>());
         _mockReturnRequestRepository.Setup(r => r.AddAsync(It.IsAny<ReturnRequest>()))
             .ReturnsAsync((ReturnRequest rr) => rr);
 
@@ -76,11 +79,15 @@ public class ReturnRequestServiceTests
         // Assert
         Assert.True(result.Succeeded);
         Assert.NotNull(result.ReturnRequestId);
+        Assert.NotNull(result.CaseNumber);
+        Assert.StartsWith("CASE-", result.CaseNumber);
         _mockReturnRequestRepository.Verify(r => r.AddAsync(It.Is<ReturnRequest>(rr =>
             rr.SellerSubOrderId == subOrder.Id &&
             rr.BuyerId == TestBuyerId &&
             rr.Status == ReturnStatus.Requested &&
-            rr.Reason == "Product was defective")), Times.Once);
+            rr.Reason == "Product was defective" &&
+            rr.CaseType == CaseType.Return &&
+            !string.IsNullOrEmpty(rr.CaseNumber))), Times.Once);
     }
 
     [Fact]
@@ -152,7 +159,7 @@ public class ReturnRequestServiceTests
 
         // Assert
         Assert.False(result.Succeeded);
-        Assert.Contains("Return can only be initiated for delivered orders.", result.Errors);
+        Assert.Contains("Cases can only be created for delivered orders.", result.Errors);
     }
 
     [Fact]
@@ -181,11 +188,21 @@ public class ReturnRequestServiceTests
     }
 
     [Fact]
-    public async Task CreateReturnRequestAsync_ExistingReturnRequest_ReturnsFailure()
+    public async Task CreateReturnRequestAsync_ExistingOpenCase_ReturnsFailure()
     {
         // Arrange
         var subOrder = CreateTestDeliveredSubOrder();
+        var itemIds = subOrder.Items.Select(i => i.Id).ToList();
         var existingRequest = CreateTestReturnRequest(subOrder.Id);
+        // Add case items to the existing request
+        existingRequest.CaseItems = subOrder.Items.Select(i => new CaseItem
+        {
+            Id = Guid.NewGuid(),
+            ReturnRequestId = existingRequest.Id,
+            SellerSubOrderItemId = i.Id,
+            Quantity = i.Quantity,
+            CreatedAt = DateTimeOffset.UtcNow
+        }).ToList();
 
         var command = new CreateReturnRequestCommand
         {
@@ -196,15 +213,15 @@ public class ReturnRequestServiceTests
 
         _mockSellerSubOrderRepository.Setup(r => r.GetByIdAsync(subOrder.Id))
             .ReturnsAsync(subOrder);
-        _mockReturnRequestRepository.Setup(r => r.GetBySellerSubOrderIdAsync(subOrder.Id))
-            .ReturnsAsync(existingRequest);
+        _mockReturnRequestRepository.Setup(r => r.GetOpenCasesForItemsAsync(It.IsAny<IEnumerable<Guid>>()))
+            .ReturnsAsync(new List<ReturnRequest> { existingRequest });
 
         // Act
         var result = await _service.CreateReturnRequestAsync(command);
 
         // Assert
         Assert.False(result.Succeeded);
-        Assert.Contains("A return request already exists for this sub-order.", result.Errors);
+        Assert.Contains("One or more selected items already have an open case", result.Errors[0]);
     }
 
     [Fact]
@@ -223,7 +240,7 @@ public class ReturnRequestServiceTests
 
         // Assert
         Assert.False(result.Succeeded);
-        Assert.Contains("Return reason is required.", result.Errors);
+        Assert.Contains("Reason is required.", result.Errors);
     }
 
     [Fact]
@@ -261,7 +278,7 @@ public class ReturnRequestServiceTests
 
         // Assert
         Assert.False(result.Succeeded);
-        Assert.Contains("Return reason must not exceed 2000 characters.", result.Errors);
+        Assert.Contains("Reason must not exceed 2000 characters.", result.Errors);
     }
 
     #endregion
@@ -633,11 +650,12 @@ public class ReturnRequestServiceTests
     {
         // Arrange
         var subOrder = CreateTestDeliveredSubOrder();
+        var itemIds = subOrder.Items.Select(i => i.Id).ToList();
 
         _mockSellerSubOrderRepository.Setup(r => r.GetByIdAsync(subOrder.Id))
             .ReturnsAsync(subOrder);
-        _mockReturnRequestRepository.Setup(r => r.GetBySellerSubOrderIdAsync(subOrder.Id))
-            .ReturnsAsync((ReturnRequest?)null);
+        _mockReturnRequestRepository.Setup(r => r.GetOpenCasesForItemsAsync(It.IsAny<IEnumerable<Guid>>()))
+            .ReturnsAsync(new List<ReturnRequest>());
 
         // Act
         var result = await _service.CanInitiateReturnAsync(subOrder.Id, TestBuyerId);
@@ -687,16 +705,25 @@ public class ReturnRequestServiceTests
     }
 
     [Fact]
-    public async Task CanInitiateReturnAsync_ExistingReturnRequest_ReturnsCannotInitiate()
+    public async Task CanInitiateReturnAsync_AllItemsHaveOpenCases_ReturnsCannotInitiate()
     {
         // Arrange
         var subOrder = CreateTestDeliveredSubOrder();
         var existingRequest = CreateTestReturnRequest(subOrder.Id);
+        // Add case items for all items in sub-order
+        existingRequest.CaseItems = subOrder.Items.Select(i => new CaseItem
+        {
+            Id = Guid.NewGuid(),
+            ReturnRequestId = existingRequest.Id,
+            SellerSubOrderItemId = i.Id,
+            Quantity = i.Quantity,
+            CreatedAt = DateTimeOffset.UtcNow
+        }).ToList();
 
         _mockSellerSubOrderRepository.Setup(r => r.GetByIdAsync(subOrder.Id))
             .ReturnsAsync(subOrder);
-        _mockReturnRequestRepository.Setup(r => r.GetBySellerSubOrderIdAsync(subOrder.Id))
-            .ReturnsAsync(existingRequest);
+        _mockReturnRequestRepository.Setup(r => r.GetOpenCasesForItemsAsync(It.IsAny<IEnumerable<Guid>>()))
+            .ReturnsAsync(new List<ReturnRequest> { existingRequest });
 
         // Act
         var result = await _service.CanInitiateReturnAsync(subOrder.Id, TestBuyerId);
@@ -704,7 +731,7 @@ public class ReturnRequestServiceTests
         // Assert
         Assert.True(result.Succeeded);
         Assert.False(result.CanInitiate);
-        Assert.Contains("already exists", result.BlockedReason);
+        Assert.Contains("already have open cases", result.BlockedReason);
     }
 
     [Fact]
@@ -771,8 +798,8 @@ public class ReturnRequestServiceTests
 
         _mockSellerSubOrderRepository.Setup(r => r.GetByIdAsync(subOrder.Id))
             .ReturnsAsync(subOrder);
-        _mockReturnRequestRepository.Setup(r => r.GetBySellerSubOrderIdAsync(subOrder.Id))
-            .ReturnsAsync((ReturnRequest?)null);
+        _mockReturnRequestRepository.Setup(r => r.GetOpenCasesForItemsAsync(It.IsAny<IEnumerable<Guid>>()))
+            .ReturnsAsync(new List<ReturnRequest>());
         _mockReturnRequestRepository.Setup(r => r.AddAsync(It.IsAny<ReturnRequest>()))
             .ReturnsAsync((ReturnRequest rr) => rr);
 
@@ -814,6 +841,9 @@ public class ReturnRequestServiceTests
 
     private static SellerSubOrder CreateTestDeliveredSubOrder()
     {
+        var itemId1 = Guid.NewGuid();
+        var itemId2 = Guid.NewGuid();
+        
         var order = new Order
         {
             Id = TestOrderId,
@@ -831,7 +861,7 @@ public class ReturnRequestServiceTests
             SellerSubOrders = []
         };
 
-        return new SellerSubOrder
+        var subOrder = new SellerSubOrder
         {
             Id = TestSubOrderId,
             OrderId = TestOrderId,
@@ -846,8 +876,36 @@ public class ReturnRequestServiceTests
             LastUpdatedAt = DateTimeOffset.UtcNow,
             DeliveredAt = DateTimeOffset.UtcNow.AddDays(-1), // Delivered yesterday
             Order = order,
-            Items = []
+            Items = new List<SellerSubOrderItem>
+            {
+                new SellerSubOrderItem
+                {
+                    Id = itemId1,
+                    SellerSubOrderId = TestSubOrderId,
+                    ProductId = Guid.NewGuid(),
+                    ProductTitle = "Test Product 1",
+                    UnitPrice = 29.99m,
+                    Quantity = 1,
+                    Status = SellerSubOrderItemStatus.Delivered,
+                    CreatedAt = DateTimeOffset.UtcNow.AddDays(-5),
+                    LastUpdatedAt = DateTimeOffset.UtcNow
+                },
+                new SellerSubOrderItem
+                {
+                    Id = itemId2,
+                    SellerSubOrderId = TestSubOrderId,
+                    ProductId = Guid.NewGuid(),
+                    ProductTitle = "Test Product 2",
+                    UnitPrice = 29.99m,
+                    Quantity = 1,
+                    Status = SellerSubOrderItemStatus.Delivered,
+                    CreatedAt = DateTimeOffset.UtcNow.AddDays(-5),
+                    LastUpdatedAt = DateTimeOffset.UtcNow
+                }
+            }
         };
+        
+        return subOrder;
     }
 
     private static ReturnRequest CreateTestReturnRequest(Guid sellerSubOrderId)
@@ -855,12 +913,15 @@ public class ReturnRequestServiceTests
         return new ReturnRequest
         {
             Id = Guid.NewGuid(),
+            CaseNumber = $"CASE-{Guid.NewGuid().ToString("N")[..8].ToUpperInvariant()}",
+            CaseType = CaseType.Return,
             SellerSubOrderId = sellerSubOrderId,
             BuyerId = TestBuyerId,
             Status = ReturnStatus.Requested,
             Reason = "Product was defective",
             CreatedAt = DateTimeOffset.UtcNow,
-            LastUpdatedAt = DateTimeOffset.UtcNow
+            LastUpdatedAt = DateTimeOffset.UtcNow,
+            CaseItems = []
         };
     }
 
