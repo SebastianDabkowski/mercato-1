@@ -401,3 +401,149 @@ public class CanInitiateReturnResult
         Errors = ["Not authorized to check return eligibility for this sub-order."]
     };
 }
+
+/// <summary>
+/// Command for resolving a return/complaint case.
+/// </summary>
+public class ResolveCaseCommand
+{
+    /// <summary>
+    /// Gets or sets the type of resolution.
+    /// </summary>
+    public CaseResolutionType ResolutionType { get; set; }
+
+    /// <summary>
+    /// Gets or sets the reason for the resolution (required for NoRefund).
+    /// </summary>
+    public string? ResolutionReason { get; set; }
+
+    /// <summary>
+    /// Gets or sets the refund amount (required for PartialRefund).
+    /// </summary>
+    public decimal? RefundAmount { get; set; }
+
+    /// <summary>
+    /// Gets or sets an existing refund ID to link (optional, for linking already processed refunds).
+    /// </summary>
+    public Guid? ExistingRefundId { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether to initiate a new refund request.
+    /// </summary>
+    public bool InitiateNewRefund { get; set; }
+
+    /// <summary>
+    /// Gets or sets the payment transaction ID (required for initiating new refund).
+    /// </summary>
+    public Guid? PaymentTransactionId { get; set; }
+
+    /// <summary>
+    /// Gets or sets the seller user ID.
+    /// </summary>
+    public string SellerUserId { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// Result of resolving a case.
+/// </summary>
+public class ResolveCaseResult
+{
+    /// <summary>
+    /// Gets a value indicating whether the operation succeeded.
+    /// </summary>
+    public bool Succeeded { get; private init; }
+
+    /// <summary>
+    /// Gets the list of errors if the operation failed.
+    /// </summary>
+    public IReadOnlyList<string> Errors { get; private init; } = [];
+
+    /// <summary>
+    /// Gets a value indicating whether the user is not authorized.
+    /// </summary>
+    public bool IsNotAuthorized { get; private init; }
+
+    /// <summary>
+    /// Gets the linked refund ID if a refund was processed.
+    /// </summary>
+    public Guid? LinkedRefundId { get; private init; }
+
+    /// <summary>
+    /// Gets a value indicating whether a refund was initiated.
+    /// </summary>
+    public bool RefundInitiated { get; private init; }
+
+    /// <summary>
+    /// Creates a successful result.
+    /// </summary>
+    /// <param name="refundId">Optional linked refund ID.</param>
+    /// <param name="refundInitiated">Whether a refund was initiated.</param>
+    /// <returns>A successful result.</returns>
+    public static ResolveCaseResult Success(Guid? refundId = null, bool refundInitiated = false) => new()
+    {
+        Succeeded = true,
+        Errors = [],
+        LinkedRefundId = refundId,
+        RefundInitiated = refundInitiated
+    };
+
+    /// <summary>
+    /// Creates a failed result with the specified errors.
+    /// </summary>
+    /// <param name="errors">The list of error messages.</param>
+    /// <returns>A failed result.</returns>
+    public static ResolveCaseResult Failure(IReadOnlyList<string> errors) => new()
+    {
+        Succeeded = false,
+        Errors = errors
+    };
+
+    /// <summary>
+    /// Creates a failed result with a single error message.
+    /// </summary>
+    /// <param name="error">The error message.</param>
+    /// <returns>A failed result.</returns>
+    public static ResolveCaseResult Failure(string error) => Failure([error]);
+
+    /// <summary>
+    /// Creates a not authorized result.
+    /// </summary>
+    /// <returns>A not authorized result.</returns>
+    public static ResolveCaseResult NotAuthorized() => new()
+    {
+        Succeeded = false,
+        IsNotAuthorized = true,
+        Errors = ["Not authorized to resolve this case."]
+    };
+}
+
+/// <summary>
+/// Result containing linked refund information for a case.
+/// </summary>
+public class CaseRefundInfo
+{
+    /// <summary>
+    /// Gets or sets the refund ID.
+    /// </summary>
+    public Guid RefundId { get; set; }
+
+    /// <summary>
+    /// Gets or sets the refund amount.
+    /// </summary>
+    public decimal Amount { get; set; }
+
+    /// <summary>
+    /// Gets or sets the refund status.
+    /// </summary>
+    public string Status { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the external reference from the payment provider.
+    /// </summary>
+    public string? ExternalReference { get; set; }
+
+    /// <summary>
+    /// Gets or sets when the refund was completed.
+    /// </summary>
+    public DateTimeOffset? CompletedAt { get; set; }
+}

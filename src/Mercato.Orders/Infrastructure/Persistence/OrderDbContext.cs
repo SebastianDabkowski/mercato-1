@@ -135,8 +135,11 @@ public class OrderDbContext : DbContext
             entity.Property(e => e.BuyerId).IsRequired().HasMaxLength(450);
             entity.Property(e => e.Reason).IsRequired().HasMaxLength(2000);
             entity.Property(e => e.SellerNotes).HasMaxLength(2000);
+            entity.Property(e => e.ResolutionReason).HasMaxLength(2000);
+            entity.Property(e => e.RefundAmount).HasPrecision(18, 2);
             entity.HasIndex(e => e.SellerSubOrderId);
             entity.HasIndex(e => e.BuyerId);
+            entity.HasIndex(e => e.LinkedRefundId);
             entity.HasOne(e => e.SellerSubOrder)
                 .WithMany()
                 .HasForeignKey(e => e.SellerSubOrderId);

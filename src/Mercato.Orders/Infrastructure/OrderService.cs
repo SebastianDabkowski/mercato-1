@@ -4,6 +4,7 @@ using Mercato.Orders.Application.Queries;
 using Mercato.Orders.Application.Services;
 using Mercato.Orders.Domain.Entities;
 using Mercato.Orders.Domain.Interfaces;
+using Mercato.Payments.Application.Services;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -20,6 +21,7 @@ public class OrderService : IOrderService
     private readonly IShippingStatusHistoryRepository _shippingStatusHistoryRepository;
     private readonly IOrderConfirmationEmailService _emailService;
     private readonly IShippingNotificationService _shippingNotificationService;
+    private readonly IRefundService _refundService;
     private readonly ReturnSettings _returnSettings;
     private readonly ILogger<OrderService> _logger;
 
@@ -32,6 +34,7 @@ public class OrderService : IOrderService
     /// <param name="shippingStatusHistoryRepository">The shipping status history repository.</param>
     /// <param name="emailService">The email service.</param>
     /// <param name="shippingNotificationService">The shipping notification service.</param>
+    /// <param name="refundService">The refund service.</param>
     /// <param name="returnSettings">The return settings.</param>
     /// <param name="logger">The logger.</param>
     public OrderService(
@@ -41,6 +44,7 @@ public class OrderService : IOrderService
         IShippingStatusHistoryRepository shippingStatusHistoryRepository,
         IOrderConfirmationEmailService emailService,
         IShippingNotificationService shippingNotificationService,
+        IRefundService refundService,
         IOptions<ReturnSettings> returnSettings,
         ILogger<OrderService> logger)
     {
@@ -50,6 +54,7 @@ public class OrderService : IOrderService
         _shippingStatusHistoryRepository = shippingStatusHistoryRepository;
         _emailService = emailService;
         _shippingNotificationService = shippingNotificationService;
+        _refundService = refundService;
         _returnSettings = returnSettings.Value;
         _logger = logger;
     }
@@ -1659,6 +1664,225 @@ public class OrderService : IOrderService
         if (query.FromDate.HasValue && query.ToDate.HasValue && query.FromDate > query.ToDate)
         {
             errors.Add("From date cannot be after to date.");
+        }
+
+        return errors;
+    }
+
+    /// <inheritdoc />
+    public async Task<ResolveCaseResult> ResolveCaseAsync(Guid returnRequestId, Guid storeId, ResolveCaseCommand command)
+    {
+        if (storeId == Guid.Empty)
+        {
+            return ResolveCaseResult.Failure("Store ID is required.");
+        }
+
+        var validationErrors = ValidateResolveCaseCommand(command);
+        if (validationErrors.Count > 0)
+        {
+            return ResolveCaseResult.Failure(validationErrors);
+        }
+
+        try
+        {
+            var returnRequest = await _returnRequestRepository.GetByIdAsync(returnRequestId);
+            if (returnRequest == null)
+            {
+                return ResolveCaseResult.Failure("Return request not found.");
+            }
+
+            // Check authorization - store must own the sub-order
+            if (returnRequest.SellerSubOrder == null || returnRequest.SellerSubOrder.StoreId != storeId)
+            {
+                return ResolveCaseResult.NotAuthorized();
+            }
+
+            // Check that the case is not already completed
+            if (returnRequest.Status == ReturnStatus.Completed)
+            {
+                return ResolveCaseResult.Failure("This case has already been resolved.");
+            }
+
+            var now = DateTimeOffset.UtcNow;
+            Guid? linkedRefundId = null;
+            var refundInitiated = false;
+
+            // Handle refund processing based on resolution type
+            if (command.ResolutionType == CaseResolutionType.FullRefund ||
+                command.ResolutionType == CaseResolutionType.PartialRefund)
+            {
+                if (command.ExistingRefundId.HasValue)
+                {
+                    // Link to an existing refund
+                    var refundResult = await _refundService.GetRefundAsync(command.ExistingRefundId.Value);
+                    if (!refundResult.Succeeded || refundResult.Refund == null)
+                    {
+                        return ResolveCaseResult.Failure("The specified refund was not found.");
+                    }
+
+                    linkedRefundId = command.ExistingRefundId.Value;
+                    returnRequest.RefundAmount = refundResult.Refund.Amount;
+                }
+                else if (command.InitiateNewRefund)
+                {
+                    // Initiate a new refund
+                    if (!command.PaymentTransactionId.HasValue || command.PaymentTransactionId.Value == Guid.Empty)
+                    {
+                        return ResolveCaseResult.Failure("Payment transaction ID is required to initiate a refund.");
+                    }
+
+                    if (returnRequest.SellerSubOrder?.Order == null)
+                    {
+                        return ResolveCaseResult.Failure("Order information is not available to process refund.");
+                    }
+
+                    var orderId = returnRequest.SellerSubOrder.Order.Id;
+                    var subOrderTotal = returnRequest.SellerSubOrder.TotalAmount;
+
+                    if (command.ResolutionType == CaseResolutionType.FullRefund)
+                    {
+                        var refundCommand = new ProcessFullRefundCommand
+                        {
+                            OrderId = orderId,
+                            PaymentTransactionId = command.PaymentTransactionId.Value,
+                            Reason = command.ResolutionReason ?? "Full refund for return case",
+                            InitiatedByUserId = command.SellerUserId,
+                            InitiatedByRole = "Seller",
+                            AuditNote = $"Case resolution: {returnRequest.CaseNumber}"
+                        };
+
+                        var refundResult = await _refundService.ProcessFullRefundAsync(refundCommand);
+                        if (!refundResult.Succeeded)
+                        {
+                            return ResolveCaseResult.Failure(refundResult.Errors.ToList());
+                        }
+
+                        linkedRefundId = refundResult.Refund?.Id;
+                        returnRequest.RefundAmount = refundResult.Refund?.Amount ?? subOrderTotal;
+                        refundInitiated = true;
+                    }
+                    else // PartialRefund
+                    {
+                        if (!command.RefundAmount.HasValue || command.RefundAmount.Value <= 0)
+                        {
+                            return ResolveCaseResult.Failure("Refund amount is required for partial refund.");
+                        }
+
+                        var refundCommand = new ProcessPartialRefundCommand
+                        {
+                            OrderId = orderId,
+                            PaymentTransactionId = command.PaymentTransactionId.Value,
+                            // SellerId in the refund command represents the store ID for seller-specific refunds
+                            SellerId = storeId,
+                            Amount = command.RefundAmount.Value,
+                            Reason = command.ResolutionReason ?? "Partial refund for return case",
+                            InitiatedByUserId = command.SellerUserId,
+                            InitiatedByRole = "Seller",
+                            AuditNote = $"Case resolution: {returnRequest.CaseNumber}"
+                        };
+
+                        var refundResult = await _refundService.ProcessPartialRefundAsync(refundCommand);
+                        if (!refundResult.Succeeded)
+                        {
+                            return ResolveCaseResult.Failure(refundResult.Errors.ToList());
+                        }
+
+                        linkedRefundId = refundResult.Refund?.Id;
+                        returnRequest.RefundAmount = command.RefundAmount.Value;
+                        refundInitiated = true;
+                    }
+                }
+            }
+
+            // Update the return request
+            returnRequest.ResolutionType = command.ResolutionType;
+            returnRequest.ResolutionReason = command.ResolutionReason;
+            returnRequest.LinkedRefundId = linkedRefundId;
+            returnRequest.ResolvedAt = now;
+            returnRequest.Status = ReturnStatus.Completed;
+            returnRequest.LastUpdatedAt = now;
+
+            await _returnRequestRepository.UpdateAsync(returnRequest);
+
+            _logger.LogInformation(
+                "Resolved case {CaseNumber} with resolution type {ResolutionType}, linked refund: {RefundId}",
+                returnRequest.CaseNumber, command.ResolutionType, linkedRefundId);
+
+            return ResolveCaseResult.Success(linkedRefundId, refundInitiated);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error resolving case {ReturnRequestId}", returnRequestId);
+            return ResolveCaseResult.Failure("An error occurred while resolving the case.");
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<CaseRefundInfo?> GetLinkedRefundInfoAsync(Guid returnRequestId)
+    {
+        try
+        {
+            var returnRequest = await _returnRequestRepository.GetByIdAsync(returnRequestId);
+            if (returnRequest?.LinkedRefundId == null)
+            {
+                return null;
+            }
+
+            var refundResult = await _refundService.GetRefundAsync(returnRequest.LinkedRefundId.Value);
+            if (!refundResult.Succeeded || refundResult.Refund == null)
+            {
+                return null;
+            }
+
+            var refund = refundResult.Refund;
+            return new CaseRefundInfo
+            {
+                RefundId = refund.Id,
+                Amount = refund.Amount,
+                Status = refund.Status.ToString(),
+                ExternalReference = refund.ExternalReferenceId,
+                CompletedAt = refund.CompletedAt
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting linked refund info for return request {ReturnRequestId}", returnRequestId);
+            return null;
+        }
+    }
+
+    private static List<string> ValidateResolveCaseCommand(ResolveCaseCommand command)
+    {
+        var errors = new List<string>();
+
+        // For NoRefund resolution, a reason is required
+        if (command.ResolutionType == CaseResolutionType.NoRefund &&
+            string.IsNullOrWhiteSpace(command.ResolutionReason))
+        {
+            errors.Add("Resolution reason is required when choosing 'No Refund'.");
+        }
+
+        // For PartialRefund, amount is required
+        if (command.ResolutionType == CaseResolutionType.PartialRefund &&
+            command.InitiateNewRefund &&
+            (!command.RefundAmount.HasValue || command.RefundAmount.Value <= 0))
+        {
+            errors.Add("Refund amount is required for partial refund.");
+        }
+
+        // If initiating a new refund for full/partial, transaction ID is required
+        if ((command.ResolutionType == CaseResolutionType.FullRefund ||
+             command.ResolutionType == CaseResolutionType.PartialRefund) &&
+            command.InitiateNewRefund &&
+            (!command.PaymentTransactionId.HasValue || command.PaymentTransactionId.Value == Guid.Empty))
+        {
+            errors.Add("Payment transaction ID is required to initiate a refund.");
+        }
+
+        // Validate resolution reason length if provided
+        if (!string.IsNullOrEmpty(command.ResolutionReason) && command.ResolutionReason.Length > 2000)
+        {
+            errors.Add("Resolution reason must not exceed 2000 characters.");
         }
 
         return errors;
