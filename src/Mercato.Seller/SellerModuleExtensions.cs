@@ -30,6 +30,7 @@ public static class SellerModuleExtensions
         services.AddScoped<IStoreUserRepository, StoreUserRepository>();
         services.AddScoped<IShippingRuleRepository, ShippingRuleRepository>();
         services.AddScoped<IShippingMethodRepository, ShippingMethodRepository>();
+        services.AddScoped<ISellerReputationRepository, SellerReputationRepository>();
 
         // Register services
         services.AddScoped<IKycService, KycService>();
@@ -38,6 +39,7 @@ public static class SellerModuleExtensions
         services.AddScoped<IPayoutSettingsService, PayoutSettingsService>();
         services.AddScoped<IStoreUserService, StoreUserService>();
         services.AddScoped<IShippingMethodService, ShippingMethodService>();
+        services.AddScoped<ISellerReputationService, SellerReputationService>();
 
         return services;
     }
