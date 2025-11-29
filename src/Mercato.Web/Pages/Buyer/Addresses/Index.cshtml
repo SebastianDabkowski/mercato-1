@@ -1,4 +1,5 @@
 @page
+@using Mercato.Web.Helpers
 @model Mercato.Web.Pages.Buyer.Addresses.IndexModel
 @{
     ViewData["Title"] = "Shipping Addresses";
@@ -74,7 +75,7 @@
                                         <p class="mb-1">@address.AddressLine2</p>
                                     }
                                     <p class="mb-1">
-                                        @address.City@(string.IsNullOrEmpty(address.State) ? "" : $", {address.State}") @address.PostalCode
+                                        @CountryHelper.FormatCityStatePostal(address.City, address.State, address.PostalCode)
                                     </p>
                                     <p class="mb-1">@address.Country</p>
                                     @if (!string.IsNullOrEmpty(address.PhoneNumber))

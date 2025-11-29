@@ -225,13 +225,6 @@ public class CreateModel : PageModel
 
     private void LoadCountries()
     {
-        Countries = _deliveryAddressService.AllowedShippingCountries
-            .OrderBy(c => CountryHelper.GetCountryName(c))
-            .Select(c => new SelectListItem
-            {
-                Value = c,
-                Text = CountryHelper.GetCountryName(c)
-            })
-            .ToList();
+        Countries = CountryHelper.GetCountrySelectList(_deliveryAddressService.AllowedShippingCountries);
     }
 }

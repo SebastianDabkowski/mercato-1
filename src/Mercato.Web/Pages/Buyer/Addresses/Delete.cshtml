@@ -1,4 +1,5 @@
 @page "{id:guid}"
+@using Mercato.Web.Helpers
 @model Mercato.Web.Pages.Buyer.Addresses.DeleteModel
 @{
     ViewData["Title"] = "Delete Shipping Address";
@@ -60,7 +61,7 @@
                                         {
                                             @Model.Address.AddressLine2<br />
                                         }
-                                        @Model.Address?.City@(string.IsNullOrEmpty(Model.Address?.State) ? "" : $", {Model.Address.State}") @Model.Address?.PostalCode<br />
+                                        @CountryHelper.FormatCityStatePostal(Model.Address?.City, Model.Address?.State, Model.Address?.PostalCode)<br />
                                         @Model.Address?.Country
                                     </dd>
 

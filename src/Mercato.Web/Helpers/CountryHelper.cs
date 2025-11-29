@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.Mvc.Rendering;
+
 namespace Mercato.Web.Helpers;
 
 /// <summary>
@@ -45,5 +47,53 @@ public static class CountryHelper
     public static string GetCountryName(string countryCode)
     {
         return CountryNames.GetValueOrDefault(countryCode, countryCode);
+    }
+
+    /// <summary>
+    /// Gets a list of SelectListItems for the allowed shipping countries.
+    /// </summary>
+    /// <param name="countryCodes">The list of allowed country codes.</param>
+    /// <returns>A list of SelectListItems sorted by country name.</returns>
+    public static List<SelectListItem> GetCountrySelectList(IEnumerable<string> countryCodes)
+    {
+        return countryCodes
+            .OrderBy(c => GetCountryName(c))
+            .Select(c => new SelectListItem
+            {
+                Value = c,
+                Text = GetCountryName(c)
+            })
+            .ToList();
+    }
+
+    /// <summary>
+    /// Formats an address as a single line for display.
+    /// </summary>
+    /// <param name="city">The city.</param>
+    /// <param name="state">The state or province (optional).</param>
+    /// <param name="postalCode">The postal code.</param>
+    /// <returns>A formatted city, state, postal code string.</returns>
+    public static string FormatCityStatePostal(string? city, string? state, string? postalCode)
+    {
+        var parts = new List<string>();
+        
+        if (!string.IsNullOrWhiteSpace(city))
+        {
+            parts.Add(city);
+        }
+        
+        if (!string.IsNullOrWhiteSpace(state))
+        {
+            parts.Add(state);
+        }
+
+        var result = string.Join(", ", parts);
+        
+        if (!string.IsNullOrWhiteSpace(postalCode))
+        {
+            result = string.IsNullOrEmpty(result) ? postalCode : $"{result} {postalCode}";
+        }
+
+        return result;
     }
 }
