@@ -63,6 +63,24 @@ public interface IOrderRepository
     Task<IReadOnlyList<(Guid StoreId, string StoreName)>> GetDistinctSellersByBuyerIdAsync(string buyerId);
 
     /// <summary>
+    /// Gets a filtered and paginated list of all orders for admin view.
+    /// </summary>
+    /// <param name="statuses">Optional list of statuses to filter by.</param>
+    /// <param name="fromDate">Optional start date for date range filter (inclusive).</param>
+    /// <param name="toDate">Optional end date for date range filter (inclusive).</param>
+    /// <param name="searchTerm">Optional search term for order number, buyer email, or store name.</param>
+    /// <param name="page">Page number (1-based).</param>
+    /// <param name="pageSize">Page size.</param>
+    /// <returns>A tuple containing the list of orders for the current page and the total count.</returns>
+    Task<(IReadOnlyList<Order> Orders, int TotalCount)> GetFilteredForAdminAsync(
+        IReadOnlyList<OrderStatus>? statuses,
+        DateTimeOffset? fromDate,
+        DateTimeOffset? toDate,
+        string? searchTerm,
+        int page,
+        int pageSize);
+
+    /// <summary>
     /// Adds a new order to the repository.
     /// </summary>
     /// <param name="order">The order to add.</param>

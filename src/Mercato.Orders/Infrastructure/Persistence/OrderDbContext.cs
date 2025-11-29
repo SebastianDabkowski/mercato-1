@@ -38,6 +38,11 @@ public class OrderDbContext : DbContext
     /// </summary>
     public DbSet<ReturnRequest> ReturnRequests { get; set; }
 
+    /// <summary>
+    /// Gets or sets the shipping status histories DbSet.
+    /// </summary>
+    public DbSet<ShippingStatusHistory> ShippingStatusHistories { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -128,6 +133,20 @@ public class OrderDbContext : DbContext
             entity.HasOne(e => e.SellerSubOrder)
                 .WithOne()
                 .HasForeignKey<ReturnRequest>(e => e.SellerSubOrderId);
+        });
+
+        modelBuilder.Entity<ShippingStatusHistory>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.ChangedByUserId).HasMaxLength(450);
+            entity.Property(e => e.TrackingNumber).HasMaxLength(100);
+            entity.Property(e => e.ShippingCarrier).HasMaxLength(100);
+            entity.Property(e => e.Notes).HasMaxLength(1000);
+            entity.HasIndex(e => e.SellerSubOrderId);
+            entity.HasIndex(e => e.ChangedAt);
+            entity.HasOne(e => e.SellerSubOrder)
+                .WithMany()
+                .HasForeignKey(e => e.SellerSubOrderId);
         });
     }
 }
