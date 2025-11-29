@@ -1,0 +1,160 @@
+@page "{id:guid}"
+@model Mercato.Web.Pages.Seller.Messages.ThreadModel
+@{
+    ViewData["Title"] = Model.Thread?.Subject ?? "Customer Message";
+}
+
+<div class="container">
+    @if (Model.Thread != null)
+    {
+        <nav aria-label="breadcrumb" class="mb-3">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a asp-page="/Seller/Index">Dashboard</a></li>
+                <li class="breadcrumb-item"><a asp-page="/Seller/Messages/Index">Messages</a></li>
+                <li class="breadcrumb-item active" aria-current="page">@Model.Thread.Subject</li>
+            </ol>
+        </nav>
+
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>@Model.Thread.Subject</h1>
+            <div>
+                @if (Model.Thread.ThreadType == Mercato.Notifications.Domain.Entities.MessageThreadType.ProductQuestion)
+                {
+                    <span class="badge bg-info">Product Question</span>
+                }
+                else
+                {
+                    <span class="badge bg-primary">Order Message</span>
+                }
+                @if (Model.Thread.IsClosed)
+                {
+                    <span class="badge bg-secondary ms-1">Closed</span>
+                }
+            </div>
+        </div>
+
+        <p class="text-muted">Started @Model.Thread.CreatedAt.ToString("MMM d, yyyy h:mm tt")</p>
+
+        @if (TempData["Success"] != null)
+        {
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                @TempData["Success"]
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        }
+
+        @if (TempData["Error"] != null)
+        {
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                @TempData["Error"]
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        }
+
+        @if (Model.MessagesResult != null && Model.MessagesResult.Succeeded)
+        {
+            <div class="messages-container mb-4">
+                @foreach (var message in Model.MessagesResult.Messages)
+                {
+                    var isOwnMessage = message.SenderId == Model.CurrentUserId;
+                    <div class="card mb-3 @(isOwnMessage ? "ms-5" : "me-5")">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <strong>@(isOwnMessage ? "You" : "Customer")</strong>
+                                <small class="text-muted">@message.CreatedAt.ToString("MMM d, yyyy h:mm tt")</small>
+                            </div>
+                            <p class="card-text mb-0">@message.Content</p>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            @if (Model.MessagesResult.TotalPages > 1)
+            {
+                <nav aria-label="Messages pagination" class="mb-4">
+                    <ul class="pagination justify-content-center">
+                        @if (Model.MessagesResult.HasPreviousPage)
+                        {
+                            <li class="page-item">
+                                <a class="page-link" asp-page="/Seller/Messages/Thread" asp-route-id="@Model.Thread.Id" asp-route-page="@(Model.MessagesResult.Page - 1)">Previous</a>
+                            </li>
+                        }
+                        else
+                        {
+                            <li class="page-item disabled">
+                                <span class="page-link">Previous</span>
+                            </li>
+                        }
+
+                        @for (var i = 1; i <= Model.MessagesResult.TotalPages; i++)
+                        {
+                            var pageNumber = i;
+                            <li class="page-item @(pageNumber == Model.MessagesResult.Page ? "active" : "")">
+                                <a class="page-link" asp-page="/Seller/Messages/Thread" asp-route-id="@Model.Thread.Id" asp-route-page="@pageNumber">@pageNumber</a>
+                            </li>
+                        }
+
+                        @if (Model.MessagesResult.HasNextPage)
+                        {
+                            <li class="page-item">
+                                <a class="page-link" asp-page="/Seller/Messages/Thread" asp-route-id="@Model.Thread.Id" asp-route-page="@(Model.MessagesResult.Page + 1)">Next</a>
+                            </li>
+                        }
+                        else
+                        {
+                            <li class="page-item disabled">
+                                <span class="page-link">Next</span>
+                            </li>
+                        }
+                    </ul>
+                </nav>
+            }
+        }
+
+        @if (!Model.Thread.IsClosed)
+        {
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Reply to Customer</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" asp-page-handler="SendMessage">
+                        <div class="mb-3">
+                            <label for="content" class="form-label">Message</label>
+                            <textarea class="form-control" id="content" name="content" rows="4" maxlength="4000" required></textarea>
+                            <div class="form-text">Maximum 4000 characters.</div>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Send Reply</button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="mt-3">
+                <form method="post" asp-page-handler="CloseThread" class="d-inline">
+                    <button type="submit" class="btn btn-outline-secondary" onclick="return confirm('Are you sure you want to close this thread?');">
+                        <i class="bi bi-lock me-1"></i>Close Thread
+                    </button>
+                </form>
+            </div>
+        }
+        else
+        {
+            <div class="alert alert-secondary">
+                <i class="bi bi-lock me-2"></i>
+                This thread has been closed and no new messages can be sent.
+            </div>
+        }
+
+        <div class="mt-3">
+            <a asp-page="/Seller/Messages/Index" class="btn btn-outline-secondary">Back to Messages</a>
+        </div>
+    }
+    else
+    {
+        <h1>Thread Not Found</h1>
+        <div class="alert alert-warning">
+            <strong>Sorry!</strong> The message thread could not be found or you don't have access to it.
+        </div>
+        <a asp-page="/Seller/Messages/Index" class="btn btn-outline-secondary">Back to Messages</a>
+    }
+</div>

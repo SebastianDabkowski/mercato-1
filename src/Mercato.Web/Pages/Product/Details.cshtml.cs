@@ -2,6 +2,9 @@ using System.Security.Claims;
 using System.Text.Json;
 using Mercato.Cart.Application.Commands;
 using Mercato.Cart.Application.Services;
+using Mercato.Notifications.Application.Commands;
+using Mercato.Notifications.Application.Services;
+using Mercato.Notifications.Domain.Entities;
 using Mercato.Orders.Application.Commands;
 using Mercato.Orders.Application.Services;
 using Mercato.Orders.Domain.Entities;
@@ -23,6 +26,7 @@ public class DetailsModel : PageModel
     private readonly IStoreProfileService _storeProfileService;
     private readonly ICartService _cartService;
     private readonly IProductReviewService _productReviewService;
+    private readonly IMessagingService _messagingService;
     private readonly ILogger<DetailsModel> _logger;
 
     private const string PlaceholderImage = "/images/placeholder.png";
@@ -38,6 +42,7 @@ public class DetailsModel : PageModel
     /// <param name="storeProfileService">The store profile service.</param>
     /// <param name="cartService">The cart service.</param>
     /// <param name="productReviewService">The product review service.</param>
+    /// <param name="messagingService">The messaging service.</param>
     /// <param name="logger">The logger.</param>
     public DetailsModel(
         IProductService productService,
@@ -45,6 +50,7 @@ public class DetailsModel : PageModel
         IStoreProfileService storeProfileService,
         ICartService cartService,
         IProductReviewService productReviewService,
+        IMessagingService messagingService,
         ILogger<DetailsModel> logger)
     {
         _productService = productService;
@@ -52,6 +58,7 @@ public class DetailsModel : PageModel
         _storeProfileService = storeProfileService;
         _cartService = cartService;
         _productReviewService = productReviewService;
+        _messagingService = messagingService;
         _logger = logger;
     }
 
@@ -226,6 +233,68 @@ public class DetailsModel : PageModel
         else
         {
             TempData["ReportError"] = string.Join(", ", result.Errors);
+        }
+
+        return RedirectToPage(new { id });
+    }
+
+    /// <summary>
+    /// Handles POST requests to ask a question about the product.
+    /// </summary>
+    /// <param name="id">The product ID from the route.</param>
+    /// <param name="subject">The question subject.</param>
+    /// <param name="content">The question content.</param>
+    /// <returns>The page result.</returns>
+    public async Task<IActionResult> OnPostAskQuestionAsync(Guid id, string subject, string content)
+    {
+        var buyerId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        if (string.IsNullOrEmpty(buyerId))
+        {
+            return Challenge();
+        }
+
+        if (string.IsNullOrWhiteSpace(subject) || string.IsNullOrWhiteSpace(content))
+        {
+            TempData["QuestionError"] = "Subject and message are required.";
+            return RedirectToPage(new { id });
+        }
+
+        // Load product and store info
+        var product = await _productService.GetProductByIdAsync(id);
+        if (product == null)
+        {
+            TempData["QuestionError"] = "Product not found.";
+            return RedirectToPage(new { id });
+        }
+
+        var store = await _storeProfileService.GetStoreByIdAsync(product.StoreId);
+        if (store == null)
+        {
+            TempData["QuestionError"] = "Store not found.";
+            return RedirectToPage(new { id });
+        }
+
+        var command = new CreateMessageThreadCommand
+        {
+            ProductId = id,
+            BuyerId = buyerId,
+            SellerId = store.SellerId,
+            StoreId = store.Id,
+            Subject = subject,
+            InitialMessage = content,
+            ThreadType = MessageThreadType.ProductQuestion
+        };
+
+        var result = await _messagingService.CreateThreadAsync(command);
+
+        if (result.Succeeded)
+        {
+            TempData["QuestionSuccess"] = "Your question has been submitted. The seller will be notified and can respond.";
+        }
+        else
+        {
+            TempData["QuestionError"] = string.Join(", ", result.Errors);
         }
 
         return RedirectToPage(new { id });
