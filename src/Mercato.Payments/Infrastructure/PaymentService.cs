@@ -12,6 +12,7 @@ public class PaymentService : IPaymentService
 {
     private readonly ILogger<PaymentService> _logger;
     private readonly PaymentSettings _paymentSettings;
+    private readonly IPaymentStatusMapper _statusMapper;
 
     /// <summary>
     /// In-memory store for payment transactions (simulated persistence).
@@ -60,10 +61,15 @@ public class PaymentService : IPaymentService
     /// </summary>
     /// <param name="logger">The logger.</param>
     /// <param name="paymentSettings">The payment settings.</param>
-    public PaymentService(ILogger<PaymentService> logger, IOptions<PaymentSettings> paymentSettings)
+    /// <param name="statusMapper">The payment status mapper.</param>
+    public PaymentService(
+        ILogger<PaymentService> logger,
+        IOptions<PaymentSettings> paymentSettings,
+        IPaymentStatusMapper statusMapper)
     {
         _logger = logger;
         _paymentSettings = paymentSettings.Value;
+        _statusMapper = statusMapper;
     }
 
     /// <inheritdoc />
@@ -231,7 +237,7 @@ public class PaymentService : IPaymentService
                 }
 
                 // Simulate BLIK payment processing (always succeeds for valid 6-digit code)
-                transaction.Status = PaymentStatus.Completed;
+                transaction.Status = PaymentStatus.Paid;
                 transaction.CompletedAt = DateTimeOffset.UtcNow;
                 transaction.ExternalReferenceId = GenerateExternalReferenceId("BLIK");
                 transaction.LastUpdatedAt = DateTimeOffset.UtcNow;
@@ -288,7 +294,7 @@ public class PaymentService : IPaymentService
         // Update transaction status based on verification
         if (isPaymentSuccessful)
         {
-            transaction.Status = PaymentStatus.Completed;
+            transaction.Status = PaymentStatus.Paid;
             transaction.CompletedAt = DateTimeOffset.UtcNow;
             transaction.ExternalReferenceId = command.ExternalReferenceId ?? GenerateExternalReferenceId("SIM");
         }
@@ -435,7 +441,7 @@ public class PaymentService : IPaymentService
         }
 
         // Simulate BLIK payment processing (always succeeds for valid 6-digit code)
-        transaction.Status = PaymentStatus.Completed;
+        transaction.Status = PaymentStatus.Paid;
         transaction.CompletedAt = DateTimeOffset.UtcNow;
         transaction.ExternalReferenceId = GenerateExternalReferenceId("BLIK");
         transaction.LastUpdatedAt = DateTimeOffset.UtcNow;
@@ -450,6 +456,78 @@ public class PaymentService : IPaymentService
             transaction.Id);
 
         return Task.FromResult(SubmitBlikCodeResult.Success(transaction));
+    }
+
+    /// <inheritdoc />
+    public Task<ProcessWebhookResult> ProcessWebhookAsync(ProcessWebhookCommand command)
+    {
+        if (string.IsNullOrWhiteSpace(command.ProviderStatusCode))
+        {
+            return Task.FromResult(ProcessWebhookResult.Failure("Provider status code is required."));
+        }
+
+        PaymentTransaction? transaction;
+
+        lock (_lock)
+        {
+            if (!_transactions.TryGetValue(command.TransactionId, out transaction))
+            {
+                _logger.LogWarning("Webhook received for unknown transaction: {TransactionId}", command.TransactionId);
+                return Task.FromResult(ProcessWebhookResult.Failure("Transaction not found."));
+            }
+        }
+
+        // Map the provider status to internal status using centralized mapper
+        var mappingResult = _statusMapper.MapProviderStatus(command.ProviderStatusCode);
+        if (!mappingResult.Succeeded)
+        {
+            _logger.LogWarning(
+                "Unknown provider status code received: {ProviderCode} for transaction {TransactionId}",
+                command.ProviderStatusCode, command.TransactionId);
+            return Task.FromResult(ProcessWebhookResult.Failure($"Unknown provider status: {command.ProviderStatusCode}"));
+        }
+
+        var previousStatus = transaction.Status;
+        var newStatus = mappingResult.Status;
+
+        // Update the transaction
+        transaction.Status = newStatus;
+        transaction.LastUpdatedAt = DateTimeOffset.UtcNow;
+
+        if (!string.IsNullOrEmpty(command.ExternalReferenceId))
+        {
+            transaction.ExternalReferenceId = command.ExternalReferenceId;
+        }
+
+        // Handle refund amount
+        if (newStatus == PaymentStatus.Refunded && command.RefundAmount.HasValue)
+        {
+            transaction.RefundedAmount = command.RefundAmount.Value;
+            transaction.RefundedAt = DateTimeOffset.UtcNow;
+        }
+
+        // Set completed timestamp for successful payments
+        if (newStatus == PaymentStatus.Paid && !transaction.CompletedAt.HasValue)
+        {
+            transaction.CompletedAt = DateTimeOffset.UtcNow;
+        }
+
+        // Set error message for failed status
+        if (mappingResult.IsErrorStatus)
+        {
+            transaction.ErrorMessage = _statusMapper.GetBuyerFriendlyErrorMessage(newStatus);
+        }
+
+        lock (_lock)
+        {
+            _transactions[transaction.Id] = transaction;
+        }
+
+        _logger.LogInformation(
+            "Webhook processed: TransactionId={TransactionId}, PreviousStatus={PreviousStatus}, NewStatus={NewStatus}",
+            transaction.Id, previousStatus, newStatus);
+
+        return Task.FromResult(ProcessWebhookResult.Success(transaction, previousStatus, newStatus));
     }
 
     /// <summary>

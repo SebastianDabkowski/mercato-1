@@ -41,6 +41,13 @@ public interface IPaymentService
     /// <param name="command">The BLIK code submission command.</param>
     /// <returns>The result of the BLIK code submission.</returns>
     Task<SubmitBlikCodeResult> SubmitBlikCodeAsync(SubmitBlikCodeCommand command);
+
+    /// <summary>
+    /// Processes a webhook notification from a payment provider to update transaction status.
+    /// </summary>
+    /// <param name="command">The webhook command containing provider status information.</param>
+    /// <returns>The result of the webhook processing.</returns>
+    Task<ProcessWebhookResult> ProcessWebhookAsync(ProcessWebhookCommand command);
 }
 
 /// <summary>
@@ -468,7 +475,7 @@ public class SubmitBlikCodeResult
         Succeeded = true,
         Errors = [],
         Transaction = transaction,
-        IsPaymentSuccessful = transaction.Status == PaymentStatus.Completed
+        IsPaymentSuccessful = transaction.Status == PaymentStatus.Paid
     };
 
     /// <summary>
@@ -499,4 +506,100 @@ public class SubmitBlikCodeResult
         IsNotAuthorized = true,
         Errors = ["Not authorized."]
     };
+}
+
+/// <summary>
+/// Command to process a webhook notification from a payment provider.
+/// </summary>
+public class ProcessWebhookCommand
+{
+    /// <summary>
+    /// Gets or sets the transaction ID (may be internal ID or external reference).
+    /// </summary>
+    public Guid TransactionId { get; set; }
+
+    /// <summary>
+    /// Gets or sets the external reference ID from the provider.
+    /// </summary>
+    public string? ExternalReferenceId { get; set; }
+
+    /// <summary>
+    /// Gets or sets the provider's status code.
+    /// </summary>
+    public string ProviderStatusCode { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the refund amount if applicable.
+    /// </summary>
+    public decimal? RefundAmount { get; set; }
+
+    /// <summary>
+    /// Gets or sets the provider's raw payload for logging purposes.
+    /// </summary>
+    public string? RawPayload { get; set; }
+}
+
+/// <summary>
+/// Result of processing a webhook notification.
+/// </summary>
+public class ProcessWebhookResult
+{
+    /// <summary>
+    /// Gets a value indicating whether the operation succeeded.
+    /// </summary>
+    public bool Succeeded { get; private init; }
+
+    /// <summary>
+    /// Gets the list of errors if the operation failed.
+    /// </summary>
+    public IReadOnlyList<string> Errors { get; private init; } = [];
+
+    /// <summary>
+    /// Gets the updated payment transaction.
+    /// </summary>
+    public PaymentTransaction? Transaction { get; private init; }
+
+    /// <summary>
+    /// Gets the previous status before the update.
+    /// </summary>
+    public PaymentStatus? PreviousStatus { get; private init; }
+
+    /// <summary>
+    /// Gets the new status after the update.
+    /// </summary>
+    public PaymentStatus? NewStatus { get; private init; }
+
+    /// <summary>
+    /// Creates a successful result.
+    /// </summary>
+    /// <param name="transaction">The updated transaction.</param>
+    /// <param name="previousStatus">The previous status.</param>
+    /// <param name="newStatus">The new status.</param>
+    /// <returns>A successful result.</returns>
+    public static ProcessWebhookResult Success(PaymentTransaction transaction, PaymentStatus previousStatus, PaymentStatus newStatus) => new()
+    {
+        Succeeded = true,
+        Errors = [],
+        Transaction = transaction,
+        PreviousStatus = previousStatus,
+        NewStatus = newStatus
+    };
+
+    /// <summary>
+    /// Creates a failed result with errors.
+    /// </summary>
+    /// <param name="errors">The list of error messages.</param>
+    /// <returns>A failed result.</returns>
+    public static ProcessWebhookResult Failure(IReadOnlyList<string> errors) => new()
+    {
+        Succeeded = false,
+        Errors = errors
+    };
+
+    /// <summary>
+    /// Creates a failed result with a single error message.
+    /// </summary>
+    /// <param name="error">The error message.</param>
+    /// <returns>A failed result.</returns>
+    public static ProcessWebhookResult Failure(string error) => Failure([error]);
 }

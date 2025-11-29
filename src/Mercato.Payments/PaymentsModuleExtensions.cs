@@ -39,6 +39,7 @@ public static class PaymentsModuleExtensions
         services.AddScoped<IEscrowRepository, EscrowRepository>();
 
         // Register services
+        services.AddScoped<IPaymentStatusMapper, PaymentStatusMapper>();
         services.AddScoped<IPaymentService, PaymentService>();
         services.AddScoped<IEscrowService, EscrowService>();
 

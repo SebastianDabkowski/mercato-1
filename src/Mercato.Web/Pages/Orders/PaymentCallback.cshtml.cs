@@ -121,7 +121,7 @@ public class PaymentCallbackModel : PageModel
         }
 
         Transaction = callbackResult.Transaction;
-        IsPaymentSuccessful = Transaction?.Status == PaymentStatus.Completed;
+        IsPaymentSuccessful = Transaction?.Status == PaymentStatus.Paid;
 
         if (IsPaymentSuccessful)
         {

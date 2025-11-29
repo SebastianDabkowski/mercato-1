@@ -1,5 +1,7 @@
 using Mercato.Orders.Application.Services;
 using Mercato.Orders.Domain.Entities;
+using Mercato.Payments.Application.Services;
+using Mercato.Payments.Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -16,6 +18,7 @@ namespace Mercato.Web.Pages.Orders;
 public class DetailsModel : PageModel
 {
     private readonly IOrderService _orderService;
+    private readonly IPaymentService _paymentService;
     private readonly EmailSettings _emailSettings;
     private readonly ReturnSettings _returnSettings;
     private readonly ILogger<DetailsModel> _logger;
@@ -24,16 +27,19 @@ public class DetailsModel : PageModel
     /// Initializes a new instance of the <see cref="DetailsModel"/> class.
     /// </summary>
     /// <param name="orderService">The order service.</param>
+    /// <param name="paymentService">The payment service.</param>
     /// <param name="emailSettings">The email settings.</param>
     /// <param name="returnSettings">The return settings.</param>
     /// <param name="logger">The logger.</param>
     public DetailsModel(
         IOrderService orderService,
+        IPaymentService paymentService,
         IOptions<EmailSettings> emailSettings,
         IOptions<ReturnSettings> returnSettings,
         ILogger<DetailsModel> logger)
     {
         _orderService = orderService;
+        _paymentService = paymentService;
         _emailSettings = emailSettings.Value;
         _returnSettings = returnSettings.Value;
         _logger = logger;
@@ -43,6 +49,11 @@ public class DetailsModel : PageModel
     /// Gets the order.
     /// </summary>
     public Order? Order { get; private set; }
+
+    /// <summary>
+    /// Gets the payment transaction for the order.
+    /// </summary>
+    public PaymentTransaction? PaymentTransaction { get; private set; }
 
     /// <summary>
     /// Gets the error message to display.
@@ -104,6 +115,16 @@ public class DetailsModel : PageModel
         }
 
         Order = result.Order;
+
+        // Load payment transaction if available
+        if (Order?.PaymentTransactionId.HasValue == true)
+        {
+            var paymentResult = await _paymentService.GetTransactionAsync(Order.PaymentTransactionId.Value, buyerId);
+            if (paymentResult.Succeeded)
+            {
+                PaymentTransaction = paymentResult.Transaction;
+            }
+        }
 
         // Load return eligibility and existing return requests for each sub-order
         if (Order != null)
@@ -291,6 +312,39 @@ public class DetailsModel : PageModel
             _ => null
         };
     }
+
+    /// <summary>
+    /// Gets the CSS class for a payment status badge.
+    /// </summary>
+    /// <param name="status">The payment status.</param>
+    /// <returns>The CSS class name.</returns>
+    public static string GetPaymentStatusBadgeClass(PaymentStatus status) =>
+        PaymentStatusDisplay.GetBadgeClass(status);
+
+    /// <summary>
+    /// Gets the display text for a payment status.
+    /// </summary>
+    /// <param name="status">The payment status.</param>
+    /// <returns>The display text.</returns>
+    public static string GetPaymentStatusDisplayText(PaymentStatus status) =>
+        PaymentStatusDisplay.GetDisplayText(status);
+
+    /// <summary>
+    /// Gets the icon class for a payment status.
+    /// </summary>
+    /// <param name="status">The payment status.</param>
+    /// <returns>The icon class.</returns>
+    public static string GetPaymentStatusIconClass(PaymentStatus status) =>
+        PaymentStatusDisplay.GetIconClass(status);
+
+    /// <summary>
+    /// Gets a buyer-friendly message for the payment status.
+    /// </summary>
+    /// <param name="status">The payment status.</param>
+    /// <param name="refundedAmount">The refunded amount.</param>
+    /// <returns>A buyer-friendly message.</returns>
+    public static string GetPaymentStatusMessage(PaymentStatus status, decimal refundedAmount = 0) =>
+        PaymentStatusDisplay.GetBuyerMessage(status, refundedAmount);
 
     private string? GetBuyerId()
     {

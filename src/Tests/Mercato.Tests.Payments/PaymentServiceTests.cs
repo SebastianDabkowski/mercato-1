@@ -10,17 +10,19 @@ namespace Mercato.Tests.Payments;
 public class PaymentServiceTests
 {
     private readonly Mock<ILogger<PaymentService>> _mockLogger;
+    private readonly IPaymentStatusMapper _statusMapper;
 
     public PaymentServiceTests()
     {
         _mockLogger = new Mock<ILogger<PaymentService>>();
+        _statusMapper = new PaymentStatusMapper();
     }
 
     private PaymentService CreateService(PaymentSettings? settings = null)
     {
         var paymentSettings = settings ?? new PaymentSettings();
         var options = Options.Create(paymentSettings);
-        return new PaymentService(_mockLogger.Object, options);
+        return new PaymentService(_mockLogger.Object, options, _statusMapper);
     }
 
     #region GetPaymentMethodsAsync Tests
@@ -474,7 +476,7 @@ public class PaymentServiceTests
         // Assert
         Assert.True(result.Succeeded);
         Assert.NotNull(result.Transaction);
-        Assert.Equal(PaymentStatus.Completed, result.Transaction.Status);
+        Assert.Equal(PaymentStatus.Paid, result.Transaction.Status);
     }
 
     [Fact]
@@ -615,7 +617,7 @@ public class PaymentServiceTests
         // Assert
         Assert.True(result.Succeeded);
         Assert.NotNull(result.Transaction);
-        Assert.Equal(PaymentStatus.Completed, result.Transaction.Status);
+        Assert.Equal(PaymentStatus.Paid, result.Transaction.Status);
         Assert.NotNull(result.Transaction.CompletedAt);
     }
 
@@ -769,6 +771,190 @@ public class PaymentServiceTests
         // Assert
         Assert.False(result.Succeeded);
         Assert.Contains(result.Errors, e => e.Contains("Transaction not found"));
+    }
+
+    #endregion
+
+    #region ProcessWebhookAsync Tests
+
+    [Fact]
+    public async Task ProcessWebhookAsync_SuccessStatus_UpdatesTransactionToPaid()
+    {
+        // Arrange
+        var service = CreateService();
+        var initiateCommand = new InitiatePaymentCommand
+        {
+            BuyerId = "test-buyer",
+            PaymentMethodId = "credit_card",
+            Amount = 100.00m,
+            ReturnUrl = "https://example.com/callback"
+        };
+        var initiateResult = await service.InitiatePaymentAsync(initiateCommand);
+
+        var webhookCommand = new ProcessWebhookCommand
+        {
+            TransactionId = initiateResult.TransactionId,
+            ProviderStatusCode = "succeeded",
+            ExternalReferenceId = "ext-ref-123"
+        };
+
+        // Act
+        var result = await service.ProcessWebhookAsync(webhookCommand);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.NotNull(result.Transaction);
+        Assert.Equal(PaymentStatus.Paid, result.Transaction.Status);
+        Assert.Equal(PaymentStatus.Pending, result.PreviousStatus);
+        Assert.Equal(PaymentStatus.Paid, result.NewStatus);
+        Assert.Equal("ext-ref-123", result.Transaction.ExternalReferenceId);
+        Assert.NotNull(result.Transaction.CompletedAt);
+    }
+
+    [Fact]
+    public async Task ProcessWebhookAsync_FailedStatus_UpdatesTransactionWithErrorMessage()
+    {
+        // Arrange
+        var service = CreateService();
+        var initiateCommand = new InitiatePaymentCommand
+        {
+            BuyerId = "test-buyer",
+            PaymentMethodId = "credit_card",
+            Amount = 100.00m,
+            ReturnUrl = "https://example.com/callback"
+        };
+        var initiateResult = await service.InitiatePaymentAsync(initiateCommand);
+
+        var webhookCommand = new ProcessWebhookCommand
+        {
+            TransactionId = initiateResult.TransactionId,
+            ProviderStatusCode = "declined"
+        };
+
+        // Act
+        var result = await service.ProcessWebhookAsync(webhookCommand);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.NotNull(result.Transaction);
+        Assert.Equal(PaymentStatus.Failed, result.Transaction.Status);
+        Assert.NotNull(result.Transaction.ErrorMessage);
+        Assert.DoesNotContain("technical", result.Transaction.ErrorMessage, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task ProcessWebhookAsync_RefundedStatus_SetsRefundAmountAndDate()
+    {
+        // Arrange
+        var service = CreateService();
+        var initiateCommand = new InitiatePaymentCommand
+        {
+            BuyerId = "test-buyer",
+            PaymentMethodId = "credit_card",
+            Amount = 100.00m,
+            ReturnUrl = "https://example.com/callback"
+        };
+        var initiateResult = await service.InitiatePaymentAsync(initiateCommand);
+
+        // First mark it as paid
+        await service.ProcessWebhookAsync(new ProcessWebhookCommand
+        {
+            TransactionId = initiateResult.TransactionId,
+            ProviderStatusCode = "succeeded"
+        });
+
+        // Then refund
+        var webhookCommand = new ProcessWebhookCommand
+        {
+            TransactionId = initiateResult.TransactionId,
+            ProviderStatusCode = "refunded",
+            RefundAmount = 50.00m
+        };
+
+        // Act
+        var result = await service.ProcessWebhookAsync(webhookCommand);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.NotNull(result.Transaction);
+        Assert.Equal(PaymentStatus.Refunded, result.Transaction.Status);
+        Assert.Equal(50.00m, result.Transaction.RefundedAmount);
+        Assert.NotNull(result.Transaction.RefundedAt);
+    }
+
+    [Fact]
+    public async Task ProcessWebhookAsync_UnknownProviderCode_ReturnsFailure()
+    {
+        // Arrange
+        var service = CreateService();
+        var initiateCommand = new InitiatePaymentCommand
+        {
+            BuyerId = "test-buyer",
+            PaymentMethodId = "credit_card",
+            Amount = 100.00m,
+            ReturnUrl = "https://example.com/callback"
+        };
+        var initiateResult = await service.InitiatePaymentAsync(initiateCommand);
+
+        var webhookCommand = new ProcessWebhookCommand
+        {
+            TransactionId = initiateResult.TransactionId,
+            ProviderStatusCode = "unknown_status_xyz"
+        };
+
+        // Act
+        var result = await service.ProcessWebhookAsync(webhookCommand);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains(result.Errors, e => e.Contains("Unknown provider status"));
+    }
+
+    [Fact]
+    public async Task ProcessWebhookAsync_TransactionNotFound_ReturnsFailure()
+    {
+        // Arrange
+        var service = CreateService();
+        var webhookCommand = new ProcessWebhookCommand
+        {
+            TransactionId = Guid.NewGuid(),
+            ProviderStatusCode = "succeeded"
+        };
+
+        // Act
+        var result = await service.ProcessWebhookAsync(webhookCommand);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains(result.Errors, e => e.Contains("Transaction not found"));
+    }
+
+    [Fact]
+    public async Task ProcessWebhookAsync_EmptyProviderCode_ReturnsFailure()
+    {
+        // Arrange
+        var service = CreateService();
+        var initiateCommand = new InitiatePaymentCommand
+        {
+            BuyerId = "test-buyer",
+            PaymentMethodId = "credit_card",
+            Amount = 100.00m,
+            ReturnUrl = "https://example.com/callback"
+        };
+        var initiateResult = await service.InitiatePaymentAsync(initiateCommand);
+
+        var webhookCommand = new ProcessWebhookCommand
+        {
+            TransactionId = initiateResult.TransactionId,
+            ProviderStatusCode = ""
+        };
+
+        // Act
+        var result = await service.ProcessWebhookAsync(webhookCommand);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains(result.Errors, e => e.Contains("required"));
     }
 
     #endregion
