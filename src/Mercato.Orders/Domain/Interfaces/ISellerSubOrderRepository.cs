@@ -75,4 +75,11 @@ public interface ISellerSubOrderRepository
     /// <param name="storeId">The store ID.</param>
     /// <returns>A list of distinct buyer IDs and emails.</returns>
     Task<IReadOnlyList<(string BuyerId, string BuyerEmail)>> GetDistinctBuyersByStoreIdAsync(Guid storeId);
+
+    /// <summary>
+    /// Gets a seller sub-order item by its unique identifier, including the parent sub-order and order.
+    /// </summary>
+    /// <param name="itemId">The seller sub-order item ID.</param>
+    /// <returns>The seller sub-order item if found; otherwise, null.</returns>
+    Task<SellerSubOrderItem?> GetItemByIdAsync(Guid itemId);
 }

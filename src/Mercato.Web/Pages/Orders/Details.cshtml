@@ -67,9 +67,30 @@
                                         <tbody>
                                             @foreach (var item in subOrder.Items)
                                             {
+                                                var hasReview = Model.ItemReviews.ContainsKey(item.Id);
+                                                var canReview = Model.ItemReviewEligibility.TryGetValue(item.Id, out var eligibility) && eligibility.CanSubmit;
                                                 <tr class="@(item.Status == SellerSubOrderItemStatus.Cancelled ? "table-danger" : "")">
                                                     <td>
                                                         <strong>@item.ProductTitle</strong>
+                                                        @if (hasReview)
+                                                        {
+                                                            <br>
+                                                            <small class="text-success">
+                                                                <i class="bi bi-star-fill me-1"></i>
+                                                                @for (var i = 0; i < Model.ItemReviews[item.Id].Rating; i++)
+                                                                {
+                                                                    <i class="bi bi-star-fill text-warning" style="font-size: 0.7rem;"></i>
+                                                                }
+                                                                Reviewed
+                                                            </small>
+                                                        }
+                                                        else if (canReview)
+                                                        {
+                                                            <br>
+                                                            <a asp-page="SubmitReview" asp-route-itemId="@item.Id" class="btn btn-outline-primary btn-sm mt-1">
+                                                                <i class="bi bi-star me-1"></i>Write Review
+                                                            </a>
+                                                        }
                                                     </td>
                                                     <td class="text-center align-middle">@item.Quantity</td>
                                                     <td class="text-center align-middle">

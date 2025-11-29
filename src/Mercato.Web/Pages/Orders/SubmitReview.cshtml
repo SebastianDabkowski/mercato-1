@@ -1,0 +1,215 @@
+@page "{itemId:guid}"
+@model Mercato.Web.Pages.Orders.SubmitReviewModel
+@{
+    ViewData["Title"] = "Write a Review";
+}
+
+<div class="container py-4">
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-page="Index">My Orders</a></li>
+            @if (Model.SubOrder != null)
+            {
+                <li class="breadcrumb-item"><a asp-page="Details" asp-route-id="@Model.SubOrder.OrderId">Order Details</a></li>
+            }
+            <li class="breadcrumb-item active" aria-current="page">Write Review</li>
+        </ol>
+    </nav>
+
+    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+    {
+        <div class="alert alert-danger">@Model.ErrorMessage</div>
+    }
+
+    @if (!string.IsNullOrEmpty(Model.SuccessMessage))
+    {
+        <div class="alert alert-success">
+            <h5><i class="bi bi-check-circle me-2"></i>Review Submitted Successfully</h5>
+            <p class="mb-0">@Model.SuccessMessage</p>
+        </div>
+        <div class="mt-3">
+            @if (Model.SubOrder != null)
+            {
+                <a asp-page="Details" asp-route-id="@Model.SubOrder.OrderId" class="btn btn-primary">
+                    <i class="bi bi-arrow-left me-1"></i>Back to Order Details
+                </a>
+            }
+        </div>
+    }
+    else if (Model.Item != null && Model.SubOrder != null)
+    {
+        <h1 class="mb-4">Write a Review</h1>
+
+        <div class="row">
+            <div class="col-lg-8">
+                <form method="post">
+                    @* Product Info *@
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="bi bi-box me-2"></i>Product</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="d-flex align-items-start">
+                                @if (!string.IsNullOrEmpty(Model.Item.ProductImageUrl))
+                                {
+                                    <img src="@Model.Item.ProductImageUrl" alt="Product image: @Model.Item.ProductTitle" 
+                                         class="img-thumbnail me-3" style="width: 80px; height: 80px; object-fit: cover;"
+                                         loading="lazy">
+                                }
+                                <div>
+                                    <h6 class="mb-1">@Model.Item.ProductTitle</h6>
+                                    <small class="text-muted">Sold by: @Model.SubOrder.StoreName</small>
+                                    <br><small class="text-muted">Qty: @Model.Item.Quantity × @Model.Item.UnitPrice.ToString("C")</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    @* Star Rating *@
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="bi bi-star me-2"></i>Rating</h5>
+                        </div>
+                        <div class="card-body">
+                            <p class="mb-3">How would you rate this product?</p>
+                            <fieldset class="star-rating mb-3" role="radiogroup" aria-label="Product rating">
+                                @for (int i = 5; i >= 1; i--)
+                                {
+                                    <input type="radio" name="Rating" value="@i" id="star@(i)" 
+                                           @(Model.Rating == i ? "checked" : "") 
+                                           aria-label="@i star@(i == 1 ? "" : "s")">
+                                    <label for="star@(i)" title="@i star@(i == 1 ? "" : "s")">
+                                        <i class="bi bi-star-fill" aria-hidden="true"></i>
+                                        <span class="visually-hidden">@i star@(i == 1 ? "" : "s")</span>
+                                    </label>
+                                }
+                            </fieldset>
+                            <div class="rating-labels d-flex justify-content-between text-muted small" aria-hidden="true">
+                                <span>Poor</span>
+                                <span>Fair</span>
+                                <span>Good</span>
+                                <span>Very Good</span>
+                                <span>Excellent</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    @* Review Text *@
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="bi bi-card-text me-2"></i>Your Review</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label for="ReviewText" class="form-label">Share your experience <span class="text-danger">*</span></label>
+                                <textarea class="form-control" id="ReviewText" name="ReviewText" rows="5" 
+                                          placeholder="Tell others about your experience with this product..."
+                                          required maxlength="2000">@Model.ReviewText</textarea>
+                                <div class="form-text">Your review helps other shoppers make informed decisions (max 2000 characters).</div>
+                            </div>
+
+                            <div class="d-flex gap-2">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-send me-1"></i>Submit Review
+                                </button>
+                                <a asp-page="Details" asp-route-id="@Model.SubOrder.OrderId" class="btn btn-outline-secondary">
+                                    <i class="bi bi-x me-1"></i>Cancel
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <div class="col-lg-4">
+                @* Review Guidelines *@
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-info-circle me-2"></i>Review Guidelines</h5>
+                    </div>
+                    <div class="card-body">
+                        <ul class="mb-0 small">
+                            <li class="mb-2">Be honest and specific about your experience.</li>
+                            <li class="mb-2">Focus on the product itself - quality, performance, value.</li>
+                            <li class="mb-2">Avoid personal information or inappropriate language.</li>
+                            <li class="mb-2">Your review will be visible to other shoppers.</li>
+                        </ul>
+                    </div>
+                </div>
+
+                @* Delivery Info *@
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-truck me-2"></i>Delivery Info</h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="mb-2">
+                            <strong>Delivered:</strong> 
+                            @(Model.Item.DeliveredAt?.ToString("MMMM dd, yyyy") ?? "N/A")
+                        </p>
+                        <p class="mb-0 text-muted small">
+                            Order: @Model.SubOrder.SubOrderNumber
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="alert alert-warning">
+            <h5>Item Not Found</h5>
+            <p>We couldn't find the item you're looking for, or you're not eligible to submit a review.</p>
+            <a asp-page="Index" class="btn btn-primary">Back to Orders</a>
+        </div>
+    }
+</div>
+
+<style>
+    .star-rating {
+        display: flex;
+        flex-direction: row-reverse;
+        justify-content: flex-end;
+        gap: 0.25rem;
+    }
+    
+    .star-rating input {
+        position: absolute;
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+    
+    .star-rating label {
+        cursor: pointer;
+        font-size: 2rem;
+        color: #ddd;
+        transition: color 0.2s, transform 0.1s;
+        border-radius: 4px;
+        padding: 2px;
+    }
+    
+    .star-rating label i {
+        display: inline-block;
+    }
+    
+    .star-rating input:checked ~ label,
+    .star-rating label:hover,
+    .star-rating label:hover ~ label {
+        color: #ffc107;
+    }
+    
+    .star-rating input:focus + label {
+        outline: 2px solid #0d6efd;
+        outline-offset: 2px;
+        transform: scale(1.1);
+    }
+    
+    .star-rating input:checked + label {
+        transform: scale(1.1);
+    }
+    
+    .rating-labels {
+        max-width: 320px;
+    }
+</style>

@@ -143,4 +143,13 @@ public class SellerSubOrderRepository : ISellerSubOrderRepository
             .Select(s => ValueTuple.Create(s.BuyerId, s.BuyerId))
             .ToListAsync();
     }
+
+    /// <inheritdoc />
+    public async Task<SellerSubOrderItem?> GetItemByIdAsync(Guid itemId)
+    {
+        return await _context.SellerSubOrderItems
+            .Include(i => i.SellerSubOrder)
+                .ThenInclude(s => s.Order)
+            .FirstOrDefaultAsync(i => i.Id == itemId);
+    }
 }
