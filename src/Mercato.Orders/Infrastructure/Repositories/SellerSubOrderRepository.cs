@@ -108,10 +108,11 @@ public class SellerSubOrderRepository : ISellerSubOrderRepository
         }
 
         // Apply buyer search filter (search by BuyerId from parent Order)
+        // Using Contains with StringComparison for case-insensitive search that EF Core can translate
         if (!string.IsNullOrWhiteSpace(buyerSearchTerm))
         {
-            var searchTermLower = buyerSearchTerm.ToLower();
-            baseQuery = baseQuery.Where(s => s.Order != null && s.Order.BuyerId.ToLower().Contains(searchTermLower));
+            baseQuery = baseQuery.Where(s => s.Order != null && 
+                EF.Functions.Like(s.Order.BuyerId, $"%{buyerSearchTerm}%"));
         }
 
         // Get total count without includes (more efficient)

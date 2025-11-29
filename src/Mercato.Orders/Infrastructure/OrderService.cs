@@ -677,13 +677,19 @@ public class OrderService : IOrderService
     /// <inheritdoc />
     public async Task<byte[]> ExportSellerSubOrdersToCsvAsync(Guid storeId, SellerSubOrderFilterQuery query)
     {
-        // Ensure the query is for the correct store
-        query.StoreId = storeId;
-        // Use a larger page size for export, but with a reasonable limit
-        query.Page = 1;
-        query.PageSize = 10000;
+        // Create a new query object to avoid mutating the input parameter
+        var exportQuery = new SellerSubOrderFilterQuery
+        {
+            StoreId = storeId,
+            Statuses = query.Statuses,
+            FromDate = query.FromDate,
+            ToDate = query.ToDate,
+            BuyerSearchTerm = query.BuyerSearchTerm,
+            Page = 1,
+            PageSize = 10000 // Use a larger page size for export with reasonable limit
+        };
 
-        var validationErrors = ValidateSellerSubOrderFilterQuery(query);
+        var validationErrors = ValidateSellerSubOrderFilterQuery(exportQuery);
         if (validationErrors.Count > 0)
         {
             _logger.LogWarning("Export validation failed for store {StoreId}: {Errors}", storeId, string.Join(", ", validationErrors));
@@ -693,13 +699,13 @@ public class OrderService : IOrderService
         try
         {
             var (subOrders, _) = await _sellerSubOrderRepository.GetFilteredByStoreIdAsync(
-                query.StoreId,
-                query.Statuses.Count > 0 ? query.Statuses : null,
-                query.FromDate,
-                query.ToDate,
-                query.BuyerSearchTerm,
-                query.Page,
-                query.PageSize);
+                exportQuery.StoreId,
+                exportQuery.Statuses.Count > 0 ? exportQuery.Statuses : null,
+                exportQuery.FromDate,
+                exportQuery.ToDate,
+                exportQuery.BuyerSearchTerm,
+                exportQuery.Page,
+                exportQuery.PageSize);
 
             var csv = new StringBuilder();
 
