@@ -106,6 +106,9 @@ public class IndexModel : PageModel
     /// <returns>The page result.</returns>
     public async Task<IActionResult> OnGetAsync(int page = 1)
     {
+        // Ensure page number is at least 1
+        page = Math.Max(1, page);
+
         var query = new AdminReviewFilterQuery
         {
             Statuses = Status,
