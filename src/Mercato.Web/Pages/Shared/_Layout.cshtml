@@ -73,6 +73,13 @@
                     <ul class="navbar-nav">
                         @if (User.Identity?.IsAuthenticated == true)
                         {
+                            @* Notification Bell Icon *@
+                            <li class="nav-item">
+                                <a class="nav-link text-dark position-relative" asp-area="" asp-page="/Notifications/Index" title="Notifications">
+                                    <i class="bi bi-bell"></i>
+                                    @await Html.PartialAsync("_NotificationBadge")
+                                </a>
+                            </li>
                             <li class="nav-item">
                                 <span class="nav-link text-dark">Hello, @User.Identity.Name</span>
                             </li>
