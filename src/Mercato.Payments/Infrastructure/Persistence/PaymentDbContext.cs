@@ -47,6 +47,16 @@ public class PaymentDbContext : DbContext
     /// </summary>
     public DbSet<SettlementLineItem> SettlementLineItems { get; set; } = null!;
 
+    /// <summary>
+    /// Gets or sets the commission invoices.
+    /// </summary>
+    public DbSet<CommissionInvoice> CommissionInvoices { get; set; } = null!;
+
+    /// <summary>
+    /// Gets or sets the invoice line items.
+    /// </summary>
+    public DbSet<InvoiceLineItem> InvoiceLineItems { get; set; } = null!;
+
     // TODO: Define DbSet<Transaction> when Transaction entity is implemented
     // public DbSet<Transaction> Transactions { get; set; }
 
@@ -238,6 +248,65 @@ public class PaymentDbContext : DbContext
             entity.HasIndex(e => e.SettlementId);
             entity.HasIndex(e => e.OrderId);
             entity.HasIndex(e => new { e.SettlementId, e.OrderId });
+        });
+
+        // Configure CommissionInvoice entity
+        modelBuilder.Entity<CommissionInvoice>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.InvoiceNumber)
+                .HasMaxLength(50)
+                .IsRequired();
+
+            entity.Property(e => e.NetAmount)
+                .HasPrecision(18, 2);
+
+            entity.Property(e => e.TaxRate)
+                .HasPrecision(18, 4);
+
+            entity.Property(e => e.TaxAmount)
+                .HasPrecision(18, 2);
+
+            entity.Property(e => e.GrossAmount)
+                .HasPrecision(18, 2);
+
+            entity.Property(e => e.Currency)
+                .HasMaxLength(3)
+                .IsRequired();
+
+            entity.Property(e => e.Notes)
+                .HasMaxLength(1000);
+
+            entity.HasIndex(e => e.InvoiceNumber).IsUnique();
+            entity.HasIndex(e => e.SellerId);
+            entity.HasIndex(e => e.Status);
+            entity.HasIndex(e => new { e.Year, e.Month });
+            entity.HasIndex(e => new { e.SellerId, e.Year, e.Month, e.InvoiceType });
+
+            entity.HasMany(e => e.LineItems)
+                .WithOne(li => li.Invoice)
+                .HasForeignKey(li => li.InvoiceId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Configure InvoiceLineItem entity
+        modelBuilder.Entity<InvoiceLineItem>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.Description)
+                .HasMaxLength(500)
+                .IsRequired();
+
+            entity.Property(e => e.UnitPrice)
+                .HasPrecision(18, 2);
+
+            entity.Property(e => e.NetAmount)
+                .HasPrecision(18, 2);
+
+            entity.HasIndex(e => e.InvoiceId);
+            entity.HasIndex(e => e.CommissionRecordId);
         });
 
         // TODO: Configure other entity mappings when entities are defined
