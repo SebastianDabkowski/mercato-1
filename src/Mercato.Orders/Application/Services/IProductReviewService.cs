@@ -42,4 +42,11 @@ public interface IProductReviewService
     /// <param name="buyerId">The buyer ID for authorization.</param>
     /// <returns>The result indicating whether a review can be submitted.</returns>
     Task<CanSubmitReviewResult> CanSubmitReviewAsync(Guid sellerSubOrderItemId, string buyerId);
+
+    /// <summary>
+    /// Reports a review for admin moderation.
+    /// </summary>
+    /// <param name="command">The report review command.</param>
+    /// <returns>The result of the report operation.</returns>
+    Task<ReportReviewResult> ReportReviewAsync(ReportReviewCommand command);
 }

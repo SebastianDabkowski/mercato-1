@@ -68,6 +68,11 @@ public class OrderDbContext : DbContext
     /// </summary>
     public DbSet<SellerRating> SellerRatings { get; set; }
 
+    /// <summary>
+    /// Gets or sets the review reports DbSet.
+    /// </summary>
+    public DbSet<ReviewReport> ReviewReports { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -268,6 +273,22 @@ public class OrderDbContext : DbContext
             entity.HasOne(e => e.SellerSubOrder)
                 .WithMany()
                 .HasForeignKey(e => e.SellerSubOrderId);
+        });
+
+        modelBuilder.Entity<ReviewReport>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.ReporterId).IsRequired().HasMaxLength(450);
+            entity.Property(e => e.AdditionalDetails).HasMaxLength(1000);
+            entity.HasIndex(e => e.ReviewId);
+            entity.HasIndex(e => e.ReporterId);
+            // Unique constraint to prevent duplicate reports by the same user
+            entity.HasIndex(e => new { e.ReviewId, e.ReporterId })
+                .IsUnique()
+                .HasDatabaseName("IX_ReviewReports_ReviewId_ReporterId");
+            entity.HasOne(e => e.Review)
+                .WithMany()
+                .HasForeignKey(e => e.ReviewId);
         });
     }
 }

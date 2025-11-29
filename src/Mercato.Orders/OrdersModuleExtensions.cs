@@ -37,6 +37,7 @@ public static class OrdersModuleExtensions
         services.AddScoped<ICaseMessageRepository, CaseMessageRepository>();
         services.AddScoped<ICaseStatusHistoryRepository, CaseStatusHistoryRepository>();
         services.AddScoped<IProductReviewRepository, ProductReviewRepository>();
+        services.AddScoped<IReviewReportRepository, ReviewReportRepository>();
         services.AddScoped<ISellerRatingRepository, SellerRatingRepository>();
 
         // Configure email settings

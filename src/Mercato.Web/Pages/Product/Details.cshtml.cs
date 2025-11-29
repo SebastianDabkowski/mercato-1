@@ -186,6 +186,52 @@ public class DetailsModel : PageModel
     }
 
     /// <summary>
+    /// Handles POST requests to report a review.
+    /// </summary>
+    /// <param name="id">The product ID from the route.</param>
+    /// <param name="reviewId">The review ID to report.</param>
+    /// <param name="reason">The report reason.</param>
+    /// <param name="additionalDetails">Optional additional details.</param>
+    /// <returns>The page result.</returns>
+    public async Task<IActionResult> OnPostReportReviewAsync(Guid id, Guid reviewId, string reason, string? additionalDetails)
+    {
+        var reporterId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        if (string.IsNullOrEmpty(reporterId))
+        {
+            // User must be logged in to report a review
+            return Challenge();
+        }
+
+        if (!Enum.TryParse<ReportReason>(reason, out var reportReason))
+        {
+            TempData["ReportError"] = "Invalid report reason.";
+            return RedirectToPage(new { id });
+        }
+
+        var command = new ReportReviewCommand
+        {
+            ReviewId = reviewId,
+            ReporterId = reporterId,
+            Reason = reportReason,
+            AdditionalDetails = additionalDetails
+        };
+
+        var result = await _productReviewService.ReportReviewAsync(command);
+
+        if (result.Succeeded)
+        {
+            TempData["ReportSuccess"] = "Thank you for your report. Our team will review it.";
+        }
+        else
+        {
+            TempData["ReportError"] = string.Join(", ", result.Errors);
+        }
+
+        return RedirectToPage(new { id });
+    }
+
+    /// <summary>
     /// Gets the first valid image URL for the product.
     /// </summary>
     /// <returns>The first valid image URL or a placeholder.</returns>
