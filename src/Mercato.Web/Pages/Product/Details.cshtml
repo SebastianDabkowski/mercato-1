@@ -162,6 +162,58 @@
             </div>
         </div>
 
+        <!-- Ask a Question Section -->
+        @if (User.Identity?.IsAuthenticated == true && Model.Store != null)
+        {
+            <div id="ask-question-section" class="mt-5">
+                <h4 class="mb-3">Ask a Question</h4>
+                
+                @if (TempData["QuestionSuccess"] != null)
+                {
+                    <div class="alert alert-success alert-dismissible fade show" role="alert">
+                        @TempData["QuestionSuccess"]
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                }
+                @if (TempData["QuestionError"] != null)
+                {
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        @TempData["QuestionError"]
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                }
+
+                <div class="card">
+                    <div class="card-body">
+                        <form method="post" asp-page-handler="AskQuestion">
+                            <div class="mb-3">
+                                <label for="questionSubject" class="form-label">Subject</label>
+                                <input type="text" class="form-control" id="questionSubject" name="subject" maxlength="200" required placeholder="Brief summary of your question">
+                            </div>
+                            <div class="mb-3">
+                                <label for="questionContent" class="form-label">Your Question</label>
+                                <textarea class="form-control" id="questionContent" name="content" rows="4" maxlength="4000" required placeholder="Ask the seller about this product..."></textarea>
+                                <div class="form-text">Maximum 4000 characters.</div>
+                            </div>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-question-circle me-1"></i>Submit Question
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        }
+        else if (User.Identity?.IsAuthenticated != true)
+        {
+            <div id="ask-question-section" class="mt-5">
+                <h4 class="mb-3">Ask a Question</h4>
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle me-2"></i>
+                    <a asp-page="/Account/Login" asp-route-returnUrl="/Product/Details/@Model.Product.Id">Sign in</a> to ask a question about this product.
+                </div>
+            </div>
+        }
+
         <!-- Recently Viewed Products Section -->
         <div id="recently-viewed-section" class="mt-5" style="display: none;">
             <h4 class="mb-3">Recently Viewed Products</h4>

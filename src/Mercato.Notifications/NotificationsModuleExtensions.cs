@@ -31,9 +31,12 @@ public static class NotificationsModuleExtensions
 
         // Register repositories
         services.AddScoped<INotificationRepository, NotificationRepository>();
+        services.AddScoped<IMessageRepository, MessageRepository>();
+        services.AddScoped<IMessageThreadRepository, MessageThreadRepository>();
 
         // Register services
         services.AddScoped<INotificationService, NotificationService>();
+        services.AddScoped<IMessagingService, MessagingService>();
 
         return services;
     }
