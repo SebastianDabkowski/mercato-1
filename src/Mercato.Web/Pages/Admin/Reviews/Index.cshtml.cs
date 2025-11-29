@@ -142,26 +142,14 @@ public class IndexModel : PageModel
     /// </summary>
     /// <param name="status">The review status.</param>
     /// <returns>The CSS class name.</returns>
-    public static string GetStatusBadgeClass(ReviewStatus status) => status switch
-    {
-        ReviewStatus.Pending => "bg-warning text-dark",
-        ReviewStatus.Published => "bg-success",
-        ReviewStatus.Hidden => "bg-secondary",
-        _ => "bg-secondary"
-    };
+    public static string GetStatusBadgeClass(ReviewStatus status) => ReviewDisplayHelpers.GetStatusBadgeClass(status);
 
     /// <summary>
     /// Gets the display text for a review status.
     /// </summary>
     /// <param name="status">The review status.</param>
     /// <returns>The display text.</returns>
-    public static string GetStatusDisplayText(ReviewStatus status) => status switch
-    {
-        ReviewStatus.Pending => "Pending",
-        ReviewStatus.Published => "Published",
-        ReviewStatus.Hidden => "Hidden",
-        _ => status.ToString()
-    };
+    public static string GetStatusDisplayText(ReviewStatus status) => ReviewDisplayHelpers.GetStatusDisplayText(status);
 
     /// <summary>
     /// Gets the query string for pagination links that preserves filter state.
@@ -200,12 +188,5 @@ public class IndexModel : PageModel
     /// </summary>
     /// <param name="rating">The rating from 1 to 5.</param>
     /// <returns>The star display string.</returns>
-    public static string GetStarRating(int rating)
-    {
-        // Clamp rating to valid range
-        var clampedRating = Math.Clamp(rating, 0, 5);
-        var filled = new string('★', clampedRating);
-        var empty = new string('☆', 5 - clampedRating);
-        return filled + empty;
-    }
+    public static string GetStarRating(int rating) => ReviewDisplayHelpers.GetStarRating(rating);
 }
