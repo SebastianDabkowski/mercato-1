@@ -12,13 +12,23 @@ public class PayoutServiceTests
 {
     private readonly Mock<IPayoutRepository> _mockPayoutRepository;
     private readonly Mock<IEscrowRepository> _mockEscrowRepository;
+    private readonly Mock<IPayoutNotificationService> _mockPayoutNotificationService;
+    private readonly Mock<ISellerEmailProvider> _mockSellerEmailProvider;
     private readonly Mock<ILogger<PayoutService>> _mockLogger;
 
     public PayoutServiceTests()
     {
         _mockPayoutRepository = new Mock<IPayoutRepository>(MockBehavior.Strict);
         _mockEscrowRepository = new Mock<IEscrowRepository>(MockBehavior.Strict);
+        _mockPayoutNotificationService = new Mock<IPayoutNotificationService>(MockBehavior.Strict);
+        _mockSellerEmailProvider = new Mock<ISellerEmailProvider>(MockBehavior.Strict);
         _mockLogger = new Mock<ILogger<PayoutService>>();
+
+        // Setup default seller email provider behavior
+        _mockSellerEmailProvider.Setup(p => p.GetSellerEmailsAsync(It.IsAny<IEnumerable<Guid>>()))
+            .ReturnsAsync(new Dictionary<Guid, string>());
+        _mockSellerEmailProvider.Setup(p => p.GetSellerEmailAsync(It.IsAny<Guid>()))
+            .ReturnsAsync((string?)null);
     }
 
     private PayoutService CreateService(PayoutSettings? settings = null)
@@ -28,6 +38,8 @@ public class PayoutServiceTests
         return new PayoutService(
             _mockPayoutRepository.Object,
             _mockEscrowRepository.Object,
+            _mockPayoutNotificationService.Object,
+            _mockSellerEmailProvider.Object,
             _mockLogger.Object,
             options);
     }
