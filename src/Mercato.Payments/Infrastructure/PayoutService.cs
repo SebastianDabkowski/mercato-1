@@ -110,7 +110,8 @@ public class PayoutService : IPayoutService
             // Mark escrow entries as eligible for payout
             var allEntryIds = scheduledPayouts
                 .SelectMany(p => p.EscrowEntryIds?.Split(',', StringSplitOptions.RemoveEmptyEntries) ?? [])
-                .Select(id => Guid.Parse(id))
+                .Select(id => Guid.TryParse(id, out var parsedId) ? parsedId : Guid.Empty)
+                .Where(id => id != Guid.Empty)
                 .ToList();
 
             var entriesToUpdate = allReleasedEntries.Where(e => allEntryIds.Contains(e.Id)).ToList();
@@ -333,11 +334,10 @@ public class PayoutService : IPayoutService
         return GetPayoutsResult.Success(payouts);
     }
 
-    private async Task<List<EscrowEntry>> GetEligibleEscrowEntriesAsync()
+    private async Task<IReadOnlyList<EscrowEntry>> GetEligibleEscrowEntriesAsync()
     {
         // Get all released escrow entries that haven't been included in a payout yet
-        var releasedEntries = await _escrowRepository.GetByStatusForPayoutAsync(EscrowStatus.Released, excludeAlreadyInPayout: true);
-        return releasedEntries.ToList();
+        return await _escrowRepository.GetByStatusForPayoutAsync(EscrowStatus.Released, excludeAlreadyInPayout: true);
     }
 
     private static List<string> ValidateSchedulePayoutsCommand(SchedulePayoutsCommand command)
