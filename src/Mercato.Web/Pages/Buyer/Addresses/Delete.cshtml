@@ -1,0 +1,93 @@
+@page "{id:guid}"
+@using Mercato.Web.Helpers
+@model Mercato.Web.Pages.Buyer.Addresses.DeleteModel
+@{
+    ViewData["Title"] = "Delete Shipping Address";
+}
+
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            @if (!Model.AddressFound)
+            {
+                <div class="alert alert-danger" role="alert">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    @(Model.ErrorMessage ?? "Address not found.")
+                </div>
+                <a asp-page="Index" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left me-1"></i>Back to Addresses
+                </a>
+            }
+            else
+            {
+                <div class="card shadow-sm border-danger">
+                    <div class="card-header bg-danger text-white">
+                        <h4 class="mb-0"><i class="bi bi-trash-fill me-2"></i>Delete Shipping Address</h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-warning" role="alert">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                            <strong>Warning!</strong> Are you sure you want to delete this address? This action cannot be undone.
+                        </div>
+
+                        <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+                        <div class="card mb-4">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <div>
+                                    @if (!string.IsNullOrEmpty(Model.Address?.Label))
+                                    {
+                                        <strong>@Model.Address.Label</strong>
+                                    }
+                                    else
+                                    {
+                                        <strong>Address Details</strong>
+                                    }
+                                </div>
+                                @if (Model.Address?.IsDefault == true)
+                                {
+                                    <span class="badge bg-primary">Default</span>
+                                }
+                            </div>
+                            <div class="card-body">
+                                <dl class="row mb-0">
+                                    <dt class="col-sm-4">Full Name</dt>
+                                    <dd class="col-sm-8">@Model.Address?.FullName</dd>
+
+                                    <dt class="col-sm-4">Address</dt>
+                                    <dd class="col-sm-8">
+                                        @Model.Address?.AddressLine1<br />
+                                        @if (!string.IsNullOrEmpty(Model.Address?.AddressLine2))
+                                        {
+                                            @Model.Address.AddressLine2<br />
+                                        }
+                                        @CountryHelper.FormatCityStatePostal(Model.Address?.City, Model.Address?.State, Model.Address?.PostalCode)<br />
+                                        @Model.Address?.Country
+                                    </dd>
+
+                                    @if (!string.IsNullOrEmpty(Model.Address?.PhoneNumber))
+                                    {
+                                        <dt class="col-sm-4">Phone</dt>
+                                        <dd class="col-sm-8">@Model.Address.PhoneNumber</dd>
+                                    }
+                                </dl>
+                            </div>
+                        </div>
+
+                        <form method="post">
+                            <input type="hidden" asp-for="Id" />
+                            <div class="d-flex justify-content-between">
+                                <a asp-page="Index" class="btn btn-outline-secondary">
+                                    <i class="bi bi-arrow-left me-1"></i>Cancel
+                                </a>
+                                <button type="submit" class="btn btn-danger">
+                                    <i class="bi bi-trash me-1"></i>Delete Address
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
