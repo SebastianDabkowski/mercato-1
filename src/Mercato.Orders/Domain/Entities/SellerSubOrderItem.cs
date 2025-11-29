@@ -47,6 +47,31 @@ public class SellerSubOrderItem
     public DateTimeOffset CreatedAt { get; set; }
 
     /// <summary>
+    /// Gets or sets the current status of the item for partial fulfillment tracking.
+    /// </summary>
+    public SellerSubOrderItemStatus Status { get; set; } = SellerSubOrderItemStatus.New;
+
+    /// <summary>
+    /// Gets or sets the date and time when the item was last updated.
+    /// </summary>
+    public DateTimeOffset LastUpdatedAt { get; set; }
+
+    /// <summary>
+    /// Gets or sets the date and time when the item was shipped.
+    /// </summary>
+    public DateTimeOffset? ShippedAt { get; set; }
+
+    /// <summary>
+    /// Gets or sets the date and time when the item was delivered.
+    /// </summary>
+    public DateTimeOffset? DeliveredAt { get; set; }
+
+    /// <summary>
+    /// Gets or sets the date and time when the item was cancelled.
+    /// </summary>
+    public DateTimeOffset? CancelledAt { get; set; }
+
+    /// <summary>
     /// Gets the total price for this item (quantity × unit price).
     /// </summary>
     public decimal TotalPrice => UnitPrice * Quantity;

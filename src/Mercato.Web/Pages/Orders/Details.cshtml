@@ -1,5 +1,6 @@
 @page "{id:guid}"
 @model Mercato.Web.Pages.Orders.DetailsModel
+@using Mercato.Orders.Domain.Entities
 @{
     ViewData["Title"] = Model.Order != null ? $"Order {Model.Order.OrderNumber}" : "Order Details";
 }
@@ -57,6 +58,7 @@
                                             <tr>
                                                 <th>Product</th>
                                                 <th class="text-center">Quantity</th>
+                                                <th class="text-center">Status</th>
                                                 <th class="text-end">Unit Price</th>
                                                 <th class="text-end">Total</th>
                                             </tr>
@@ -64,27 +66,39 @@
                                         <tbody>
                                             @foreach (var item in subOrder.Items)
                                             {
-                                                <tr>
+                                                <tr class="@(item.Status == SellerSubOrderItemStatus.Cancelled ? "table-danger" : "")">
                                                     <td>
                                                         <strong>@item.ProductTitle</strong>
                                                     </td>
                                                     <td class="text-center align-middle">@item.Quantity</td>
+                                                    <td class="text-center align-middle">
+                                                        <span class="badge @DetailsModel.GetItemStatusBadgeClass(item.Status)">
+                                                            @DetailsModel.GetItemStatusDisplayText(item.Status)
+                                                        </span>
+                                                    </td>
                                                     <td class="text-end align-middle">@item.UnitPrice.ToString("C")</td>
-                                                    <td class="text-end align-middle">@item.TotalPrice.ToString("C")</td>
+                                                    <td class="text-end align-middle @(item.Status == SellerSubOrderItemStatus.Cancelled ? "text-decoration-line-through" : "")">@item.TotalPrice.ToString("C")</td>
                                                 </tr>
                                             }
                                         </tbody>
                                         <tfoot class="table-light">
                                             <tr>
-                                                <td colspan="3" class="text-end"><strong>Subtotal:</strong></td>
+                                                <td colspan="4" class="text-end"><strong>Subtotal:</strong></td>
                                                 <td class="text-end"><strong>@subOrder.ItemsSubtotal.ToString("C")</strong></td>
                                             </tr>
+                                            @if (subOrder.CancelledItemsTotal > 0)
+                                            {
+                                                <tr class="text-danger">
+                                                    <td colspan="4" class="text-end"><strong>Cancelled Items:</strong></td>
+                                                    <td class="text-end"><strong>-@subOrder.CancelledItemsTotal.ToString("C")</strong></td>
+                                                </tr>
+                                            }
                                             <tr>
-                                                <td colspan="3" class="text-end text-muted">Shipping:</td>
+                                                <td colspan="4" class="text-end text-muted">Shipping:</td>
                                                 <td class="text-end text-muted">@subOrder.ShippingCost.ToString("C")</td>
                                             </tr>
                                             <tr>
-                                                <td colspan="3" class="text-end"><strong>Sub-order Total:</strong></td>
+                                                <td colspan="4" class="text-end"><strong>Sub-order Total:</strong></td>
                                                 <td class="text-end"><strong class="text-primary">@subOrder.TotalAmount.ToString("C")</strong></td>
                                             </tr>
                                         </tfoot>
@@ -114,7 +128,7 @@
                                         }
                                     </div>
                                 }
-                                @if (subOrder.Status == Mercato.Orders.Domain.Entities.SellerSubOrderStatus.Cancelled)
+                                @if (subOrder.Status == SellerSubOrderStatus.Cancelled)
                                 {
                                     <div class="p-3 border-top bg-danger bg-opacity-10">
                                         <i class="bi bi-x-circle me-2 text-danger"></i>
@@ -126,7 +140,7 @@
                                         <span class="float-end">Amount: <strong>@subOrder.TotalAmount.ToString("C")</strong></span>
                                     </div>
                                 }
-                                @if (subOrder.Status == Mercato.Orders.Domain.Entities.SellerSubOrderStatus.Refunded)
+                                @if (subOrder.Status == SellerSubOrderStatus.Refunded)
                                 {
                                     <div class="p-3 border-top bg-warning bg-opacity-10">
                                         <i class="bi bi-arrow-counterclockwise me-2 text-warning"></i>
@@ -266,7 +280,7 @@
                                     </div>
                                 </li>
                             }
-                            @if (order.Status == Mercato.Orders.Domain.Entities.OrderStatus.Paid && !order.ShippedAt.HasValue)
+                            @if (order.Status == OrderStatus.Paid && !order.ShippedAt.HasValue)
                             {
                                 <li class="d-flex align-items-start mb-3">
                                     <span class="badge bg-secondary rounded-circle p-2 me-3"><i class="bi bi-hourglass"></i></span>
@@ -343,9 +357,9 @@
                 </div>
 
                 @* Estimated Delivery *@
-                @if (order.Status != Mercato.Orders.Domain.Entities.OrderStatus.Delivered && 
-                     order.Status != Mercato.Orders.Domain.Entities.OrderStatus.Cancelled && 
-                     order.Status != Mercato.Orders.Domain.Entities.OrderStatus.Refunded)
+                @if (order.Status != OrderStatus.Delivered && 
+                     order.Status != OrderStatus.Cancelled && 
+                     order.Status != OrderStatus.Refunded)
                 {
                     <div class="card mb-4">
                         <div class="card-header">

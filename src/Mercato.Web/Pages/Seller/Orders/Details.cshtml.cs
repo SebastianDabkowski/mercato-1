@@ -75,6 +75,13 @@ public class DetailsModel : PageModel
         SubOrder.Status != SellerSubOrderStatus.Refunded;
 
     /// <summary>
+    /// Gets whether individual item statuses can be updated for partial fulfillment.
+    /// </summary>
+    public bool CanUpdateItemStatus => SubOrder != null &&
+        (SubOrder.Status == SellerSubOrderStatus.Paid || SubOrder.Status == SellerSubOrderStatus.Preparing) &&
+        SubOrder.Items.Any(i => i.Status != SellerSubOrderItemStatus.Delivered && i.Status != SellerSubOrderItemStatus.Cancelled);
+
+    /// <summary>
     /// Handles GET requests for the seller order details page.
     /// </summary>
     /// <param name="id">The seller sub-order ID.</param>
@@ -243,6 +250,94 @@ public class DetailsModel : PageModel
     }
 
     /// <summary>
+    /// Handles POST requests to update individual item statuses for partial fulfillment.
+    /// </summary>
+    /// <param name="id">The seller sub-order ID.</param>
+    /// <param name="selectedItemIds">The selected item IDs.</param>
+    /// <param name="itemStatuses">The status updates for each item (keyed by item ID).</param>
+    /// <param name="trackingNumber">The tracking number (optional).</param>
+    /// <param name="shippingCarrier">The shipping carrier (optional).</param>
+    /// <returns>The page result.</returns>
+    public async Task<IActionResult> OnPostUpdateItemStatusAsync(
+        Guid id,
+        List<Guid> selectedItemIds,
+        Dictionary<Guid, string> itemStatuses,
+        string? trackingNumber,
+        string? shippingCarrier)
+    {
+        var sellerId = GetSellerId();
+        if (string.IsNullOrEmpty(sellerId))
+        {
+            return Forbid();
+        }
+
+        try
+        {
+            Store = await _storeProfileService.GetStoreBySellerIdAsync(sellerId);
+            if (Store == null)
+            {
+                ErrorMessage = "Store not found.";
+                return Page();
+            }
+
+            if (selectedItemIds == null || selectedItemIds.Count == 0)
+            {
+                ErrorMessage = "Please select at least one item to update.";
+                return await LoadSubOrderAndReturnPage(id);
+            }
+
+            var itemUpdates = new List<ItemStatusUpdate>();
+            foreach (var itemId in selectedItemIds)
+            {
+                if (itemStatuses.TryGetValue(itemId, out var statusStr) && !string.IsNullOrEmpty(statusStr))
+                {
+                    if (Enum.TryParse<SellerSubOrderItemStatus>(statusStr, out var status))
+                    {
+                        itemUpdates.Add(new ItemStatusUpdate
+                        {
+                            ItemId = itemId,
+                            NewStatus = status
+                        });
+                    }
+                }
+            }
+
+            if (itemUpdates.Count == 0)
+            {
+                ErrorMessage = "Please select a new status for the selected items.";
+                return await LoadSubOrderAndReturnPage(id);
+            }
+
+            var command = new UpdateSubOrderItemStatusCommand
+            {
+                ItemUpdates = itemUpdates,
+                TrackingNumber = trackingNumber,
+                ShippingCarrier = shippingCarrier
+            };
+
+            var result = await _orderService.UpdateSubOrderItemStatusAsync(id, Store.Id, command);
+            if (!result.Succeeded)
+            {
+                if (result.IsNotAuthorized)
+                {
+                    return Forbid();
+                }
+                ErrorMessage = string.Join(", ", result.Errors);
+                return await LoadSubOrderAndReturnPage(id);
+            }
+
+            SuccessMessage = $"Updated {itemUpdates.Count} item(s) successfully.";
+            return await LoadSubOrderAndReturnPage(id);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating item statuses for seller {SellerId}", sellerId);
+            ErrorMessage = "An error occurred while updating item statuses.";
+            return await LoadSubOrderAndReturnPage(id);
+        }
+    }
+
+    /// <summary>
     /// Gets whether the tracking information can be updated.
     /// </summary>
     public bool CanUpdateTracking => SubOrder != null &&
@@ -374,6 +469,36 @@ public class DetailsModel : PageModel
         ReturnStatus.Approved => "Approved",
         ReturnStatus.Rejected => "Rejected",
         ReturnStatus.Completed => "Completed",
+        _ => status.ToString()
+    };
+
+    /// <summary>
+    /// Gets the CSS class for a seller sub-order item status badge.
+    /// </summary>
+    /// <param name="status">The item status.</param>
+    /// <returns>The CSS class name.</returns>
+    public static string GetItemStatusBadgeClass(SellerSubOrderItemStatus status) => status switch
+    {
+        SellerSubOrderItemStatus.New => "bg-secondary",
+        SellerSubOrderItemStatus.Preparing => "bg-primary",
+        SellerSubOrderItemStatus.Shipped => "bg-info",
+        SellerSubOrderItemStatus.Delivered => "bg-success",
+        SellerSubOrderItemStatus.Cancelled => "bg-danger",
+        _ => "bg-secondary"
+    };
+
+    /// <summary>
+    /// Gets the display text for a seller sub-order item status.
+    /// </summary>
+    /// <param name="status">The item status.</param>
+    /// <returns>The display text.</returns>
+    public static string GetItemStatusDisplayText(SellerSubOrderItemStatus status) => status switch
+    {
+        SellerSubOrderItemStatus.New => "New",
+        SellerSubOrderItemStatus.Preparing => "Preparing",
+        SellerSubOrderItemStatus.Shipped => "Shipped",
+        SellerSubOrderItemStatus.Delivered => "Delivered",
+        SellerSubOrderItemStatus.Cancelled => "Cancelled",
         _ => status.ToString()
     };
 

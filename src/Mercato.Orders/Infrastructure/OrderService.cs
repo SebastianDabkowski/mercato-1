@@ -140,7 +140,9 @@ public class OrderService : IOrderService
                         UnitPrice = item.UnitPrice,
                         Quantity = item.Quantity,
                         ProductImageUrl = item.ProductImageUrl,
-                        CreatedAt = now
+                        CreatedAt = now,
+                        Status = SellerSubOrderItemStatus.New,
+                        LastUpdatedAt = now
                     }).ToList()
                 };
 
@@ -1100,6 +1102,242 @@ public class OrderService : IOrderService
             _logger.LogError(ex, "Error checking return eligibility for sub-order {SubOrderId}", subOrderId);
             return CanInitiateReturnResult.Failure("An error occurred while checking return eligibility.");
         }
+    }
+
+    /// <inheritdoc />
+    public async Task<UpdateSubOrderItemStatusResult> UpdateSubOrderItemStatusAsync(
+        Guid subOrderId,
+        Guid storeId,
+        UpdateSubOrderItemStatusCommand command)
+    {
+        if (storeId == Guid.Empty)
+        {
+            return UpdateSubOrderItemStatusResult.Failure("Store ID is required.");
+        }
+
+        var validationErrors = ValidateItemStatusCommand(command);
+        if (validationErrors.Count > 0)
+        {
+            return UpdateSubOrderItemStatusResult.Failure(validationErrors);
+        }
+
+        try
+        {
+            var subOrder = await _sellerSubOrderRepository.GetByIdAsync(subOrderId);
+            if (subOrder == null)
+            {
+                return UpdateSubOrderItemStatusResult.Failure("Sub-order not found.");
+            }
+
+            if (subOrder.StoreId != storeId)
+            {
+                return UpdateSubOrderItemStatusResult.NotAuthorized();
+            }
+
+            // Validate sub-order is in a valid state for item updates
+            if (subOrder.Status != SellerSubOrderStatus.Paid && subOrder.Status != SellerSubOrderStatus.Preparing)
+            {
+                return UpdateSubOrderItemStatusResult.Failure(
+                    "Item statuses can only be updated when sub-order is in Paid or Preparing status.");
+            }
+
+            var now = DateTimeOffset.UtcNow;
+            var itemDict = subOrder.Items.ToDictionary(i => i.Id);
+
+            foreach (var update in command.ItemUpdates)
+            {
+                if (!itemDict.TryGetValue(update.ItemId, out var item))
+                {
+                    return UpdateSubOrderItemStatusResult.Failure($"Item {update.ItemId} not found in sub-order.");
+                }
+
+                var itemTransitionErrors = ValidateItemStatusTransition(item.Status, update.NewStatus);
+                if (itemTransitionErrors.Count > 0)
+                {
+                    return UpdateSubOrderItemStatusResult.Failure(itemTransitionErrors);
+                }
+
+                item.Status = update.NewStatus;
+                item.LastUpdatedAt = now;
+
+                switch (update.NewStatus)
+                {
+                    case SellerSubOrderItemStatus.Shipped:
+                        item.ShippedAt = now;
+                        break;
+                    case SellerSubOrderItemStatus.Delivered:
+                        item.DeliveredAt = now;
+                        break;
+                    case SellerSubOrderItemStatus.Cancelled:
+                        item.CancelledAt = now;
+                        break;
+                }
+            }
+
+            // Update sub-order status based on item statuses
+            UpdateSubOrderStatusFromItems(subOrder, now, command.TrackingNumber, command.ShippingCarrier);
+
+            await _sellerSubOrderRepository.UpdateAsync(subOrder);
+
+            _logger.LogInformation(
+                "Updated {ItemCount} item(s) in seller sub-order {SubOrderNumber}",
+                command.ItemUpdates.Count, subOrder.SubOrderNumber);
+
+            return UpdateSubOrderItemStatusResult.Success(subOrder);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating item statuses for sub-order {SubOrderId}", subOrderId);
+            return UpdateSubOrderItemStatusResult.Failure("An error occurred while updating item statuses.");
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<CalculateItemRefundResult> CalculateCancelledItemsRefundAsync(Guid subOrderId, Guid storeId)
+    {
+        if (storeId == Guid.Empty)
+        {
+            return CalculateItemRefundResult.Failure("Store ID is required.");
+        }
+
+        try
+        {
+            var subOrder = await _sellerSubOrderRepository.GetByIdAsync(subOrderId);
+            if (subOrder == null)
+            {
+                return CalculateItemRefundResult.Failure("Sub-order not found.");
+            }
+
+            if (subOrder.StoreId != storeId)
+            {
+                return CalculateItemRefundResult.NotAuthorized();
+            }
+
+            var cancelledItems = subOrder.Items
+                .Where(i => i.Status == SellerSubOrderItemStatus.Cancelled)
+                .Select(i => new CancelledItemDetail
+                {
+                    ItemId = i.Id,
+                    ProductTitle = i.ProductTitle,
+                    Quantity = i.Quantity,
+                    UnitPrice = i.UnitPrice,
+                    RefundAmount = i.TotalPrice,
+                    CancelledAt = i.CancelledAt
+                })
+                .ToList();
+
+            var totalRefundAmount = cancelledItems.Sum(i => i.RefundAmount);
+
+            _logger.LogInformation(
+                "Calculated refund of {RefundAmount} for {ItemCount} cancelled item(s) in sub-order {SubOrderNumber}",
+                totalRefundAmount, cancelledItems.Count, subOrder.SubOrderNumber);
+
+            return CalculateItemRefundResult.Success(totalRefundAmount, cancelledItems);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error calculating refund for sub-order {SubOrderId}", subOrderId);
+            return CalculateItemRefundResult.Failure("An error occurred while calculating the refund.");
+        }
+    }
+
+    /// <summary>
+    /// Updates the sub-order status based on item statuses.
+    /// </summary>
+    private static void UpdateSubOrderStatusFromItems(
+        SellerSubOrder subOrder,
+        DateTimeOffset now,
+        string? trackingNumber,
+        string? shippingCarrier)
+    {
+        var items = subOrder.Items.ToList();
+
+        // If all items are cancelled, cancel the sub-order
+        if (items.All(i => i.Status == SellerSubOrderItemStatus.Cancelled))
+        {
+            subOrder.Status = SellerSubOrderStatus.Cancelled;
+            subOrder.CancelledAt = now;
+            subOrder.LastUpdatedAt = now;
+            return;
+        }
+
+        // If all non-cancelled items are delivered, mark as delivered
+        var nonCancelledItems = items.Where(i => i.Status != SellerSubOrderItemStatus.Cancelled).ToList();
+        if (nonCancelledItems.All(i => i.Status == SellerSubOrderItemStatus.Delivered))
+        {
+            subOrder.Status = SellerSubOrderStatus.Delivered;
+            subOrder.DeliveredAt = now;
+            subOrder.LastUpdatedAt = now;
+            return;
+        }
+
+        // If any item is shipped or delivered, mark sub-order as shipped
+        if (nonCancelledItems.Any(i => i.Status == SellerSubOrderItemStatus.Shipped || i.Status == SellerSubOrderItemStatus.Delivered))
+        {
+            if (subOrder.Status != SellerSubOrderStatus.Shipped)
+            {
+                subOrder.Status = SellerSubOrderStatus.Shipped;
+                subOrder.ShippedAt = now;
+                subOrder.TrackingNumber = trackingNumber;
+                subOrder.ShippingCarrier = shippingCarrier;
+                subOrder.LastUpdatedAt = now;
+            }
+            return;
+        }
+
+        // If any item is preparing, mark sub-order as preparing
+        if (items.Any(i => i.Status == SellerSubOrderItemStatus.Preparing))
+        {
+            if (subOrder.Status != SellerSubOrderStatus.Preparing)
+            {
+                subOrder.Status = SellerSubOrderStatus.Preparing;
+                subOrder.LastUpdatedAt = now;
+            }
+        }
+    }
+
+    private static List<string> ValidateItemStatusCommand(UpdateSubOrderItemStatusCommand command)
+    {
+        var errors = new List<string>();
+
+        if (command.ItemUpdates == null || command.ItemUpdates.Count == 0)
+        {
+            errors.Add("At least one item update is required.");
+            return errors;
+        }
+
+        foreach (var update in command.ItemUpdates)
+        {
+            if (update.ItemId == Guid.Empty)
+            {
+                errors.Add("Item ID is required for each update.");
+            }
+        }
+
+        return errors;
+    }
+
+    private static List<string> ValidateItemStatusTransition(SellerSubOrderItemStatus currentStatus, SellerSubOrderItemStatus newStatus)
+    {
+        var errors = new List<string>();
+
+        // Define valid status transitions for item-level statuses
+        var validTransitions = new Dictionary<SellerSubOrderItemStatus, SellerSubOrderItemStatus[]>
+        {
+            { SellerSubOrderItemStatus.New, [SellerSubOrderItemStatus.Preparing, SellerSubOrderItemStatus.Shipped, SellerSubOrderItemStatus.Cancelled] },
+            { SellerSubOrderItemStatus.Preparing, [SellerSubOrderItemStatus.Shipped, SellerSubOrderItemStatus.Cancelled] },
+            { SellerSubOrderItemStatus.Shipped, [SellerSubOrderItemStatus.Delivered] },
+            { SellerSubOrderItemStatus.Delivered, [] },
+            { SellerSubOrderItemStatus.Cancelled, [] }
+        };
+
+        if (!validTransitions.TryGetValue(currentStatus, out var allowedStatuses) ||
+            !allowedStatuses.Contains(newStatus))
+        {
+            errors.Add($"Cannot transition item from {currentStatus} to {newStatus}.");
+        }
+
+        return errors;
     }
 
     private bool IsWithinReturnWindow(DateTimeOffset? deliveredAt)

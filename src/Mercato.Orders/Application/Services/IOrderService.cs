@@ -178,4 +178,25 @@ public interface IOrderService
     /// <param name="buyerId">The buyer ID for authorization.</param>
     /// <returns>The result indicating whether a return can be initiated.</returns>
     Task<CanInitiateReturnResult> CanInitiateReturnAsync(Guid subOrderId, string buyerId);
+
+    /// <summary>
+    /// Updates the status of individual items within a seller sub-order.
+    /// Enables partial fulfillment by allowing sellers to ship, prepare, or cancel specific items.
+    /// </summary>
+    /// <param name="subOrderId">The seller sub-order ID.</param>
+    /// <param name="storeId">The store ID for authorization.</param>
+    /// <param name="command">The update command with item status updates.</param>
+    /// <returns>The result of the update operation.</returns>
+    Task<UpdateSubOrderItemStatusResult> UpdateSubOrderItemStatusAsync(
+        Guid subOrderId,
+        Guid storeId,
+        UpdateSubOrderItemStatusCommand command);
+
+    /// <summary>
+    /// Calculates the refund amount for cancelled items within a seller sub-order.
+    /// </summary>
+    /// <param name="subOrderId">The seller sub-order ID.</param>
+    /// <param name="storeId">The store ID for authorization.</param>
+    /// <returns>The result containing the refund amount and cancelled item details.</returns>
+    Task<CalculateItemRefundResult> CalculateCancelledItemsRefundAsync(Guid subOrderId, Guid storeId);
 }
