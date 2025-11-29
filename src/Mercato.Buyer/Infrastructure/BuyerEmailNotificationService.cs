@@ -45,7 +45,6 @@ public class BuyerEmailNotificationService : IBuyerEmailNotificationService
                 displayName);
 
             // In a real implementation, this would send via SMTP, SendGrid, etc.
-            // Configure BuyerEmail:Provider and BuyerEmail:SmtpSettings in appsettings.json for production.
             // For now, we log the email content for development purposes.
             _logger.LogInformation(
                 "Registration welcome email prepared for {Email}. Subject: {Subject}. Body length: {BodyLength} chars",
