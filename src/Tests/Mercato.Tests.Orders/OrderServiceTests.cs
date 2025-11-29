@@ -1832,4 +1832,216 @@ public class OrderServiceTests
     }
 
     #endregion
+
+    #region UpdateTrackingInfoAsync Tests
+
+    [Fact]
+    public async Task UpdateTrackingInfoAsync_ValidShippedOrder_UpdatesTrackingInfo()
+    {
+        // Arrange
+        var subOrder = CreateTestSellerSubOrder();
+        subOrder.Status = SellerSubOrderStatus.Shipped;
+        subOrder.TrackingNumber = "OLD123";
+        subOrder.ShippingCarrier = "OldCarrier";
+
+        _mockSellerSubOrderRepository.Setup(r => r.GetByIdAsync(subOrder.Id))
+            .ReturnsAsync(subOrder);
+        _mockSellerSubOrderRepository.Setup(r => r.UpdateAsync(It.IsAny<SellerSubOrder>()))
+            .Returns(Task.CompletedTask);
+
+        var command = new UpdateTrackingInfoCommand
+        {
+            TrackingNumber = "NEW456",
+            ShippingCarrier = "NewCarrier"
+        };
+
+        // Act
+        var result = await _service.UpdateTrackingInfoAsync(subOrder.Id, TestStoreId, command);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        _mockSellerSubOrderRepository.Verify(r => r.UpdateAsync(It.Is<SellerSubOrder>(s =>
+            s.TrackingNumber == "NEW456" &&
+            s.ShippingCarrier == "NewCarrier" &&
+            s.Status == SellerSubOrderStatus.Shipped)), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateTrackingInfoAsync_SubOrderNotFound_ReturnsFailure()
+    {
+        // Arrange
+        var subOrderId = Guid.NewGuid();
+        _mockSellerSubOrderRepository.Setup(r => r.GetByIdAsync(subOrderId))
+            .ReturnsAsync((SellerSubOrder?)null);
+
+        var command = new UpdateTrackingInfoCommand
+        {
+            TrackingNumber = "NEW456",
+            ShippingCarrier = "NewCarrier"
+        };
+
+        // Act
+        var result = await _service.UpdateTrackingInfoAsync(subOrderId, TestStoreId, command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains("Sub-order not found.", result.Errors);
+    }
+
+    [Fact]
+    public async Task UpdateTrackingInfoAsync_DifferentStore_ReturnsNotAuthorized()
+    {
+        // Arrange
+        var subOrder = CreateTestSellerSubOrder();
+        subOrder.Status = SellerSubOrderStatus.Shipped;
+        subOrder.StoreId = Guid.NewGuid(); // Different store
+
+        _mockSellerSubOrderRepository.Setup(r => r.GetByIdAsync(subOrder.Id))
+            .ReturnsAsync(subOrder);
+
+        var command = new UpdateTrackingInfoCommand
+        {
+            TrackingNumber = "NEW456",
+            ShippingCarrier = "NewCarrier"
+        };
+
+        // Act
+        var result = await _service.UpdateTrackingInfoAsync(subOrder.Id, TestStoreId, command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.True(result.IsNotAuthorized);
+    }
+
+    [Fact]
+    public async Task UpdateTrackingInfoAsync_NotShippedOrder_ReturnsFailure()
+    {
+        // Arrange
+        var subOrder = CreateTestSellerSubOrder();
+        subOrder.Status = SellerSubOrderStatus.Preparing; // Not shipped
+
+        _mockSellerSubOrderRepository.Setup(r => r.GetByIdAsync(subOrder.Id))
+            .ReturnsAsync(subOrder);
+
+        var command = new UpdateTrackingInfoCommand
+        {
+            TrackingNumber = "NEW456",
+            ShippingCarrier = "NewCarrier"
+        };
+
+        // Act
+        var result = await _service.UpdateTrackingInfoAsync(subOrder.Id, TestStoreId, command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains("Tracking information can only be updated for shipped orders.", result.Errors);
+    }
+
+    [Fact]
+    public async Task UpdateTrackingInfoAsync_EmptyStoreId_ReturnsFailure()
+    {
+        // Arrange
+        var command = new UpdateTrackingInfoCommand
+        {
+            TrackingNumber = "NEW456",
+            ShippingCarrier = "NewCarrier"
+        };
+
+        // Act
+        var result = await _service.UpdateTrackingInfoAsync(Guid.NewGuid(), Guid.Empty, command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains("Store ID is required.", result.Errors);
+    }
+
+    [Fact]
+    public async Task UpdateTrackingInfoAsync_ClearsTrackingInfo_UpdatesSuccessfully()
+    {
+        // Arrange
+        var subOrder = CreateTestSellerSubOrder();
+        subOrder.Status = SellerSubOrderStatus.Shipped;
+        subOrder.TrackingNumber = "OLD123";
+        subOrder.ShippingCarrier = "OldCarrier";
+
+        _mockSellerSubOrderRepository.Setup(r => r.GetByIdAsync(subOrder.Id))
+            .ReturnsAsync(subOrder);
+        _mockSellerSubOrderRepository.Setup(r => r.UpdateAsync(It.IsAny<SellerSubOrder>()))
+            .Returns(Task.CompletedTask);
+
+        var command = new UpdateTrackingInfoCommand
+        {
+            TrackingNumber = null,
+            ShippingCarrier = null
+        };
+
+        // Act
+        var result = await _service.UpdateTrackingInfoAsync(subOrder.Id, TestStoreId, command);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        _mockSellerSubOrderRepository.Verify(r => r.UpdateAsync(It.Is<SellerSubOrder>(s =>
+            s.TrackingNumber == null &&
+            s.ShippingCarrier == null)), Times.Once);
+    }
+
+    [Theory]
+    [InlineData(SellerSubOrderStatus.New)]
+    [InlineData(SellerSubOrderStatus.Paid)]
+    [InlineData(SellerSubOrderStatus.Preparing)]
+    [InlineData(SellerSubOrderStatus.Delivered)]
+    [InlineData(SellerSubOrderStatus.Cancelled)]
+    [InlineData(SellerSubOrderStatus.Refunded)]
+    public async Task UpdateTrackingInfoAsync_NonShippedStatus_ReturnsFailure(SellerSubOrderStatus status)
+    {
+        // Arrange
+        var subOrder = CreateTestSellerSubOrder();
+        subOrder.Status = status;
+
+        _mockSellerSubOrderRepository.Setup(r => r.GetByIdAsync(subOrder.Id))
+            .ReturnsAsync(subOrder);
+
+        var command = new UpdateTrackingInfoCommand
+        {
+            TrackingNumber = "NEW456",
+            ShippingCarrier = "NewCarrier"
+        };
+
+        // Act
+        var result = await _service.UpdateTrackingInfoAsync(subOrder.Id, TestStoreId, command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains("Tracking information can only be updated for shipped orders.", result.Errors);
+    }
+
+    [Fact]
+    public async Task UpdateTrackingInfoAsync_UpdatesLastUpdatedAt()
+    {
+        // Arrange
+        var subOrder = CreateTestSellerSubOrder();
+        subOrder.Status = SellerSubOrderStatus.Shipped;
+        var originalLastUpdatedAt = subOrder.LastUpdatedAt;
+
+        _mockSellerSubOrderRepository.Setup(r => r.GetByIdAsync(subOrder.Id))
+            .ReturnsAsync(subOrder);
+        _mockSellerSubOrderRepository.Setup(r => r.UpdateAsync(It.IsAny<SellerSubOrder>()))
+            .Returns(Task.CompletedTask);
+
+        var command = new UpdateTrackingInfoCommand
+        {
+            TrackingNumber = "NEW456",
+            ShippingCarrier = "NewCarrier"
+        };
+
+        // Act
+        var result = await _service.UpdateTrackingInfoAsync(subOrder.Id, TestStoreId, command);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        _mockSellerSubOrderRepository.Verify(r => r.UpdateAsync(It.Is<SellerSubOrder>(s =>
+            s.LastUpdatedAt >= originalLastUpdatedAt)), Times.Once);
+    }
+
+    #endregion
 }

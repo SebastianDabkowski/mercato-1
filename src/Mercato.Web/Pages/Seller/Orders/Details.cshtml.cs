@@ -178,6 +178,67 @@ public class DetailsModel : PageModel
         }
     }
 
+    /// <summary>
+    /// Handles POST requests to update tracking information.
+    /// </summary>
+    /// <param name="id">The seller sub-order ID.</param>
+    /// <param name="trackingNumber">The tracking number.</param>
+    /// <param name="shippingCarrier">The shipping carrier.</param>
+    /// <returns>The page result.</returns>
+    public async Task<IActionResult> OnPostUpdateTrackingAsync(
+        Guid id,
+        string? trackingNumber,
+        string? shippingCarrier)
+    {
+        var sellerId = GetSellerId();
+        if (string.IsNullOrEmpty(sellerId))
+        {
+            return Forbid();
+        }
+
+        try
+        {
+            Store = await _storeProfileService.GetStoreBySellerIdAsync(sellerId);
+            if (Store == null)
+            {
+                ErrorMessage = "Store not found.";
+                return Page();
+            }
+
+            var command = new UpdateTrackingInfoCommand
+            {
+                TrackingNumber = trackingNumber,
+                ShippingCarrier = shippingCarrier
+            };
+
+            var result = await _orderService.UpdateTrackingInfoAsync(id, Store.Id, command);
+            if (!result.Succeeded)
+            {
+                if (result.IsNotAuthorized)
+                {
+                    return Forbid();
+                }
+                ErrorMessage = string.Join(", ", result.Errors);
+                return await LoadSubOrderAndReturnPage(id);
+            }
+
+            SuccessMessage = "Tracking information updated successfully.";
+            return await LoadSubOrderAndReturnPage(id);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating tracking info for seller {SellerId}", sellerId);
+            ErrorMessage = "An error occurred while updating the tracking information.";
+            return await LoadSubOrderAndReturnPage(id);
+        }
+    }
+
+    /// <summary>
+    /// Gets whether the tracking information can be updated.
+    /// </summary>
+    public bool CanUpdateTracking => SubOrder != null &&
+        SubOrder.Status == SellerSubOrderStatus.Shipped;
+
     private async Task<IActionResult> LoadSubOrderAndReturnPage(Guid id)
     {
         if (Store != null)
