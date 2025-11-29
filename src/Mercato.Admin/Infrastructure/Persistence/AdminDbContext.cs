@@ -38,6 +38,11 @@ public class AdminDbContext : DbContext
     /// </summary>
     public DbSet<SlaTrackingRecord> SlaTrackingRecords { get; set; } = null!;
 
+    /// <summary>
+    /// Gets or sets the admin audit logs.
+    /// </summary>
+    public DbSet<AdminAuditLog> AdminAuditLogs { get; set; } = null!;
+
     /// <inheritdoc/>
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -111,6 +116,22 @@ public class AdminDbContext : DbContext
             // Ignore computed properties
             entity.Ignore(e => e.ResponseTimeHours);
             entity.Ignore(e => e.ResolutionTimeHours);
+        });
+
+        modelBuilder.Entity<AdminAuditLog>(entity =>
+        {
+            entity.ToTable("AdminAuditLogs");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.AdminUserId).IsRequired().HasMaxLength(450);
+            entity.Property(e => e.Action).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.EntityType).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.EntityId).IsRequired().HasMaxLength(450);
+            entity.Property(e => e.Details).HasMaxLength(2000);
+            entity.Property(e => e.IpAddress).HasMaxLength(45);
+            entity.HasIndex(e => e.AdminUserId);
+            entity.HasIndex(e => e.Timestamp);
+            entity.HasIndex(e => new { e.EntityType, e.EntityId })
+                .HasDatabaseName("IX_AdminAuditLogs_EntityType_EntityId");
         });
     }
 }

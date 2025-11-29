@@ -158,4 +158,87 @@ public class ReturnRequestRepository : IReturnRequestRepository
         _context.ReturnRequests.Update(returnRequest);
         await _context.SaveChangesAsync();
     }
+
+    /// <inheritdoc />
+    public async Task<(IReadOnlyList<ReturnRequest> ReturnRequests, int TotalCount)> GetAllFilteredAsync(
+        string? searchTerm,
+        IReadOnlyList<ReturnStatus>? statuses,
+        IReadOnlyList<CaseType>? caseTypes,
+        DateTimeOffset? fromDate,
+        DateTimeOffset? toDate,
+        int page,
+        int pageSize)
+    {
+        var query = _context.ReturnRequests
+            .Include(r => r.SellerSubOrder)
+                .ThenInclude(s => s.Order)
+            .Include(r => r.SellerSubOrder)
+                .ThenInclude(s => s.Items)
+            .Include(r => r.CaseItems)
+                .ThenInclude(ci => ci.SellerSubOrderItem)
+            .AsQueryable();
+
+        // Apply search filter
+        if (!string.IsNullOrWhiteSpace(searchTerm))
+        {
+            var term = searchTerm.Trim().ToLower();
+            query = query.Where(r =>
+                r.CaseNumber.ToLower().Contains(term) ||
+                r.BuyerId.ToLower().Contains(term) ||
+                r.SellerSubOrder.StoreName.ToLower().Contains(term));
+        }
+
+        // Apply status filter
+        if (statuses != null && statuses.Count > 0)
+        {
+            query = query.Where(r => statuses.Contains(r.Status));
+        }
+
+        // Apply case type filter
+        if (caseTypes != null && caseTypes.Count > 0)
+        {
+            query = query.Where(r => caseTypes.Contains(r.CaseType));
+        }
+
+        // Apply date range filter
+        if (fromDate.HasValue)
+        {
+            query = query.Where(r => r.CreatedAt >= fromDate.Value);
+        }
+
+        if (toDate.HasValue)
+        {
+            // Add one day to include the entire "to" day, preserving the original timezone offset
+            var endDate = toDate.Value.Date.AddDays(1);
+            var endDateWithOffset = new DateTimeOffset(endDate, toDate.Value.Offset);
+            query = query.Where(r => r.CreatedAt < endDateWithOffset);
+        }
+
+        // Get total count before pagination
+        var totalCount = await query.CountAsync();
+
+        // Apply ordering and pagination
+        var returnRequests = await query
+            .OrderByDescending(r => r.CreatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        return (returnRequests, totalCount);
+    }
+
+    /// <inheritdoc />
+    public async Task<ReturnRequest?> GetByIdWithHistoryAsync(Guid id)
+    {
+        return await _context.ReturnRequests
+            .Include(r => r.SellerSubOrder)
+                .ThenInclude(s => s.Order)
+            .Include(r => r.SellerSubOrder)
+                .ThenInclude(s => s.Items)
+            .Include(r => r.CaseItems)
+                .ThenInclude(ci => ci.SellerSubOrderItem)
+            .Include(r => r.Messages.OrderBy(m => m.CreatedAt))
+            .Include(r => r.StatusHistory.OrderBy(h => h.ChangedAt))
+            .FirstOrDefaultAsync(r => r.Id == id);
+    }
 }

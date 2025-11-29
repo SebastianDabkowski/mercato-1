@@ -74,4 +74,31 @@ public interface IReturnRequestRepository
     /// <param name="returnRequest">The return request to update.</param>
     /// <returns>A task representing the asynchronous operation.</returns>
     Task UpdateAsync(ReturnRequest returnRequest);
+
+    /// <summary>
+    /// Gets all return requests with filtering and pagination for admin view.
+    /// </summary>
+    /// <param name="searchTerm">Optional search term to filter by case number, buyer ID, or store name.</param>
+    /// <param name="statuses">Optional list of statuses to filter by.</param>
+    /// <param name="caseTypes">Optional list of case types to filter by.</param>
+    /// <param name="fromDate">Optional start date for date range filter.</param>
+    /// <param name="toDate">Optional end date for date range filter.</param>
+    /// <param name="page">The page number (1-based).</param>
+    /// <param name="pageSize">The page size.</param>
+    /// <returns>A tuple containing the filtered return requests and total count.</returns>
+    Task<(IReadOnlyList<ReturnRequest> ReturnRequests, int TotalCount)> GetAllFilteredAsync(
+        string? searchTerm,
+        IReadOnlyList<ReturnStatus>? statuses,
+        IReadOnlyList<CaseType>? caseTypes,
+        DateTimeOffset? fromDate,
+        DateTimeOffset? toDate,
+        int page,
+        int pageSize);
+
+    /// <summary>
+    /// Gets a return request by ID with status history loaded.
+    /// </summary>
+    /// <param name="id">The return request ID.</param>
+    /// <returns>The return request with history if found; otherwise, null.</returns>
+    Task<ReturnRequest?> GetByIdWithHistoryAsync(Guid id);
 }

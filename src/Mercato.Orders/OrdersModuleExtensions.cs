@@ -35,6 +35,7 @@ public static class OrdersModuleExtensions
         services.AddScoped<IReturnRequestRepository, ReturnRequestRepository>();
         services.AddScoped<IShippingStatusHistoryRepository, ShippingStatusHistoryRepository>();
         services.AddScoped<ICaseMessageRepository, CaseMessageRepository>();
+        services.AddScoped<ICaseStatusHistoryRepository, CaseStatusHistoryRepository>();
 
         // Configure email settings
         services.Configure<EmailSettings>(configuration.GetSection("Email"));

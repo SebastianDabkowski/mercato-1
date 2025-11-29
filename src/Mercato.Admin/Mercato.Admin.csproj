@@ -14,4 +14,8 @@
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.*" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\Mercato.Orders\Mercato.Orders.csproj" />
+  </ItemGroup>
+
 </Project>

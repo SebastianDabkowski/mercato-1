@@ -55,7 +55,8 @@ public class BuyerCasesPageModelTests
         Assert.Contains(ReturnStatus.Approved, allStatuses);
         Assert.Contains(ReturnStatus.Rejected, allStatuses);
         Assert.Contains(ReturnStatus.Completed, allStatuses);
-        Assert.Equal(5, allStatuses.Count);
+        Assert.Contains(ReturnStatus.UnderAdminReview, allStatuses);
+        Assert.Equal(6, allStatuses.Count);
     }
 
     [Fact]

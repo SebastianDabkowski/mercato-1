@@ -28,5 +28,10 @@ public enum ReturnStatus
     /// <summary>
     /// The return process has been completed.
     /// </summary>
-    Completed = 4
+    Completed = 4,
+
+    /// <summary>
+    /// The case has been escalated and is under admin review.
+    /// </summary>
+    UnderAdminReview = 5
 }

@@ -112,4 +112,44 @@ public class ReturnRequest
     /// Gets or sets when the case was resolved.
     /// </summary>
     public DateTimeOffset? ResolvedAt { get; set; }
+
+    /// <summary>
+    /// Gets or sets when the case was escalated to admin review.
+    /// </summary>
+    public DateTimeOffset? EscalatedAt { get; set; }
+
+    /// <summary>
+    /// Gets or sets the user ID who escalated the case.
+    /// </summary>
+    public string? EscalatedByUserId { get; set; }
+
+    /// <summary>
+    /// Gets or sets the reason for escalation.
+    /// </summary>
+    public string? EscalationReason { get; set; }
+
+    /// <summary>
+    /// Gets or sets the admin's decision on the escalated case.
+    /// </summary>
+    public string? AdminDecision { get; set; }
+
+    /// <summary>
+    /// Gets or sets the reason for the admin's decision.
+    /// </summary>
+    public string? AdminDecisionReason { get; set; }
+
+    /// <summary>
+    /// Gets or sets when the admin decision was made.
+    /// </summary>
+    public DateTimeOffset? AdminDecisionAt { get; set; }
+
+    /// <summary>
+    /// Gets or sets the admin user ID who made the decision.
+    /// </summary>
+    public string? AdminDecisionByUserId { get; set; }
+
+    /// <summary>
+    /// Navigation property to the status history entries for this case.
+    /// </summary>
+    public ICollection<CaseStatusHistory> StatusHistory { get; set; } = new List<CaseStatusHistory>();
 }
