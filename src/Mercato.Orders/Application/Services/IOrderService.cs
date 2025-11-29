@@ -208,6 +208,13 @@ public interface IOrderService
     Task<GetAdminOrdersResult> GetAdminOrdersAsync(AdminOrderFilterQuery query);
 
     /// <summary>
+    /// Gets an order by ID for admin view (no buyer authorization required).
+    /// </summary>
+    /// <param name="orderId">The order ID.</param>
+    /// <returns>The result containing the order.</returns>
+    Task<GetOrderResult> GetOrderForAdminAsync(Guid orderId);
+
+    /// <summary>
     /// Gets the shipping status history for a seller sub-order (for admin support).
     /// </summary>
     /// <param name="sellerSubOrderId">The seller sub-order ID.</param>

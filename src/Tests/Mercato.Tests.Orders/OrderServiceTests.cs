@@ -2526,6 +2526,50 @@ public class OrderServiceTests
         Assert.Contains(result.Errors, e => e.Contains("Page number must be at least 1"));
     }
 
+    [Fact]
+    public async Task GetOrderForAdminAsync_ValidOrderId_ReturnsOrder()
+    {
+        // Arrange
+        var order = CreateTestOrder();
+        _mockOrderRepository.Setup(r => r.GetByIdAsync(order.Id))
+            .ReturnsAsync(order);
+
+        // Act
+        var result = await _service.GetOrderForAdminAsync(order.Id);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.NotNull(result.Order);
+        Assert.Equal(order.Id, result.Order.Id);
+    }
+
+    [Fact]
+    public async Task GetOrderForAdminAsync_EmptyOrderId_ReturnsFailure()
+    {
+        // Act
+        var result = await _service.GetOrderForAdminAsync(Guid.Empty);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains(result.Errors, e => e.Contains("Order ID is required"));
+    }
+
+    [Fact]
+    public async Task GetOrderForAdminAsync_OrderNotFound_ReturnsFailure()
+    {
+        // Arrange
+        var orderId = Guid.NewGuid();
+        _mockOrderRepository.Setup(r => r.GetByIdAsync(orderId))
+            .ReturnsAsync((Order?)null);
+
+        // Act
+        var result = await _service.GetOrderForAdminAsync(orderId);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains(result.Errors, e => e.Contains("Order not found"));
+    }
+
     #endregion
 
     #region GetShippingStatusHistoryAsync Tests

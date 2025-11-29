@@ -1,11 +1,8 @@
-using Mercato.Orders.Application.Queries;
 using Mercato.Orders.Application.Services;
 using Mercato.Orders.Domain.Entities;
-using Mercato.Orders.Domain.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using System.Security.Claims;
 
 namespace Mercato.Web.Pages.Admin.Orders;
 
@@ -62,37 +59,27 @@ public class DetailsModel : PageModel
 
         try
         {
-            // Admin can view any order - use a special method that doesn't require buyer ID
-            var result = await _orderService.GetAdminOrdersAsync(new AdminOrderFilterQuery
-            {
-                SearchTerm = id.Value.ToString(),
-                Page = 1,
-                PageSize = 1
-            });
+            // Admin can view any order directly by ID
+            var result = await _orderService.GetOrderForAdminAsync(id.Value);
 
-            if (!result.Succeeded || result.Orders.Count == 0)
+            if (!result.Succeeded)
             {
-                // Try to find by order ID directly using a broader search
-                // For now, show not found
-                ErrorMessage = "Order not found or an error occurred.";
+                ErrorMessage = string.Join(", ", result.Errors);
                 return Page();
             }
 
-            // Get the first matching order - should be exact match
-            Order = result.Orders.FirstOrDefault(o => o.Id == id.Value);
-            if (Order == null)
-            {
-                ErrorMessage = "Order not found.";
-                return Page();
-            }
+            Order = result.Order;
 
             // Load shipping status history for each sub-order
-            foreach (var subOrder in Order.SellerSubOrders)
+            if (Order != null)
             {
-                var historyResult = await _orderService.GetShippingStatusHistoryAsync(subOrder.Id);
-                if (historyResult.Succeeded)
+                foreach (var subOrder in Order.SellerSubOrders)
                 {
-                    SubOrderStatusHistories[subOrder.Id] = historyResult.History;
+                    var historyResult = await _orderService.GetShippingStatusHistoryAsync(subOrder.Id);
+                    if (historyResult.Succeeded)
+                    {
+                        SubOrderStatusHistories[subOrder.Id] = historyResult.History;
+                    }
                 }
             }
 

@@ -160,13 +160,14 @@ public class OrderRepository : IOrderRepository
         }
 
         // Apply search term filter (order number, buyer email, or store name)
+        // Using EF.Functions.Like for efficient case-insensitive search
         if (!string.IsNullOrEmpty(searchTerm))
         {
-            var searchLower = searchTerm.ToLower();
+            var searchPattern = $"%{searchTerm}%";
             baseQuery = baseQuery.Where(o =>
-                o.OrderNumber.ToLower().Contains(searchLower) ||
-                (o.BuyerEmail != null && o.BuyerEmail.ToLower().Contains(searchLower)) ||
-                o.SellerSubOrders.Any(s => s.StoreName.ToLower().Contains(searchLower)));
+                EF.Functions.Like(o.OrderNumber, searchPattern) ||
+                (o.BuyerEmail != null && EF.Functions.Like(o.BuyerEmail, searchPattern)) ||
+                o.SellerSubOrders.Any(s => EF.Functions.Like(s.StoreName, searchPattern)));
         }
 
         // Get total count

@@ -142,6 +142,8 @@ public class ShippingNotificationService : IShippingNotificationService
         var carrierLower = carrier.ToLowerInvariant().Trim();
         var encodedTrackingNumber = Uri.EscapeDataString(trackingNumber);
 
+        // Note: These URLs may need to be updated if carriers change their tracking URLs.
+        // Consider moving to configuration if frequent updates are needed.
         return carrierLower switch
         {
             "ups" => $"https://www.ups.com/track?loc=en_US&tracknum={encodedTrackingNumber}",

@@ -1502,6 +1502,31 @@ public class OrderService : IOrderService
     }
 
     /// <inheritdoc />
+    public async Task<GetOrderResult> GetOrderForAdminAsync(Guid orderId)
+    {
+        if (orderId == Guid.Empty)
+        {
+            return GetOrderResult.Failure("Order ID is required.");
+        }
+
+        try
+        {
+            var order = await _orderRepository.GetByIdAsync(orderId);
+            if (order == null)
+            {
+                return GetOrderResult.Failure("Order not found.");
+            }
+
+            return GetOrderResult.Success(order);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting order {OrderId} for admin", orderId);
+            return GetOrderResult.Failure("An error occurred while getting the order.");
+        }
+    }
+
+    /// <inheritdoc />
     public async Task<GetShippingStatusHistoryResult> GetShippingStatusHistoryAsync(Guid sellerSubOrderId)
     {
         if (sellerSubOrderId == Guid.Empty)
