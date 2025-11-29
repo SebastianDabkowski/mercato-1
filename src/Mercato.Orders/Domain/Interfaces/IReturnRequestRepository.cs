@@ -36,6 +36,14 @@ public interface IReturnRequestRepository
     Task<IReadOnlyList<ReturnRequest>> GetByStoreIdAsync(Guid storeId);
 
     /// <summary>
+    /// Gets open (non-completed/rejected) return requests that include specific item IDs.
+    /// Used to prevent duplicate cases for the same line items.
+    /// </summary>
+    /// <param name="itemIds">The seller sub-order item IDs to check.</param>
+    /// <returns>A list of open return requests that include any of the specified items.</returns>
+    Task<IReadOnlyList<ReturnRequest>> GetOpenCasesForItemsAsync(IEnumerable<Guid> itemIds);
+
+    /// <summary>
     /// Adds a new return request to the repository.
     /// </summary>
     /// <param name="returnRequest">The return request to add.</param>

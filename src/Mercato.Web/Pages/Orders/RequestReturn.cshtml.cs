@@ -11,7 +11,7 @@ using System.Security.Claims;
 namespace Mercato.Web.Pages.Orders;
 
 /// <summary>
-/// Page model for requesting a return on a delivered sub-order.
+/// Page model for submitting a return or complaint case for a delivered sub-order.
 /// </summary>
 [Authorize(Roles = "Buyer")]
 public class RequestReturnModel : PageModel
@@ -42,10 +42,22 @@ public class RequestReturnModel : PageModel
     public SellerSubOrder? SubOrder { get; private set; }
 
     /// <summary>
-    /// Gets or sets the return reason.
+    /// Gets or sets the case type (Return or Complaint).
+    /// </summary>
+    [BindProperty]
+    public CaseType CaseType { get; set; } = CaseType.Return;
+
+    /// <summary>
+    /// Gets or sets the reason for the return or complaint.
     /// </summary>
     [BindProperty]
     public string Reason { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the selected item IDs for the case.
+    /// </summary>
+    [BindProperty]
+    public List<Guid> SelectedItemIds { get; set; } = [];
 
     /// <summary>
     /// Gets the error message to display.
@@ -58,12 +70,22 @@ public class RequestReturnModel : PageModel
     public string? SuccessMessage { get; private set; }
 
     /// <summary>
+    /// Gets the case number after successful submission.
+    /// </summary>
+    public string? CaseNumber { get; private set; }
+
+    /// <summary>
     /// Gets the return window days from settings.
     /// </summary>
     public int ReturnWindowDays => _returnSettings.ReturnWindowDays;
 
     /// <summary>
-    /// Handles GET requests for the request return page.
+    /// Gets the set of item IDs that already have open cases.
+    /// </summary>
+    public HashSet<Guid> ItemsWithOpenCases { get; private set; } = [];
+
+    /// <summary>
+    /// Handles GET requests for the submit case page.
     /// </summary>
     /// <param name="subOrderId">The seller sub-order ID.</param>
     /// <returns>The page result.</returns>
@@ -96,12 +118,15 @@ public class RequestReturnModel : PageModel
 
         // Load sub-order for display
         await LoadSubOrderAsync(subOrderId, buyerId);
+        
+        // Load items with open cases
+        await LoadItemsWithOpenCasesAsync(subOrderId, buyerId);
 
         return Page();
     }
 
     /// <summary>
-    /// Handles POST requests to submit a return request.
+    /// Handles POST requests to submit a return or complaint case.
     /// </summary>
     /// <param name="subOrderId">The seller sub-order ID.</param>
     /// <returns>The page result.</returns>
@@ -113,13 +138,35 @@ public class RequestReturnModel : PageModel
             return Forbid();
         }
 
+        // Load sub-order first for display on errors
+        await LoadSubOrderAsync(subOrderId, buyerId);
+        await LoadItemsWithOpenCasesAsync(subOrderId, buyerId);
+
+        // Validate that at least one item is selected
+        if (SelectedItemIds.Count == 0)
+        {
+            ErrorMessage = "Please select at least one item to include in your case.";
+            return Page();
+        }
+
         try
         {
+            var selectedItems = SubOrder?.Items
+                .Where(i => SelectedItemIds.Contains(i.Id))
+                .Select(i => new CaseItemSelection
+                {
+                    ItemId = i.Id,
+                    Quantity = i.Quantity
+                })
+                .ToList() ?? [];
+
             var command = new CreateReturnRequestCommand
             {
                 SellerSubOrderId = subOrderId,
                 BuyerId = buyerId,
-                Reason = Reason
+                CaseType = CaseType,
+                Reason = Reason,
+                SelectedItems = selectedItems
             };
 
             var result = await _orderService.CreateReturnRequestAsync(command);
@@ -132,19 +179,19 @@ public class RequestReturnModel : PageModel
                 }
 
                 ErrorMessage = string.Join(", ", result.Errors);
-                await LoadSubOrderAsync(subOrderId, buyerId);
                 return Page();
             }
 
-            SuccessMessage = "Your return request has been submitted successfully. The seller will review your request and respond within 3-5 business days.";
-            await LoadSubOrderAsync(subOrderId, buyerId);
+            CaseNumber = result.CaseNumber;
+            SuccessMessage = $"Your {(CaseType == CaseType.Complaint ? "complaint" : "return request")} has been submitted successfully. " +
+                             $"The seller will review your case and respond within 3-5 business days. " +
+                             $"The case status is now 'Pending seller review'.";
             return Page();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error submitting return request for sub-order {SubOrderId}", subOrderId);
-            ErrorMessage = "An error occurred while submitting your return request. Please try again.";
-            await LoadSubOrderAsync(subOrderId, buyerId);
+            _logger.LogError(ex, "Error submitting case for sub-order {SubOrderId}", subOrderId);
+            ErrorMessage = "An error occurred while submitting your case. Please try again.";
             return Page();
         }
     }
@@ -164,6 +211,31 @@ public class RequestReturnModel : PageModel
                 {
                     SubOrder = matchingSubOrder;
                     break;
+                }
+            }
+        }
+    }
+
+    private async Task LoadItemsWithOpenCasesAsync(Guid subOrderId, string buyerId)
+    {
+        if (SubOrder == null)
+        {
+            return;
+        }
+
+        // Get all return requests for this buyer to find items with open cases
+        var returnRequestsResult = await _orderService.GetReturnRequestsForBuyerAsync(buyerId);
+        if (returnRequestsResult.Succeeded)
+        {
+            var openCaseStatuses = new[] { ReturnStatus.Requested, ReturnStatus.UnderReview, ReturnStatus.Approved };
+            var openCases = returnRequestsResult.ReturnRequests
+                .Where(r => r.SellerSubOrderId == subOrderId && openCaseStatuses.Contains(r.Status));
+
+            foreach (var openCase in openCases)
+            {
+                foreach (var caseItem in openCase.CaseItems)
+                {
+                    ItemsWithOpenCases.Add(caseItem.SellerSubOrderItemId);
                 }
             }
         }

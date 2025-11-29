@@ -155,20 +155,38 @@
                                         <span class="float-end">Refund Amount: <strong>@subOrder.TotalAmount.ToString("C")</strong></span>
                                     </div>
                                 }
-                                @* Return Request Section *@
+                                @* Return/Complaint Case Section *@
                                 @if (Model.SubOrderReturnRequests.TryGetValue(subOrder.Id, out var returnRequest))
                                 {
                                     <div class="p-3 border-top bg-info bg-opacity-10">
                                         <div class="d-flex justify-content-between align-items-center">
                                             <div>
-                                                <i class="bi bi-arrow-counterclockwise me-2 text-info"></i>
-                                                <strong>Return Request</strong>
+                                                @if (returnRequest.CaseType == CaseType.Complaint)
+                                                {
+                                                    <i class="bi bi-exclamation-triangle me-2 text-warning"></i>
+                                                }
+                                                else
+                                                {
+                                                    <i class="bi bi-arrow-counterclockwise me-2 text-info"></i>
+                                                }
+                                                <strong>@DetailsModel.GetCaseTypeDisplayText(returnRequest.CaseType)</strong>
                                                 <span class="badge ms-2 @DetailsModel.GetReturnStatusBadgeClass(returnRequest.Status)">
                                                     @DetailsModel.GetReturnStatusDisplayText(returnRequest.Status)
                                                 </span>
                                             </div>
-                                            <small class="text-muted">Submitted @returnRequest.CreatedAt.ToString("MMM dd, yyyy")</small>
+                                            <div class="text-end">
+                                                <small class="font-monospace text-muted">@returnRequest.CaseNumber</small>
+                                                <br><small class="text-muted">Submitted @returnRequest.CreatedAt.ToString("MMM dd, yyyy")</small>
+                                            </div>
                                         </div>
+                                        @if (returnRequest.CaseItems.Count > 0 && returnRequest.CaseItems.Count < subOrder.Items.Count)
+                                        {
+                                            <div class="mt-2">
+                                                <small class="text-muted">
+                                                    <i class="bi bi-box me-1"></i>@returnRequest.CaseItems.Count of @subOrder.Items.Count items
+                                                </small>
+                                            </div>
+                                        }
                                         @if (!string.IsNullOrEmpty(returnRequest.SellerNotes))
                                         {
                                             <div class="mt-2">
@@ -181,9 +199,9 @@
                                 {
                                     <div class="p-3 border-top">
                                         <a asp-page="RequestReturn" asp-route-subOrderId="@subOrder.Id" class="btn btn-outline-warning btn-sm">
-                                            <i class="bi bi-arrow-counterclockwise me-1"></i>Request Return
+                                            <i class="bi bi-arrow-counterclockwise me-1"></i>Submit Return/Complaint
                                         </a>
-                                        <small class="text-muted ms-2">Returns accepted within @Model.ReturnWindowDays days of delivery</small>
+                                        <small class="text-muted ms-2">Returns and complaints accepted within @Model.ReturnWindowDays days of delivery</small>
                                     </div>
                                 }
                             </div>

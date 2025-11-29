@@ -1,7 +1,8 @@
 @page "{subOrderId:guid}"
 @model Mercato.Web.Pages.Orders.RequestReturnModel
+@using Mercato.Orders.Domain.Entities
 @{
-    ViewData["Title"] = "Request Return";
+    ViewData["Title"] = "Submit Return or Complaint";
 }
 
 <div class="container py-4">
@@ -12,7 +13,7 @@
             {
                 <li class="breadcrumb-item"><a asp-page="Details" asp-route-id="@Model.SubOrder.OrderId">Order Details</a></li>
             }
-            <li class="breadcrumb-item active" aria-current="page">Request Return</li>
+            <li class="breadcrumb-item active" aria-current="page">Submit Case</li>
         </ol>
     </nav>
 
@@ -24,8 +25,12 @@
     @if (!string.IsNullOrEmpty(Model.SuccessMessage))
     {
         <div class="alert alert-success">
-            <h5><i class="bi bi-check-circle me-2"></i>Return Request Submitted</h5>
-            <p class="mb-0">@Model.SuccessMessage</p>
+            <h5><i class="bi bi-check-circle me-2"></i>Case Submitted Successfully</h5>
+            <p class="mb-1">@Model.SuccessMessage</p>
+            @if (!string.IsNullOrEmpty(Model.CaseNumber))
+            {
+                <p class="mb-0"><strong>Your Case ID: <span class="font-monospace">@Model.CaseNumber</span></strong></p>
+            }
         </div>
         <div class="mt-3">
             @if (Model.SubOrder != null)
@@ -40,90 +45,139 @@
     {
         var subOrder = Model.SubOrder;
 
-        <h1 class="mb-4">Request Return</h1>
+        <h1 class="mb-4">Submit Return or Complaint</h1>
 
         <div class="row">
             <div class="col-lg-8">
-                @* Sub-Order Summary *@
-                <div class="card mb-4">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <div>
-                            <h5 class="mb-0">
-                                <i class="bi bi-shop me-2"></i>@subOrder.StoreName
-                            </h5>
-                            <small class="text-muted">Sub-order: @subOrder.SubOrderNumber</small>
+                <form method="post">
+                    @* Case Type Selection *@
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="bi bi-tag me-2"></i>Case Type</h5>
                         </div>
-                        <span class="badge bg-success">Delivered</span>
-                    </div>
-                    <div class="card-body p-0">
-                        <div class="table-responsive">
-                            <table class="table table-hover mb-0">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>Product</th>
-                                        <th class="text-center">Quantity</th>
-                                        <th class="text-end">Unit Price</th>
-                                        <th class="text-end">Total</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach (var item in subOrder.Items)
-                                    {
-                                        <tr>
-                                            <td><strong>@item.ProductTitle</strong></td>
-                                            <td class="text-center align-middle">@item.Quantity</td>
-                                            <td class="text-end align-middle">@item.UnitPrice.ToString("C")</td>
-                                            <td class="text-end align-middle">@item.TotalPrice.ToString("C")</td>
-                                        </tr>
-                                    }
-                                </tbody>
-                                <tfoot class="table-light">
-                                    <tr>
-                                        <td colspan="3" class="text-end"><strong>Sub-order Total:</strong></td>
-                                        <td class="text-end"><strong class="text-primary">@subOrder.TotalAmount.ToString("C")</strong></td>
-                                    </tr>
-                                </tfoot>
-                            </table>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6 mb-3 mb-md-0">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="CaseType" id="caseTypeReturn" 
+                                               value="@((int)CaseType.Return)" 
+                                               @(Model.CaseType == CaseType.Return ? "checked" : "")>
+                                        <label class="form-check-label" for="caseTypeReturn">
+                                            <i class="bi bi-arrow-counterclockwise me-1"></i>
+                                            <strong>Standard Return</strong>
+                                            <br><small class="text-muted">I want to return item(s) for a refund</small>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="CaseType" id="caseTypeComplaint" 
+                                               value="@((int)CaseType.Complaint)"
+                                               @(Model.CaseType == CaseType.Complaint ? "checked" : "")>
+                                        <label class="form-check-label" for="caseTypeComplaint">
+                                            <i class="bi bi-exclamation-triangle me-1"></i>
+                                            <strong>Product Issue (Complaint)</strong>
+                                            <br><small class="text-muted">Item is defective, damaged, or wrong</small>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                @* Return Request Form *@
-                <div class="card mb-4">
-                    <div class="card-header">
-                        <h5 class="mb-0"><i class="bi bi-arrow-counterclockwise me-2"></i>Return Details</h5>
+                    @* Item Selection *@
+                    <div class="card mb-4">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <div>
+                                <h5 class="mb-0">
+                                    <i class="bi bi-shop me-2"></i>@subOrder.StoreName
+                                </h5>
+                                <small class="text-muted">Sub-order: @subOrder.SubOrderNumber</small>
+                            </div>
+                            <span class="badge bg-success">Delivered</span>
+                        </div>
+                        <div class="card-body">
+                            <p class="text-muted mb-3">
+                                <i class="bi bi-info-circle me-1"></i>Select the item(s) you want to include in this case:
+                            </p>
+                            @{
+                                var index = 0;
+                            }
+                            @foreach (var item in subOrder.Items)
+                            {
+                                var itemHasOpenCase = Model.ItemsWithOpenCases.Contains(item.Id);
+                                var isSelected = Model.SelectedItemIds.Contains(item.Id);
+                                var checkboxId = $"item_{item.Id}";
+                                
+                                <div class="border rounded p-3 mb-2 @(itemHasOpenCase ? "bg-light" : "")">
+                                    <div class="form-check">
+                                        <input class="form-check-input item-checkbox" type="checkbox" 
+                                               name="SelectedItemIds" value="@item.Id" id="@checkboxId"
+                                               @(isSelected && !itemHasOpenCase ? "checked" : "")
+                                               @(itemHasOpenCase ? "disabled" : "")>
+                                        <label class="form-check-label d-flex justify-content-between align-items-start w-100" for="@checkboxId">
+                                            <div>
+                                                <strong>@item.ProductTitle</strong>
+                                                <br><small class="text-muted">Qty: @item.Quantity × @item.UnitPrice.ToString("C") = @item.TotalPrice.ToString("C")</small>
+                                            </div>
+                                            @if (itemHasOpenCase)
+                                            {
+                                                <span class="badge bg-warning text-dark">
+                                                    <i class="bi bi-exclamation-circle me-1"></i>Has open case
+                                                </span>
+                                            }
+                                        </label>
+                                    </div>
+                                </div>
+                                index++;
+                            }
+                            <div class="mt-3">
+                                <button type="button" class="btn btn-sm btn-outline-secondary" id="selectAllBtn">
+                                    <i class="bi bi-check-all me-1"></i>Select All Available
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" id="clearAllBtn">
+                                    <i class="bi bi-x-lg me-1"></i>Clear Selection
+                                </button>
+                            </div>
+                        </div>
                     </div>
-                    <div class="card-body">
-                        <form method="post">
+
+                    @* Case Details *@
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="bi bi-card-text me-2"></i>Case Details</h5>
+                        </div>
+                        <div class="card-body">
                             <div class="mb-3">
-                                <label for="Reason" class="form-label">Reason for Return <span class="text-danger">*</span></label>
+                                <label for="Reason" class="form-label">Describe your issue <span class="text-danger">*</span></label>
                                 <textarea class="form-control" id="Reason" name="Reason" rows="4" 
-                                          placeholder="Please describe why you want to return this order..."
+                                          placeholder="Please describe the reason for your return or complaint..."
                                           required maxlength="2000">@Model.Reason</textarea>
-                                <div class="form-text">Please provide a detailed reason for your return request (max 2000 characters).</div>
+                                <div class="form-text">Please provide a detailed description of your issue (max 2000 characters).</div>
                             </div>
 
                             <div class="alert alert-info">
                                 <i class="bi bi-info-circle me-2"></i>
                                 <strong>What happens next?</strong>
                                 <ul class="mb-0 mt-2">
-                                    <li>Your return request will be sent to the seller for review.</li>
+                                    <li>Your case will be sent to the seller for review.</li>
                                     <li>The seller will respond within 3-5 business days.</li>
-                                    <li>You will receive updates on your return request status.</li>
+                                    <li>You will receive updates on your case status.</li>
+                                    <li>Your case will appear with status <strong>'Pending seller review'</strong>.</li>
                                 </ul>
                             </div>
 
                             <div class="d-flex gap-2">
                                 <button type="submit" class="btn btn-primary">
-                                    <i class="bi bi-send me-1"></i>Submit Return Request
+                                    <i class="bi bi-send me-1"></i>Submit Case
                                 </button>
                                 <a asp-page="Details" asp-route-id="@subOrder.OrderId" class="btn btn-outline-secondary">
                                     <i class="bi bi-x me-1"></i>Cancel
                                 </a>
                             </div>
-                        </form>
+                        </div>
                     </div>
-                </div>
+                </form>
             </div>
 
             <div class="col-lg-4">
@@ -145,7 +199,7 @@
                         }
                         <hr>
                         <p class="text-muted small mb-0">
-                            Returns are subject to seller approval. Items must be in their original condition.
+                            Returns and complaints are subject to seller approval. Items must be in their original condition for returns.
                         </p>
                     </div>
                 </div>
@@ -176,8 +230,34 @@
     {
         <div class="alert alert-warning">
             <h5>Sub-order Not Found</h5>
-            <p>We couldn't find the sub-order you're looking for, or you're not eligible to request a return.</p>
+            <p>We couldn't find the sub-order you're looking for, or you're not eligible to submit a case.</p>
             <a asp-page="Index" class="btn btn-primary">Back to Orders</a>
         </div>
     }
 </div>
+
+@section Scripts {
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const selectAllBtn = document.getElementById('selectAllBtn');
+        const clearAllBtn = document.getElementById('clearAllBtn');
+        const checkboxes = document.querySelectorAll('.item-checkbox:not(:disabled)');
+        
+        if (selectAllBtn) {
+            selectAllBtn.addEventListener('click', function() {
+                checkboxes.forEach(function(checkbox) {
+                    checkbox.checked = true;
+                });
+            });
+        }
+        
+        if (clearAllBtn) {
+            clearAllBtn.addEventListener('click', function() {
+                checkboxes.forEach(function(checkbox) {
+                    checkbox.checked = false;
+                });
+            });
+        }
+    });
+</script>
+}
