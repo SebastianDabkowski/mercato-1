@@ -237,6 +237,49 @@ public class DetailsModel : PageModel
     }
 
     /// <summary>
+    /// Handles POST requests to set the case status to UnderReview (request more information).
+    /// </summary>
+    /// <param name="id">The case (return request) ID.</param>
+    /// <returns>The page result.</returns>
+    public async Task<IActionResult> OnPostSetUnderReviewAsync(Guid id)
+    {
+        var sellerId = GetSellerId();
+        if (string.IsNullOrEmpty(sellerId))
+        {
+            return Forbid();
+        }
+
+        Store = await _storeProfileService.GetStoreBySellerIdAsync(sellerId);
+        if (Store == null)
+        {
+            return RedirectToPage("/Seller/Onboarding/Index");
+        }
+
+        var command = new UpdateReturnRequestStatusCommand
+        {
+            NewStatus = ReturnStatus.UnderReview,
+            SellerNotes = "Requesting more information from the buyer."
+        };
+
+        var result = await _orderService.UpdateReturnRequestStatusAsync(id, Store.Id, command);
+
+        if (!result.Succeeded)
+        {
+            if (result.IsNotAuthorized)
+            {
+                return Forbid();
+            }
+            TempData["Error"] = string.Join(", ", result.Errors);
+        }
+        else
+        {
+            TempData["Success"] = "Case status updated to Under Review. The buyer has been notified.";
+        }
+
+        return RedirectToPage(new { id });
+    }
+
+    /// <summary>
     /// Gets the CSS class for a return status badge.
     /// </summary>
     /// <param name="status">The return status.</param>

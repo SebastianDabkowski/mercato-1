@@ -279,4 +279,11 @@ public interface IOrderService
     /// <param name="returnRequestId">The return request ID.</param>
     /// <returns>The return request if found.</returns>
     Task<GetReturnRequestResult> GetReturnRequestForAdminAsync(Guid returnRequestId);
+
+    /// <summary>
+    /// Gets filtered and paginated return requests (cases) for a specific store.
+    /// </summary>
+    /// <param name="query">The filter query parameters.</param>
+    /// <returns>The result containing the filtered and paginated cases.</returns>
+    Task<GetFilteredCasesResult> GetFilteredCasesForSellerAsync(SellerCaseFilterQuery query);
 }

@@ -9,7 +9,7 @@
 <div class="container py-4">
     <nav aria-label="breadcrumb" class="mb-3">
         <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a asp-page="/Seller/Orders/Index">Orders</a></li>
+            <li class="breadcrumb-item"><a asp-page="/Seller/Returns/Index">Returns & Complaints</a></li>
             @if (Model.Case?.SellerSubOrderId != null)
             {
                 <li class="breadcrumb-item"><a asp-page="/Seller/Orders/Details" asp-route-id="@Model.Case.SellerSubOrderId">Order Details</a></li>
@@ -22,7 +22,24 @@
     {
         <div class="alert alert-danger">@Model.ErrorMessage</div>
     }
-    else if (Model.Case != null)
+
+    @if (TempData["Error"] is string error)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="bi bi-exclamation-circle me-2"></i>@error
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    @if (TempData["Success"] is string success)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="bi bi-check-circle me-2"></i>@success
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    @if (Model.Case != null)
     {
         var caseItem = Model.Case;
         
@@ -262,6 +279,14 @@
                     </div>
                     <div class="card-body">
                         <div class="d-grid gap-2">
+                            @if (caseItem.Status == ReturnStatus.Requested)
+                            {
+                                <form method="post" asp-page-handler="SetUnderReview" asp-route-id="@caseItem.Id">
+                                    <button type="submit" class="btn btn-info w-100">
+                                        <i class="bi bi-hourglass-split me-1"></i>Request More Information
+                                    </button>
+                                </form>
+                            }
                             @if (caseItem.Status != ReturnStatus.Completed && caseItem.Status != ReturnStatus.Rejected)
                             {
                                 <a asp-page="Resolve" asp-route-id="@caseItem.Id" class="btn btn-success">
@@ -274,8 +299,8 @@
                                     <i class="bi bi-box me-1"></i>View Order Details
                                 </a>
                             }
-                            <a asp-page="/Seller/Orders/Index" class="btn btn-outline-secondary">
-                                <i class="bi bi-arrow-left me-1"></i>Back to Orders
+                            <a asp-page="Index" class="btn btn-outline-secondary">
+                                <i class="bi bi-arrow-left me-1"></i>Back to Cases
                             </a>
                         </div>
                     </div>
