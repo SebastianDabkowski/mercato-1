@@ -863,7 +863,8 @@ public class OrderService : IOrderService
             foreach (var subOrder in subOrders)
             {
                 var order = subOrder.Order;
-                var itemsSummary = string.Join("; ", subOrder.Items.Select(i => $"{i.ProductTitle} x{i.Quantity}"));
+                var items = subOrder.Items ?? [];
+                var itemsSummary = string.Join("; ", items.Select(i => $"{i.ProductTitle} x{i.Quantity}"));
 
                 var line = string.Join(",",
                     EscapeCsvField(subOrder.SubOrderNumber),
