@@ -40,17 +40,36 @@
                     @* Seller Sub-Orders Breakdown *@
                     @foreach (var subOrder in order.SellerSubOrders.OrderBy(s => s.StoreName))
                     {
+                        var hasSellerRating = Model.SubOrderSellerRatings.ContainsKey(subOrder.Id);
+                        var canRateSeller = Model.SubOrderSellerRatingEligibility.TryGetValue(subOrder.Id, out var ratingEligibility) && ratingEligibility.CanSubmit;
                         <div class="card mb-4">
                             <div class="card-header d-flex justify-content-between align-items-center">
                                 <div>
                                     <h5 class="mb-0">
                                         <i class="bi bi-shop me-2"></i>@subOrder.StoreName
+                                        @if (hasSellerRating)
+                                        {
+                                            <small class="ms-2 text-warning">
+                                                @for (var i = 0; i < Model.SubOrderSellerRatings[subOrder.Id].Rating; i++)
+                                                {
+                                                    <i class="bi bi-star-fill" style="font-size: 0.7rem;"></i>
+                                                }
+                                            </small>
+                                        }
                                     </h5>
                                     <small class="text-muted">Sub-order: @subOrder.SubOrderNumber</small>
                                 </div>
-                                <span class="badge @DetailsModel.GetSubOrderStatusBadgeClass(subOrder.Status)">
-                                    @DetailsModel.GetSubOrderStatusDisplayText(subOrder.Status)
-                                </span>
+                                <div class="d-flex align-items-center gap-2">
+                                    @if (canRateSeller)
+                                    {
+                                        <a asp-page="SubmitSellerRating" asp-route-subOrderId="@subOrder.Id" class="btn btn-outline-warning btn-sm">
+                                            <i class="bi bi-star me-1"></i>Rate Seller
+                                        </a>
+                                    }
+                                    <span class="badge @DetailsModel.GetSubOrderStatusBadgeClass(subOrder.Status)">
+                                        @DetailsModel.GetSubOrderStatusDisplayText(subOrder.Status)
+                                    </span>
+                                </div>
                             </div>
                             <div class="card-body p-0">
                                 <div class="table-responsive">

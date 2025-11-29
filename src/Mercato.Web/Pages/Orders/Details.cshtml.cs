@@ -20,6 +20,7 @@ public class DetailsModel : PageModel
     private readonly IOrderService _orderService;
     private readonly IPaymentService _paymentService;
     private readonly IProductReviewService _productReviewService;
+    private readonly ISellerRatingService _sellerRatingService;
     private readonly EmailSettings _emailSettings;
     private readonly ReturnSettings _returnSettings;
     private readonly ILogger<DetailsModel> _logger;
@@ -30,6 +31,7 @@ public class DetailsModel : PageModel
     /// <param name="orderService">The order service.</param>
     /// <param name="paymentService">The payment service.</param>
     /// <param name="productReviewService">The product review service.</param>
+    /// <param name="sellerRatingService">The seller rating service.</param>
     /// <param name="emailSettings">The email settings.</param>
     /// <param name="returnSettings">The return settings.</param>
     /// <param name="logger">The logger.</param>
@@ -37,6 +39,7 @@ public class DetailsModel : PageModel
         IOrderService orderService,
         IPaymentService paymentService,
         IProductReviewService productReviewService,
+        ISellerRatingService sellerRatingService,
         IOptions<EmailSettings> emailSettings,
         IOptions<ReturnSettings> returnSettings,
         ILogger<DetailsModel> logger)
@@ -44,6 +47,7 @@ public class DetailsModel : PageModel
         _orderService = orderService;
         _paymentService = paymentService;
         _productReviewService = productReviewService;
+        _sellerRatingService = sellerRatingService;
         _emailSettings = emailSettings.Value;
         _returnSettings = returnSettings.Value;
         _logger = logger;
@@ -97,6 +101,18 @@ public class DetailsModel : PageModel
     /// Key is seller sub-order item ID.
     /// </summary>
     public Dictionary<Guid, ProductReview> ItemReviews { get; private set; } = new();
+
+    /// <summary>
+    /// Gets the seller rating eligibility for each sub-order.
+    /// Key is sub-order ID.
+    /// </summary>
+    public Dictionary<Guid, SellerRatingEligibility> SubOrderSellerRatingEligibility { get; private set; } = new();
+
+    /// <summary>
+    /// Gets the existing seller ratings for sub-orders.
+    /// Key is sub-order ID.
+    /// </summary>
+    public Dictionary<Guid, SellerRating> SubOrderSellerRatings { get; private set; } = new();
 
     /// <summary>
     /// Handles GET requests for the order details page.
@@ -195,6 +211,33 @@ public class DetailsModel : PageModel
                     if (itemExists)
                     {
                         ItemReviews[review.SellerSubOrderItemId] = review;
+                    }
+                }
+            }
+
+            // Load seller rating eligibility for each sub-order
+            foreach (var subOrder in Order.SellerSubOrders)
+            {
+                var canSubmitRatingResult = await _sellerRatingService.CanSubmitRatingAsync(subOrder.Id, buyerId);
+                if (canSubmitRatingResult.Succeeded)
+                {
+                    SubOrderSellerRatingEligibility[subOrder.Id] = new SellerRatingEligibility
+                    {
+                        CanSubmit = canSubmitRatingResult.CanSubmit,
+                        BlockedReason = canSubmitRatingResult.BlockedReason
+                    };
+                }
+            }
+
+            // Load all seller ratings for this buyer and match to sub-orders
+            var ratingsResult = await _sellerRatingService.GetRatingsByBuyerIdAsync(buyerId);
+            if (ratingsResult.Succeeded)
+            {
+                foreach (var rating in ratingsResult.Ratings)
+                {
+                    if (Order.SellerSubOrders.Any(s => s.Id == rating.SellerSubOrderId))
+                    {
+                        SubOrderSellerRatings[rating.SellerSubOrderId] = rating;
                     }
                 }
             }
@@ -450,6 +493,22 @@ public class ReviewEligibility
 
     /// <summary>
     /// Gets or sets the reason why review cannot be submitted (if applicable).
+    /// </summary>
+    public string? BlockedReason { get; set; }
+}
+
+/// <summary>
+/// Represents seller rating eligibility information for a sub-order.
+/// </summary>
+public class SellerRatingEligibility
+{
+    /// <summary>
+    /// Gets or sets whether a seller rating can be submitted.
+    /// </summary>
+    public bool CanSubmit { get; set; }
+
+    /// <summary>
+    /// Gets or sets the reason why seller rating cannot be submitted (if applicable).
     /// </summary>
     public string? BlockedReason { get; set; }
 }

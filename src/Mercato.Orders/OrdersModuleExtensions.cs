@@ -37,6 +37,7 @@ public static class OrdersModuleExtensions
         services.AddScoped<ICaseMessageRepository, CaseMessageRepository>();
         services.AddScoped<ICaseStatusHistoryRepository, CaseStatusHistoryRepository>();
         services.AddScoped<IProductReviewRepository, ProductReviewRepository>();
+        services.AddScoped<ISellerRatingRepository, SellerRatingRepository>();
 
         // Configure email settings
         services.Configure<EmailSettings>(configuration.GetSection("Email"));
@@ -49,6 +50,7 @@ public static class OrdersModuleExtensions
         services.AddScoped<IShippingNotificationService, ShippingNotificationService>();
         services.AddScoped<IOrderService, OrderService>();
         services.AddScoped<IProductReviewService, ProductReviewService>();
+        services.AddScoped<ISellerRatingService, SellerRatingService>();
 
         return services;
     }
