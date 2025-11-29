@@ -246,15 +246,22 @@ public class GetAverageRatingResult
     public double? AverageRating { get; private init; }
 
     /// <summary>
+    /// Gets the count of ratings for the store.
+    /// </summary>
+    public int RatingCount { get; private init; }
+
+    /// <summary>
     /// Creates a successful result.
     /// </summary>
     /// <param name="averageRating">The average rating.</param>
+    /// <param name="ratingCount">The count of ratings.</param>
     /// <returns>A successful result.</returns>
-    public static GetAverageRatingResult Success(double? averageRating) => new()
+    public static GetAverageRatingResult Success(double? averageRating, int ratingCount) => new()
     {
         Succeeded = true,
         Errors = [],
-        AverageRating = averageRating
+        AverageRating = averageRating,
+        RatingCount = ratingCount
     };
 
     /// <summary>

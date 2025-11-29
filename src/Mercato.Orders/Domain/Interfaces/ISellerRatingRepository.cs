@@ -63,4 +63,11 @@ public interface ISellerRatingRepository
     /// <param name="storeId">The store ID.</param>
     /// <returns>The average rating; null if no ratings exist.</returns>
     Task<double?> GetAverageRatingForStoreAsync(Guid storeId);
+
+    /// <summary>
+    /// Gets the count of ratings for a specific store.
+    /// </summary>
+    /// <param name="storeId">The store ID.</param>
+    /// <returns>The number of ratings for the store.</returns>
+    Task<int> GetRatingCountForStoreAsync(Guid storeId);
 }

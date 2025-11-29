@@ -78,8 +78,39 @@
                                 <h1 class="mb-1">@Model.Store.Name</h1>
                                 @if (!string.IsNullOrEmpty(Model.Store.Description))
                                 {
-                                    <p class="text-muted mb-0">@Model.Store.Description</p>
+                                    <p class="text-muted mb-2">@Model.Store.Description</p>
                                 }
+                                <!-- Seller Rating -->
+                                <div class="d-flex align-items-center">
+                                    @if (Model.AverageRating.HasValue)
+                                    {
+                                        <div class="text-warning me-2">
+                                            @for (int i = 1; i <= 5; i++)
+                                            {
+                                                if (i <= Math.Floor(Model.AverageRating.Value))
+                                                {
+                                                    <i class="bi bi-star-fill"></i>
+                                                }
+                                                else if (i == Math.Ceiling(Model.AverageRating.Value) && Model.AverageRating.Value % 1 >= 0.5)
+                                                {
+                                                    <i class="bi bi-star-half"></i>
+                                                }
+                                                else
+                                                {
+                                                    <i class="bi bi-star"></i>
+                                                }
+                                            }
+                                        </div>
+                                        <span class="fw-semibold">@Model.AverageRating.Value.ToString("F1")</span>
+                                        <span class="text-muted ms-2">(@Model.RatingCount @(Model.RatingCount == 1 ? "rating" : "ratings"))</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">
+                                            <i class="bi bi-star me-1"></i>No ratings yet
+                                        </span>
+                                    }
+                                </div>
                             </div>
                         </div>
                     </div>

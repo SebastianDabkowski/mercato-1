@@ -480,6 +480,8 @@ public class SellerRatingServiceTests
         // Arrange
         _mockSellerRatingRepository.Setup(r => r.GetAverageRatingForStoreAsync(TestStoreId))
             .ReturnsAsync(4.5);
+        _mockSellerRatingRepository.Setup(r => r.GetRatingCountForStoreAsync(TestStoreId))
+            .ReturnsAsync(10);
 
         // Act
         var result = await _service.GetAverageRatingForStoreAsync(TestStoreId);
@@ -487,6 +489,7 @@ public class SellerRatingServiceTests
         // Assert
         Assert.True(result.Succeeded);
         Assert.Equal(4.5, result.AverageRating);
+        Assert.Equal(10, result.RatingCount);
     }
 
     [Fact]
@@ -506,6 +509,8 @@ public class SellerRatingServiceTests
         // Arrange
         _mockSellerRatingRepository.Setup(r => r.GetAverageRatingForStoreAsync(TestStoreId))
             .ReturnsAsync((double?)null);
+        _mockSellerRatingRepository.Setup(r => r.GetRatingCountForStoreAsync(TestStoreId))
+            .ReturnsAsync(0);
 
         // Act
         var result = await _service.GetAverageRatingForStoreAsync(TestStoreId);
@@ -513,6 +518,7 @@ public class SellerRatingServiceTests
         // Assert
         Assert.True(result.Succeeded);
         Assert.Null(result.AverageRating);
+        Assert.Equal(0, result.RatingCount);
     }
 
     #endregion

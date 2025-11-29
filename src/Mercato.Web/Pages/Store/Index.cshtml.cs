@@ -1,3 +1,4 @@
+using Mercato.Orders.Application.Services;
 using Mercato.Seller.Application.Services;
 using Mercato.Seller.Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
@@ -13,18 +14,22 @@ namespace Mercato.Web.Pages.Store;
 public class IndexModel : PageModel
 {
     private readonly IStoreProfileService _storeProfileService;
+    private readonly ISellerRatingService _sellerRatingService;
     private readonly ILogger<IndexModel> _logger;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="IndexModel"/> class.
     /// </summary>
     /// <param name="storeProfileService">The store profile service.</param>
+    /// <param name="sellerRatingService">The seller rating service.</param>
     /// <param name="logger">The logger.</param>
     public IndexModel(
         IStoreProfileService storeProfileService,
+        ISellerRatingService sellerRatingService,
         ILogger<IndexModel> logger)
     {
         _storeProfileService = storeProfileService;
+        _sellerRatingService = sellerRatingService;
         _logger = logger;
     }
 
@@ -47,6 +52,16 @@ public class IndexModel : PageModel
     /// Gets or sets an error message.
     /// </summary>
     public string? ErrorMessage { get; private set; }
+
+    /// <summary>
+    /// Gets the average seller rating for the store. Null if no ratings exist.
+    /// </summary>
+    public double? AverageRating { get; private set; }
+
+    /// <summary>
+    /// Gets the number of completed rated orders for the store.
+    /// </summary>
+    public int RatingCount { get; private set; }
 
     /// <summary>
     /// Handles GET requests for the public store page.
@@ -76,6 +91,24 @@ public class IndexModel : PageModel
                 else
                 {
                     IsNotFound = true;
+                }
+            }
+            else
+            {
+                // Load seller rating data
+                var ratingResult = await _sellerRatingService.GetAverageRatingForStoreAsync(Store.Id);
+                if (ratingResult.Succeeded)
+                {
+                    AverageRating = ratingResult.AverageRating;
+                    RatingCount = ratingResult.RatingCount;
+                }
+                else
+                {
+                    // Rating data unavailable - defaults to null/0
+                    _logger.LogWarning("Failed to load rating for store {StoreId}: {Errors}", 
+                        Store.Id, string.Join(", ", ratingResult.Errors));
+                    AverageRating = null;
+                    RatingCount = 0;
                 }
             }
 
