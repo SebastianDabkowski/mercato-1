@@ -16,9 +16,9 @@ public enum PaymentStatus
     Processing = 1,
 
     /// <summary>
-    /// Payment has been completed successfully.
+    /// Payment has been completed successfully (paid).
     /// </summary>
-    Completed = 2,
+    Paid = 2,
 
     /// <summary>
     /// Payment has failed.

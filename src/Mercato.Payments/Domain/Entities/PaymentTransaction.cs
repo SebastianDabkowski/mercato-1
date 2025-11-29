@@ -74,4 +74,14 @@ public class PaymentTransaction
     /// Gets or sets the date and time when the payment was completed.
     /// </summary>
     public DateTimeOffset? CompletedAt { get; set; }
+
+    /// <summary>
+    /// Gets or sets the amount that was refunded (for partial or full refunds).
+    /// </summary>
+    public decimal RefundedAmount { get; set; }
+
+    /// <summary>
+    /// Gets or sets the date and time when the payment was refunded.
+    /// </summary>
+    public DateTimeOffset? RefundedAt { get; set; }
 }
