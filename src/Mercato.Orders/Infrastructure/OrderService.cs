@@ -62,6 +62,7 @@ public class OrderService : IOrderService
                 OrderNumber = orderNumber,
                 Status = OrderStatus.New,
                 PaymentTransactionId = command.PaymentTransactionId,
+                PaymentMethodName = command.PaymentMethodName,
                 ItemsSubtotal = itemsSubtotal,
                 ShippingTotal = command.ShippingTotal,
                 TotalAmount = itemsSubtotal + command.ShippingTotal,

@@ -32,6 +32,11 @@ public class Order
     public Guid? PaymentTransactionId { get; set; }
 
     /// <summary>
+    /// Gets or sets the payment method name used for this order.
+    /// </summary>
+    public string? PaymentMethodName { get; set; }
+
+    /// <summary>
     /// Gets or sets the total amount for all items (before shipping).
     /// </summary>
     public decimal ItemsSubtotal { get; set; }

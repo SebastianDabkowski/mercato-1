@@ -202,10 +202,26 @@ public class PaymentCallbackModel : PageModel
             PaymentTransactionId = transactionId,
             Items = items,
             ShippingTotal = ShippingData?.TotalShippingCost ?? 0,
-            DeliveryAddress = deliveryAddress
+            DeliveryAddress = deliveryAddress,
+            PaymentMethodName = Transaction != null ? GetPaymentMethodDisplayName(Transaction.PaymentMethodId) : null
         };
 
         return await _orderService.CreateOrderAsync(command);
+    }
+
+    /// <summary>
+    /// Gets the display name for a payment method ID.
+    /// </summary>
+    /// <param name="paymentMethodId">The payment method ID.</param>
+    /// <returns>The display name for the payment method.</returns>
+    private static string GetPaymentMethodDisplayName(string paymentMethodId)
+    {
+        return paymentMethodId switch
+        {
+            "credit_card" => "Credit Card",
+            "paypal" => "PayPal",
+            _ => paymentMethodId
+        };
     }
 
     private List<CreateOrderItem>? LoadValidatedItems()

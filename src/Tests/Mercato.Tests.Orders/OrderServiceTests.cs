@@ -908,6 +908,44 @@ public class OrderServiceTests
     #region CreateOrderAsync with Seller Sub-Orders Tests
 
     [Fact]
+    public async Task CreateOrderAsync_WithPaymentMethodName_SetsPaymentMethodName()
+    {
+        // Arrange
+        var command = CreateTestOrderCommand();
+        command.PaymentMethodName = "Credit Card";
+
+        _mockOrderRepository.Setup(r => r.AddAsync(It.IsAny<Order>()))
+            .ReturnsAsync((Order o) => o);
+
+        // Act
+        var result = await _service.CreateOrderAsync(command);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        _mockOrderRepository.Verify(r => r.AddAsync(It.Is<Order>(o =>
+            o.PaymentMethodName == "Credit Card")), Times.Once);
+    }
+
+    [Fact]
+    public async Task CreateOrderAsync_WithoutPaymentMethodName_PaymentMethodNameIsNull()
+    {
+        // Arrange
+        var command = CreateTestOrderCommand();
+        command.PaymentMethodName = null;
+
+        _mockOrderRepository.Setup(r => r.AddAsync(It.IsAny<Order>()))
+            .ReturnsAsync((Order o) => o);
+
+        // Act
+        var result = await _service.CreateOrderAsync(command);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        _mockOrderRepository.Verify(r => r.AddAsync(It.Is<Order>(o =>
+            o.PaymentMethodName == null)), Times.Once);
+    }
+
+    [Fact]
     public async Task CreateOrderAsync_SingleSeller_CreatesOneSubOrder()
     {
         // Arrange

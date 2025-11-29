@@ -16,6 +16,11 @@ public class CreateOrderCommand
     public Guid PaymentTransactionId { get; set; }
 
     /// <summary>
+    /// Gets or sets the payment method name.
+    /// </summary>
+    public string? PaymentMethodName { get; set; }
+
+    /// <summary>
     /// Gets or sets the validated cart items.
     /// </summary>
     public IReadOnlyList<CreateOrderItem> Items { get; set; } = [];
