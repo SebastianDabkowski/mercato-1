@@ -1,3 +1,4 @@
+using System.Text;
 using Mercato.Orders.Application.Commands;
 using Mercato.Orders.Application.Queries;
 using Mercato.Orders.Application.Services;
@@ -623,5 +624,152 @@ public class OrderService : IOrderService
         }
 
         return errors;
+    }
+
+    /// <inheritdoc />
+    public async Task<GetFilteredSellerSubOrdersResult> GetFilteredSellerSubOrdersAsync(SellerSubOrderFilterQuery query)
+    {
+        var validationErrors = ValidateSellerSubOrderFilterQuery(query);
+        if (validationErrors.Count > 0)
+        {
+            return GetFilteredSellerSubOrdersResult.Failure(validationErrors);
+        }
+
+        try
+        {
+            var (subOrders, totalCount) = await _sellerSubOrderRepository.GetFilteredByStoreIdAsync(
+                query.StoreId,
+                query.Statuses.Count > 0 ? query.Statuses : null,
+                query.FromDate,
+                query.ToDate,
+                query.BuyerSearchTerm,
+                query.Page,
+                query.PageSize);
+
+            return GetFilteredSellerSubOrdersResult.Success(subOrders, totalCount, query.Page, query.PageSize);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting filtered sub-orders for store {StoreId}", query.StoreId);
+            return GetFilteredSellerSubOrdersResult.Failure("An error occurred while getting the sub-orders.");
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<(string BuyerId, string BuyerEmail)>> GetDistinctBuyersForStoreAsync(Guid storeId)
+    {
+        if (storeId == Guid.Empty)
+        {
+            return [];
+        }
+
+        try
+        {
+            return await _sellerSubOrderRepository.GetDistinctBuyersByStoreIdAsync(storeId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting distinct buyers for store {StoreId}", storeId);
+            return [];
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<byte[]> ExportSellerSubOrdersToCsvAsync(Guid storeId, SellerSubOrderFilterQuery query)
+    {
+        // Ensure the query is for the correct store
+        query.StoreId = storeId;
+        // Use a larger page size for export, but with a reasonable limit
+        query.Page = 1;
+        query.PageSize = 10000;
+
+        var validationErrors = ValidateSellerSubOrderFilterQuery(query);
+        if (validationErrors.Count > 0)
+        {
+            _logger.LogWarning("Export validation failed for store {StoreId}: {Errors}", storeId, string.Join(", ", validationErrors));
+            return [];
+        }
+
+        try
+        {
+            var (subOrders, _) = await _sellerSubOrderRepository.GetFilteredByStoreIdAsync(
+                query.StoreId,
+                query.Statuses.Count > 0 ? query.Statuses : null,
+                query.FromDate,
+                query.ToDate,
+                query.BuyerSearchTerm,
+                query.Page,
+                query.PageSize);
+
+            var csv = new StringBuilder();
+
+            // CSV Header
+            csv.AppendLine("Sub-Order ID,Sub-Order Number,Creation Date,Status,Buyer ID,Total Amount,Shipping Carrier");
+
+            // CSV Data
+            foreach (var subOrder in subOrders)
+            {
+                var line = string.Join(",",
+                    EscapeCsvField(subOrder.Id.ToString()),
+                    EscapeCsvField(subOrder.SubOrderNumber),
+                    EscapeCsvField(subOrder.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss")),
+                    EscapeCsvField(subOrder.Status.ToString()),
+                    EscapeCsvField(subOrder.Order?.BuyerId ?? string.Empty),
+                    EscapeCsvField(subOrder.TotalAmount.ToString("F2")),
+                    EscapeCsvField(subOrder.ShippingCarrier ?? string.Empty));
+
+                csv.AppendLine(line);
+            }
+
+            return Encoding.UTF8.GetBytes(csv.ToString());
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error exporting sub-orders to CSV for store {StoreId}", storeId);
+            return [];
+        }
+    }
+
+    private static List<string> ValidateSellerSubOrderFilterQuery(SellerSubOrderFilterQuery query)
+    {
+        var errors = new List<string>();
+
+        if (query.StoreId == Guid.Empty)
+        {
+            errors.Add("Store ID is required.");
+        }
+
+        if (query.Page < 1)
+        {
+            errors.Add("Page number must be at least 1.");
+        }
+
+        if (query.PageSize < 1 || query.PageSize > 10000)
+        {
+            errors.Add("Page size must be between 1 and 10000.");
+        }
+
+        if (query.FromDate.HasValue && query.ToDate.HasValue && query.FromDate > query.ToDate)
+        {
+            errors.Add("From date cannot be after to date.");
+        }
+
+        return errors;
+    }
+
+    private static string EscapeCsvField(string field)
+    {
+        if (string.IsNullOrEmpty(field))
+        {
+            return string.Empty;
+        }
+
+        // If the field contains special characters, wrap in quotes and escape internal quotes
+        if (field.Contains(',') || field.Contains('"') || field.Contains('\n') || field.Contains('\r'))
+        {
+            return $"\"{field.Replace("\"", "\"\"")}\"";
+        }
+
+        return field;
     }
 }

@@ -48,4 +48,31 @@ public interface ISellerSubOrderRepository
     /// <param name="sellerSubOrder">The seller sub-order to update.</param>
     /// <returns>A task representing the asynchronous operation.</returns>
     Task UpdateAsync(SellerSubOrder sellerSubOrder);
+
+    /// <summary>
+    /// Gets a filtered and paginated list of seller sub-orders for a store.
+    /// </summary>
+    /// <param name="storeId">The store ID.</param>
+    /// <param name="statuses">Optional list of statuses to filter by.</param>
+    /// <param name="fromDate">Optional start date for date range filter (inclusive).</param>
+    /// <param name="toDate">Optional end date for date range filter (inclusive).</param>
+    /// <param name="buyerSearchTerm">Optional buyer email/name partial match search term.</param>
+    /// <param name="page">Page number (1-based).</param>
+    /// <param name="pageSize">Page size.</param>
+    /// <returns>A tuple containing the list of sub-orders for the current page and the total count.</returns>
+    Task<(IReadOnlyList<SellerSubOrder> SubOrders, int TotalCount)> GetFilteredByStoreIdAsync(
+        Guid storeId,
+        IReadOnlyList<SellerSubOrderStatus>? statuses,
+        DateTimeOffset? fromDate,
+        DateTimeOffset? toDate,
+        string? buyerSearchTerm,
+        int page,
+        int pageSize);
+
+    /// <summary>
+    /// Gets distinct buyers from a store's sub-orders.
+    /// </summary>
+    /// <param name="storeId">The store ID.</param>
+    /// <returns>A list of distinct buyer IDs and emails.</returns>
+    Task<IReadOnlyList<(string BuyerId, string BuyerEmail)>> GetDistinctBuyersByStoreIdAsync(Guid storeId);
 }

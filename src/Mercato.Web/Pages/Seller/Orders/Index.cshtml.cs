@@ -1,3 +1,4 @@
+using Mercato.Orders.Application.Queries;
 using Mercato.Orders.Application.Services;
 using Mercato.Orders.Domain.Entities;
 using Mercato.Seller.Application.Services;
@@ -9,7 +10,7 @@ using System.Security.Claims;
 namespace Mercato.Web.Pages.Seller.Orders;
 
 /// <summary>
-/// Page model for the seller orders index page.
+/// Page model for the seller orders index page with filtering and export support.
 /// </summary>
 [Authorize(Roles = "Seller")]
 public class IndexModel : PageModel
@@ -17,6 +18,7 @@ public class IndexModel : PageModel
     private readonly IOrderService _orderService;
     private readonly IStoreProfileService _storeProfileService;
     private readonly ILogger<IndexModel> _logger;
+    private const int DefaultPageSize = 10;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="IndexModel"/> class.
@@ -40,7 +42,7 @@ public class IndexModel : PageModel
     public Mercato.Seller.Domain.Entities.Store? Store { get; private set; }
 
     /// <summary>
-    /// Gets the list of seller sub-orders.
+    /// Gets the list of seller sub-orders for the current page.
     /// </summary>
     public IReadOnlyList<SellerSubOrder> SubOrders { get; private set; } = [];
 
@@ -50,10 +52,70 @@ public class IndexModel : PageModel
     public string? ErrorMessage { get; private set; }
 
     /// <summary>
-    /// Handles GET requests for the seller orders index page.
+    /// Gets the total number of sub-orders matching the filter.
     /// </summary>
+    public int TotalCount { get; private set; }
+
+    /// <summary>
+    /// Gets the current page number.
+    /// </summary>
+    public int CurrentPage { get; private set; } = 1;
+
+    /// <summary>
+    /// Gets the page size.
+    /// </summary>
+    public int PageSize { get; private set; } = DefaultPageSize;
+
+    /// <summary>
+    /// Gets the total number of pages.
+    /// </summary>
+    public int TotalPages { get; private set; }
+
+    /// <summary>
+    /// Gets a value indicating whether there is a previous page.
+    /// </summary>
+    public bool HasPreviousPage => CurrentPage > 1;
+
+    /// <summary>
+    /// Gets a value indicating whether there is a next page.
+    /// </summary>
+    public bool HasNextPage => CurrentPage < TotalPages;
+
+    /// <summary>
+    /// Gets or sets the selected statuses for filtering (query parameter).
+    /// </summary>
+    [BindProperty(SupportsGet = true)]
+    public List<SellerSubOrderStatus> Status { get; set; } = [];
+
+    /// <summary>
+    /// Gets or sets the start date for date range filter (query parameter).
+    /// </summary>
+    [BindProperty(SupportsGet = true)]
+    public DateTimeOffset? FromDate { get; set; }
+
+    /// <summary>
+    /// Gets or sets the end date for date range filter (query parameter).
+    /// </summary>
+    [BindProperty(SupportsGet = true)]
+    public DateTimeOffset? ToDate { get; set; }
+
+    /// <summary>
+    /// Gets or sets the buyer search term (query parameter).
+    /// </summary>
+    [BindProperty(SupportsGet = true)]
+    public string? BuyerSearch { get; set; }
+
+    /// <summary>
+    /// Gets all available seller sub-order statuses for the filter dropdown.
+    /// </summary>
+    public static IEnumerable<SellerSubOrderStatus> AllStatuses => Enum.GetValues<SellerSubOrderStatus>();
+
+    /// <summary>
+    /// Handles GET requests for the seller orders index page with filtering.
+    /// </summary>
+    /// <param name="page">The page number (1-based).</param>
     /// <returns>The page result.</returns>
-    public async Task<IActionResult> OnGetAsync()
+    public async Task<IActionResult> OnGetAsync(int page = 1)
     {
         var sellerId = GetSellerId();
         if (string.IsNullOrEmpty(sellerId))
@@ -69,14 +131,31 @@ public class IndexModel : PageModel
                 return Page();
             }
 
-            var result = await _orderService.GetSellerSubOrdersAsync(Store.Id);
+            var query = new SellerSubOrderFilterQuery
+            {
+                StoreId = Store.Id,
+                Statuses = Status,
+                FromDate = FromDate,
+                ToDate = ToDate,
+                BuyerSearchTerm = BuyerSearch,
+                Page = page,
+                PageSize = DefaultPageSize
+            };
+
+            var result = await _orderService.GetFilteredSellerSubOrdersAsync(query);
+
             if (!result.Succeeded)
             {
                 ErrorMessage = string.Join(", ", result.Errors);
                 return Page();
             }
 
-            SubOrders = result.SellerSubOrders;
+            SubOrders = result.SubOrders;
+            TotalCount = result.TotalCount;
+            CurrentPage = result.Page;
+            TotalPages = result.TotalPages;
+            PageSize = result.PageSize;
+
             return Page();
         }
         catch (Exception ex)
@@ -85,6 +164,117 @@ public class IndexModel : PageModel
             ErrorMessage = "An error occurred while loading your orders.";
             return Page();
         }
+    }
+
+    /// <summary>
+    /// Handles GET requests for exporting seller sub-orders to CSV.
+    /// </summary>
+    /// <returns>A file result containing the CSV data.</returns>
+    public async Task<IActionResult> OnGetExportAsync()
+    {
+        var sellerId = GetSellerId();
+        if (string.IsNullOrEmpty(sellerId))
+        {
+            return Forbid();
+        }
+
+        try
+        {
+            Store = await _storeProfileService.GetStoreBySellerIdAsync(sellerId);
+            if (Store == null)
+            {
+                return NotFound("Store not found.");
+            }
+
+            var query = new SellerSubOrderFilterQuery
+            {
+                StoreId = Store.Id,
+                Statuses = Status,
+                FromDate = FromDate,
+                ToDate = ToDate,
+                BuyerSearchTerm = BuyerSearch
+            };
+
+            var csvBytes = await _orderService.ExportSellerSubOrdersToCsvAsync(Store.Id, query);
+
+            if (csvBytes.Length == 0)
+            {
+                TempData["Error"] = "Failed to export orders. Please try again.";
+                return RedirectToPage();
+            }
+
+            var fileName = $"orders-export-{DateTime.UtcNow:yyyyMMdd-HHmmss}.csv";
+            return File(csvBytes, "text/csv", fileName);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error exporting orders for seller {SellerId}", sellerId);
+            TempData["Error"] = "An error occurred while exporting your orders.";
+            return RedirectToPage();
+        }
+    }
+
+    /// <summary>
+    /// Gets the query string for pagination links that preserves filter state.
+    /// </summary>
+    /// <param name="page">The page number.</param>
+    /// <returns>The query string.</returns>
+    public string GetPaginationQueryString(int page)
+    {
+        var queryParams = new List<string> { $"page={page}" };
+
+        foreach (var status in Status)
+        {
+            queryParams.Add($"Status={status}");
+        }
+
+        if (FromDate.HasValue)
+        {
+            queryParams.Add($"FromDate={FromDate.Value:yyyy-MM-dd}");
+        }
+
+        if (ToDate.HasValue)
+        {
+            queryParams.Add($"ToDate={ToDate.Value:yyyy-MM-dd}");
+        }
+
+        if (!string.IsNullOrEmpty(BuyerSearch))
+        {
+            queryParams.Add($"BuyerSearch={Uri.EscapeDataString(BuyerSearch)}");
+        }
+
+        return "?" + string.Join("&", queryParams);
+    }
+
+    /// <summary>
+    /// Gets the query string for export link that preserves filter state.
+    /// </summary>
+    /// <returns>The query string for export.</returns>
+    public string GetExportQueryString()
+    {
+        var queryParams = new List<string> { "handler=Export" };
+
+        foreach (var status in Status)
+        {
+            queryParams.Add($"Status={status}");
+        }
+
+        if (FromDate.HasValue)
+        {
+            queryParams.Add($"FromDate={FromDate.Value:yyyy-MM-dd}");
+        }
+
+        if (ToDate.HasValue)
+        {
+            queryParams.Add($"ToDate={ToDate.Value:yyyy-MM-dd}");
+        }
+
+        if (!string.IsNullOrEmpty(BuyerSearch))
+        {
+            queryParams.Add($"BuyerSearch={Uri.EscapeDataString(BuyerSearch)}");
+        }
+
+        return "?" + string.Join("&", queryParams);
     }
 
     /// <summary>
