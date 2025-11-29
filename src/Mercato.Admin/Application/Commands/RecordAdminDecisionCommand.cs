@@ -1,3 +1,5 @@
+using Mercato.Admin.Domain.Entities;
+
 namespace Mercato.Admin.Application.Commands;
 
 /// <summary>
@@ -16,9 +18,9 @@ public class RecordAdminDecisionCommand
     public string AdminUserId { get; set; } = string.Empty;
 
     /// <summary>
-    /// Gets or sets the decision type (e.g., "OverrideSellerDecision", "EnforceRefund", "CloseWithoutAction").
+    /// Gets or sets the decision type.
     /// </summary>
-    public string Decision { get; set; } = string.Empty;
+    public AdminDecisionType? DecisionType { get; set; }
 
     /// <summary>
     /// Gets or sets the reason for the decision.

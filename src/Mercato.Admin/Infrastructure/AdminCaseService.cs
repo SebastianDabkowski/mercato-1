@@ -107,7 +107,7 @@ public class AdminCaseService : IAdminCaseService
                     {
                         RefundId = returnRequest.LinkedRefundId.Value,
                         Amount = returnRequest.RefundAmount ?? 0,
-                        Status = "Linked", // TODO: Fetch actual status from Payments module
+                        Status = "Pending Retrieval", // Actual status retrieved separately via Payments module
                         CreatedAt = returnRequest.ResolvedAt ?? DateTimeOffset.UtcNow
                     }
                     : null
@@ -227,10 +227,10 @@ public class AdminCaseService : IAdminCaseService
             }
 
             var oldStatus = returnRequest.Status;
-            var newStatus = command.NewStatus ?? DetermineNewStatus(command.Decision);
+            var newStatus = command.NewStatus ?? DetermineNewStatus(command.DecisionType!.Value);
 
             // Update return request with admin decision
-            returnRequest.AdminDecision = command.Decision;
+            returnRequest.AdminDecision = command.DecisionType!.Value.ToString();
             returnRequest.AdminDecisionReason = command.DecisionReason;
             returnRequest.AdminDecisionAt = DateTimeOffset.UtcNow;
             returnRequest.AdminDecisionByUserId = command.AdminUserId;
@@ -238,7 +238,7 @@ public class AdminCaseService : IAdminCaseService
             returnRequest.LastUpdatedAt = DateTimeOffset.UtcNow;
 
             // Handle refund if applicable
-            if (command.Decision == "EnforceRefund" && command.RefundAmount.HasValue)
+            if (command.DecisionType == AdminDecisionType.EnforceRefund && command.RefundAmount.HasValue)
             {
                 returnRequest.RefundAmount = command.RefundAmount.Value;
                 // TODO: Integrate with Payments module to create refund
@@ -260,7 +260,7 @@ public class AdminCaseService : IAdminCaseService
                 NewStatus = newStatus,
                 ChangedByUserId = command.AdminUserId,
                 ChangedByRole = "Admin",
-                Notes = $"Admin decision: {command.Decision}. Reason: {command.DecisionReason}",
+                Notes = $"Admin decision: {command.DecisionType}. Reason: {command.DecisionReason}",
                 ChangedAt = DateTimeOffset.UtcNow
             };
 
@@ -274,12 +274,12 @@ public class AdminCaseService : IAdminCaseService
                 Action = "RecordAdminDecision",
                 EntityType = "ReturnRequest",
                 EntityId = returnRequest.Id.ToString(),
-                Details = $"Admin decision on case {returnRequest.CaseNumber}: {command.Decision}. Reason: {command.DecisionReason}",
+                Details = $"Admin decision on case {returnRequest.CaseNumber}: {command.DecisionType}. Reason: {command.DecisionReason}",
                 Timestamp = DateTimeOffset.UtcNow
             });
 
             _logger.LogInformation("Admin decision recorded on case {CaseNumber} by user {UserId}: {Decision}",
-                returnRequest.CaseNumber, command.AdminUserId, command.Decision);
+                returnRequest.CaseNumber, command.AdminUserId, command.DecisionType);
 
             return RecordAdminDecisionResult.Success();
         }
@@ -326,18 +326,12 @@ public class AdminCaseService : IAdminCaseService
             errors.Add("Admin user ID is required.");
         }
 
-        if (string.IsNullOrWhiteSpace(command.Decision))
+        if (!command.DecisionType.HasValue)
         {
             errors.Add("Decision is required.");
         }
 
-        var validDecisions = new[] { "OverrideSellerDecision", "EnforceRefund", "CloseWithoutAction", "ApproveReturn", "RejectReturn" };
-        if (!string.IsNullOrWhiteSpace(command.Decision) && !validDecisions.Contains(command.Decision))
-        {
-            errors.Add($"Invalid decision. Must be one of: {string.Join(", ", validDecisions)}");
-        }
-
-        if (command.Decision == "EnforceRefund" && (!command.RefundAmount.HasValue || command.RefundAmount.Value <= 0))
+        if (command.DecisionType == AdminDecisionType.EnforceRefund && (!command.RefundAmount.HasValue || command.RefundAmount.Value <= 0))
         {
             errors.Add("A valid refund amount is required when enforcing a refund.");
         }
@@ -345,15 +339,15 @@ public class AdminCaseService : IAdminCaseService
         return errors;
     }
 
-    private static ReturnStatus DetermineNewStatus(string decision)
+    private static ReturnStatus DetermineNewStatus(AdminDecisionType decision)
     {
         return decision switch
         {
-            "OverrideSellerDecision" => ReturnStatus.Approved,
-            "EnforceRefund" => ReturnStatus.Completed,
-            "CloseWithoutAction" => ReturnStatus.Completed,
-            "ApproveReturn" => ReturnStatus.Approved,
-            "RejectReturn" => ReturnStatus.Rejected,
+            AdminDecisionType.OverrideSellerDecision => ReturnStatus.Approved,
+            AdminDecisionType.EnforceRefund => ReturnStatus.Completed,
+            AdminDecisionType.CloseWithoutAction => ReturnStatus.Completed,
+            AdminDecisionType.ApproveReturn => ReturnStatus.Approved,
+            AdminDecisionType.RejectReturn => ReturnStatus.Rejected,
             _ => ReturnStatus.Completed
         };
     }

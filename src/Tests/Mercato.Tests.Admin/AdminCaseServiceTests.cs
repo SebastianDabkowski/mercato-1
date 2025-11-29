@@ -455,7 +455,7 @@ public class AdminCaseServiceTests
         {
             CaseId = caseId,
             AdminUserId = "admin-user",
-            Decision = "CloseWithoutAction",
+            DecisionType = AdminDecisionType.CloseWithoutAction,
             DecisionReason = "No further action needed"
         };
 
@@ -478,7 +478,7 @@ public class AdminCaseServiceTests
         {
             CaseId = Guid.NewGuid(),
             AdminUserId = "admin-user",
-            Decision = "EnforceRefund",
+            DecisionType = AdminDecisionType.EnforceRefund,
             DecisionReason = "Refund required"
         };
 
@@ -498,7 +498,7 @@ public class AdminCaseServiceTests
         {
             CaseId = Guid.NewGuid(),
             AdminUserId = "admin-user",
-            Decision = "InvalidDecision",
+            DecisionType = null,
             DecisionReason = "Test"
         };
 
@@ -530,7 +530,7 @@ public class AdminCaseServiceTests
         {
             CaseId = caseId,
             AdminUserId = "admin-user",
-            Decision = "CloseWithoutAction",
+            DecisionType = AdminDecisionType.CloseWithoutAction,
             DecisionReason = "Test"
         };
 
@@ -574,7 +574,7 @@ public class AdminCaseServiceTests
         {
             CaseId = caseId,
             AdminUserId = "admin-user",
-            Decision = "OverrideSellerDecision",
+            DecisionType = AdminDecisionType.OverrideSellerDecision,
             DecisionReason = "Seller was wrong"
         };
 
@@ -618,7 +618,7 @@ public class AdminCaseServiceTests
         {
             CaseId = caseId,
             AdminUserId = "admin-user",
-            Decision = "EnforceRefund",
+            DecisionType = AdminDecisionType.EnforceRefund,
             DecisionReason = "Refund required",
             RefundAmount = 99.99m
         };

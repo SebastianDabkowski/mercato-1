@@ -1,6 +1,7 @@
 using Mercato.Admin.Application.Commands;
 using Mercato.Admin.Application.Queries;
 using Mercato.Admin.Application.Services;
+using Mercato.Admin.Domain.Entities;
 using Mercato.Orders.Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -53,10 +54,10 @@ public class DetailsModel : PageModel
     public string? EscalationReason { get; set; }
 
     /// <summary>
-    /// Gets or sets the admin decision.
+    /// Gets or sets the admin decision type.
     /// </summary>
     [BindProperty]
-    public string? AdminDecision { get; set; }
+    public AdminDecisionType? AdminDecision { get; set; }
 
     /// <summary>
     /// Gets or sets the admin decision reason.
@@ -159,7 +160,7 @@ public class DetailsModel : PageModel
             return NotFound();
         }
 
-        if (string.IsNullOrWhiteSpace(AdminDecision))
+        if (!AdminDecision.HasValue)
         {
             ErrorMessage = "Decision is required.";
             return await OnGetAsync(id);
@@ -183,7 +184,7 @@ public class DetailsModel : PageModel
         {
             CaseId = id,
             AdminUserId = userId,
-            Decision = AdminDecision,
+            DecisionType = AdminDecision,
             DecisionReason = AdminDecisionReason,
             RefundAmount = RefundAmount
         };

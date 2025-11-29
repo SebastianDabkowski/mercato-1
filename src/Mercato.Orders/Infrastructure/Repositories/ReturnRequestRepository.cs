@@ -208,9 +208,10 @@ public class ReturnRequestRepository : IReturnRequestRepository
 
         if (toDate.HasValue)
         {
-            // Add one day to include the entire "to" day
-            var endDate = new DateTimeOffset(toDate.Value.Date.AddDays(1), TimeSpan.Zero);
-            query = query.Where(r => r.CreatedAt < endDate);
+            // Add one day to include the entire "to" day, preserving the original timezone offset
+            var endDate = toDate.Value.Date.AddDays(1);
+            var endDateWithOffset = new DateTimeOffset(endDate, toDate.Value.Offset);
+            query = query.Where(r => r.CreatedAt < endDateWithOffset);
         }
 
         // Get total count before pagination
