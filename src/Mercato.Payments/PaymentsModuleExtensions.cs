@@ -1,6 +1,8 @@
 using Mercato.Payments.Application.Services;
+using Mercato.Payments.Domain.Interfaces;
 using Mercato.Payments.Infrastructure;
 using Mercato.Payments.Infrastructure.Persistence;
+using Mercato.Payments.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -30,8 +32,15 @@ public static class PaymentsModuleExtensions
         // Register PaymentSettings from configuration
         services.Configure<PaymentSettings>(configuration.GetSection("Payments"));
 
+        // Register EscrowSettings from configuration
+        services.Configure<EscrowSettings>(configuration.GetSection("Escrow"));
+
+        // Register repositories
+        services.AddScoped<IEscrowRepository, EscrowRepository>();
+
         // Register services
         services.AddScoped<IPaymentService, PaymentService>();
+        services.AddScoped<IEscrowService, EscrowService>();
 
         return services;
     }
