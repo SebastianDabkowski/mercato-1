@@ -32,6 +32,11 @@ public class PaymentDbContext : DbContext
     /// </summary>
     public DbSet<CommissionRecord> CommissionRecords { get; set; } = null!;
 
+    /// <summary>
+    /// Gets or sets the payouts.
+    /// </summary>
+    public DbSet<Payout> Payouts { get; set; } = null!;
+
     // TODO: Define DbSet<Transaction> when Transaction entity is implemented
     // public DbSet<Transaction> Transactions { get; set; }
 
@@ -118,6 +123,41 @@ public class PaymentDbContext : DbContext
             entity.HasIndex(e => e.OrderId);
             entity.HasIndex(e => e.SellerId);
             entity.HasIndex(e => new { e.OrderId, e.SellerId });
+        });
+
+        // Configure Payout entity
+        modelBuilder.Entity<Payout>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.Amount)
+                .HasPrecision(18, 2);
+
+            entity.Property(e => e.Currency)
+                .HasMaxLength(3)
+                .IsRequired();
+
+            entity.Property(e => e.ErrorReference)
+                .HasMaxLength(100);
+
+            entity.Property(e => e.ErrorMessage)
+                .HasMaxLength(500);
+
+            entity.Property(e => e.ExternalReference)
+                .HasMaxLength(200);
+
+            entity.Property(e => e.AuditNote)
+                .HasMaxLength(500);
+
+            entity.Property(e => e.EscrowEntryIds)
+                .HasMaxLength(4000);
+
+            entity.HasIndex(e => e.SellerId);
+            entity.HasIndex(e => e.Status);
+            entity.HasIndex(e => e.BatchId);
+            entity.HasIndex(e => e.ScheduledAt);
+            entity.HasIndex(e => new { e.SellerId, e.Status });
+            entity.HasIndex(e => new { e.Status, e.ScheduledAt });
         });
 
         // TODO: Configure other entity mappings when entities are defined
