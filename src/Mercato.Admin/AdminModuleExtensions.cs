@@ -38,6 +38,7 @@ public static class AdminModuleExtensions
         services.AddScoped<IAuthenticationEventService, AuthenticationEventService>();
         services.AddScoped<ISlaTrackingService, SlaTrackingService>();
         services.AddScoped<IAdminCaseService, AdminCaseService>();
+        services.AddScoped<IReviewModerationService, ReviewModerationService>();
 
         return services;
     }

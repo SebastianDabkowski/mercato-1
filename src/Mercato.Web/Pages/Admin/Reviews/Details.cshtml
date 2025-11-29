@@ -1,0 +1,197 @@
+@page "{id:guid}"
+@model Mercato.Web.Pages.Admin.Reviews.DetailsModel
+@{
+    ViewData["Title"] = "Review Details";
+}
+
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1><i class="bi bi-chat-square-text me-2"></i>Review Details</h1>
+        <a asp-page="Index" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Back to Reviews
+        </a>
+    </div>
+
+    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            @Model.ErrorMessage
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(Model.SuccessMessage))
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            @Model.SuccessMessage
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    @if (Model.ReviewDetails == null)
+    {
+        <div class="alert alert-warning">Review not found.</div>
+    }
+    else
+    {
+        <div class="row">
+            @* Review Information *@
+            <div class="col-lg-8">
+                <div class="card mb-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="bi bi-info-circle me-2"></i>Review Information</h5>
+                        <span class="badge @DetailsModel.GetStatusBadgeClass(Model.ReviewDetails.Status)">
+                            @DetailsModel.GetStatusDisplayText(Model.ReviewDetails.Status)
+                        </span>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label text-muted">Review ID</label>
+                                <p class="mb-0"><code>@Model.ReviewDetails.Id</code></p>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-muted">Rating</label>
+                                <p class="mb-0">
+                                    <span class="text-warning fs-5">@DetailsModel.GetStarRating(Model.ReviewDetails.Rating)</span>
+                                    <span class="text-muted">(@Model.ReviewDetails.Rating/5)</span>
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label text-muted">Buyer</label>
+                                <p class="mb-0">@Model.ReviewDetails.BuyerAlias</p>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-muted">Created</label>
+                                <p class="mb-0">@Model.ReviewDetails.CreatedAt.ToString("MMM dd, yyyy h:mm tt")</p>
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label text-muted">Product ID</label>
+                                <p class="mb-0"><code>@Model.ReviewDetails.ProductId</code></p>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-muted">Store ID</label>
+                                <p class="mb-0"><code>@Model.ReviewDetails.StoreId</code></p>
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label text-muted">Order ID</label>
+                                <p class="mb-0"><code>@Model.ReviewDetails.OrderId</code></p>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-muted">Last Updated</label>
+                                <p class="mb-0">@Model.ReviewDetails.LastUpdatedAt.ToString("MMM dd, yyyy h:mm tt")</p>
+                            </div>
+                        </div>
+
+                        <div class="mt-4">
+                            <label class="form-label text-muted">Review Text</label>
+                            <div class="border rounded p-3 bg-light">
+                                <p class="mb-0" style="white-space: pre-wrap;">@Model.ReviewDetails.ReviewText</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            @* Moderation Actions *@
+            <div class="col-lg-4">
+                @* Change Status Form *@
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-shield-check me-2"></i>Moderate Review</h5>
+                    </div>
+                    <div class="card-body">
+                        <form method="post" asp-page-handler="Moderate" asp-route-id="@Model.ReviewDetails.Id">
+                            <div class="mb-3">
+                                <label class="form-label">New Status</label>
+                                <select asp-for="NewStatus" class="form-select" required>
+                                    <option value="">Select status...</option>
+                                    @foreach (var status in DetailsModel.AllStatuses)
+                                    {
+                                        <option value="@status">@DetailsModel.GetStatusDisplayText(status)</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Reason</label>
+                                <textarea asp-for="ModerationReason" class="form-control" rows="3" 
+                                          placeholder="Enter moderation reason..." required></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="bi bi-check-circle me-1"></i>Apply Moderation
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                @* Quick Actions *@
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-lightning me-2"></i>Quick Actions</h5>
+                    </div>
+                    <div class="card-body">
+                        @if (Model.ReviewDetails.Status != Mercato.Orders.Domain.Entities.ReviewStatus.Published)
+                        {
+                            <form method="post" asp-page-handler="Moderate" asp-route-id="@Model.ReviewDetails.Id" class="mb-2">
+                                <input type="hidden" name="NewStatus" value="Published" />
+                                <input type="hidden" name="ModerationReason" value="Approved - meets content guidelines" />
+                                <button type="submit" class="btn btn-success w-100">
+                                    <i class="bi bi-check-lg me-1"></i>Approve (Publish)
+                                </button>
+                            </form>
+                        }
+
+                        @if (Model.ReviewDetails.Status != Mercato.Orders.Domain.Entities.ReviewStatus.Hidden)
+                        {
+                            <form method="post" asp-page-handler="Moderate" asp-route-id="@Model.ReviewDetails.Id" class="mb-2">
+                                <input type="hidden" name="NewStatus" value="Hidden" />
+                                <input type="hidden" name="ModerationReason" value="Rejected - violates content guidelines" />
+                                <button type="submit" class="btn btn-danger w-100">
+                                    <i class="bi bi-x-lg me-1"></i>Reject (Hide)
+                                </button>
+                            </form>
+                        }
+
+                        @if (Model.ReviewDetails.Status != Mercato.Orders.Domain.Entities.ReviewStatus.Pending)
+                        {
+                            <form method="post" asp-page-handler="Flag" asp-route-id="@Model.ReviewDetails.Id">
+                                <input type="hidden" name="FlagReason" value="Flagged for additional review" />
+                                <button type="submit" class="btn btn-warning w-100">
+                                    <i class="bi bi-flag me-1"></i>Flag for Review
+                                </button>
+                            </form>
+                        }
+                    </div>
+                </div>
+
+                @* Flag Review Form *@
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-flag me-2"></i>Flag Review</h5>
+                    </div>
+                    <div class="card-body">
+                        <form method="post" asp-page-handler="Flag" asp-route-id="@Model.ReviewDetails.Id">
+                            <div class="mb-3">
+                                <label class="form-label">Flag Reason</label>
+                                <textarea asp-for="FlagReason" class="form-control" rows="3" 
+                                          placeholder="Enter reason for flagging..." required></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-outline-warning w-100">
+                                <i class="bi bi-flag me-1"></i>Flag for Moderation
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>

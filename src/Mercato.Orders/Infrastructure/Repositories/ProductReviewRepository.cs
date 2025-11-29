@@ -147,4 +147,66 @@ public class ProductReviewRepository : IProductReviewRepository
             .Select(r => (DateTimeOffset?)r.CreatedAt)
             .FirstOrDefaultAsync();
     }
+
+    /// <inheritdoc />
+    public async Task<(IReadOnlyList<ProductReview> reviews, int totalCount)> GetAllFilteredAsync(
+        string? searchText,
+        IReadOnlyList<ReviewStatus>? statuses,
+        DateTimeOffset? fromDate,
+        DateTimeOffset? toDate,
+        int page,
+        int pageSize)
+    {
+        var query = _context.ProductReviews
+            .Include(r => r.SellerSubOrderItem)
+            .Include(r => r.SellerSubOrder)
+            .AsQueryable();
+
+        // Apply search filter
+        if (!string.IsNullOrWhiteSpace(searchText))
+        {
+            query = query.Where(r => r.ReviewText.Contains(searchText) ||
+                                     r.BuyerId.Contains(searchText));
+        }
+
+        // Apply status filter
+        if (statuses != null && statuses.Count > 0)
+        {
+            query = query.Where(r => statuses.Contains(r.Status));
+        }
+
+        // Apply date range filter
+        if (fromDate.HasValue)
+        {
+            query = query.Where(r => r.CreatedAt >= fromDate.Value);
+        }
+
+        if (toDate.HasValue)
+        {
+            query = query.Where(r => r.CreatedAt <= toDate.Value);
+        }
+
+        // Get total count
+        var totalCount = await query.CountAsync();
+
+        // Apply ordering and pagination
+        var reviews = await query
+            .OrderByDescending(r => r.CreatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        return (reviews, totalCount);
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<ProductReview>> GetByStatusAsync(ReviewStatus status)
+    {
+        return await _context.ProductReviews
+            .Include(r => r.SellerSubOrderItem)
+            .Include(r => r.SellerSubOrder)
+            .Where(r => r.Status == status)
+            .OrderByDescending(r => r.CreatedAt)
+            .ToListAsync();
+    }
 }
