@@ -44,6 +44,14 @@ public interface IEscrowRepository
     Task<IReadOnlyList<EscrowEntry>> GetBySellerIdAndStatusAsync(Guid sellerId, EscrowStatus status);
 
     /// <summary>
+    /// Gets all escrow entries with a given status that are eligible for payout.
+    /// </summary>
+    /// <param name="status">The escrow status to filter by.</param>
+    /// <param name="excludeAlreadyInPayout">Whether to exclude entries already marked for payout.</param>
+    /// <returns>A read-only list of escrow entries matching the criteria.</returns>
+    Task<IReadOnlyList<EscrowEntry>> GetByStatusForPayoutAsync(EscrowStatus status, bool excludeAlreadyInPayout = true);
+
+    /// <summary>
     /// Adds a new escrow entry.
     /// </summary>
     /// <param name="entry">The escrow entry to add.</param>

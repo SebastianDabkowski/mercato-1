@@ -38,16 +38,21 @@ public static class PaymentsModuleExtensions
         // Register CommissionSettings from configuration
         services.Configure<CommissionSettings>(configuration.GetSection("Commission"));
 
+        // Register PayoutSettings from configuration
+        services.Configure<PayoutSettings>(configuration.GetSection("Payout"));
+
         // Register repositories
         services.AddScoped<IEscrowRepository, EscrowRepository>();
         services.AddScoped<ICommissionRuleRepository, CommissionRuleRepository>();
         services.AddScoped<ICommissionRecordRepository, CommissionRecordRepository>();
+        services.AddScoped<IPayoutRepository, PayoutRepository>();
 
         // Register services
         services.AddScoped<IPaymentStatusMapper, PaymentStatusMapper>();
         services.AddScoped<IPaymentService, PaymentService>();
         services.AddScoped<IEscrowService, EscrowService>();
         services.AddScoped<ICommissionService, CommissionService>();
+        services.AddScoped<IPayoutService, PayoutService>();
 
         return services;
     }

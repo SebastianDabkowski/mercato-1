@@ -60,6 +60,19 @@ public class EscrowRepository : IEscrowRepository
     }
 
     /// <inheritdoc />
+    public async Task<IReadOnlyList<EscrowEntry>> GetByStatusForPayoutAsync(EscrowStatus status, bool excludeAlreadyInPayout = true)
+    {
+        var query = _dbContext.EscrowEntries.Where(e => e.Status == status);
+        
+        if (excludeAlreadyInPayout)
+        {
+            query = query.Where(e => !e.IsEligibleForPayout);
+        }
+
+        return await query.ToListAsync();
+    }
+
+    /// <inheritdoc />
     public async Task<EscrowEntry> AddAsync(EscrowEntry entry)
     {
         await _dbContext.EscrowEntries.AddAsync(entry);
