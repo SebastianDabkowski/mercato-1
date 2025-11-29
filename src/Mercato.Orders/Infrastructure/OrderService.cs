@@ -847,22 +847,43 @@ public class OrderService : IOrderService
                 exportQuery.Page,
                 exportQuery.PageSize);
 
+            // Return empty if no orders to export
+            if (subOrders.Count == 0)
+            {
+                return [];
+            }
+
             var csv = new StringBuilder();
 
-            // CSV Header
-            csv.AppendLine("Sub-Order ID,Sub-Order Number,Creation Date,Status,Buyer ID,Total Amount,Shipping Carrier");
+            // CSV Header with key shipping fields for logistics partners
+            // Structure documented for external logistics systems
+            csv.AppendLine("Sub-Order Number,Order Number,Creation Date,Status,Buyer Name,Delivery Address Line 1,Delivery Address Line 2,City,State,Postal Code,Country,Phone,Shipping Method,Tracking Number,Shipping Carrier,Items,Total Amount");
 
             // CSV Data
             foreach (var subOrder in subOrders)
             {
+                var order = subOrder.Order;
+                var items = subOrder.Items ?? [];
+                var itemsSummary = string.Join("; ", items.Select(i => $"{i.ProductTitle} x{i.Quantity}"));
+
                 var line = string.Join(",",
-                    EscapeCsvField(subOrder.Id.ToString()),
                     EscapeCsvField(subOrder.SubOrderNumber),
+                    EscapeCsvField(order?.OrderNumber ?? string.Empty),
                     EscapeCsvField(subOrder.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss")),
                     EscapeCsvField(subOrder.Status.ToString()),
-                    EscapeCsvField(subOrder.Order?.BuyerId ?? string.Empty),
-                    EscapeCsvField(subOrder.TotalAmount.ToString("F2")),
-                    EscapeCsvField(subOrder.ShippingCarrier ?? string.Empty));
+                    EscapeCsvField(order?.DeliveryFullName ?? string.Empty),
+                    EscapeCsvField(order?.DeliveryAddressLine1 ?? string.Empty),
+                    EscapeCsvField(order?.DeliveryAddressLine2 ?? string.Empty),
+                    EscapeCsvField(order?.DeliveryCity ?? string.Empty),
+                    EscapeCsvField(order?.DeliveryState ?? string.Empty),
+                    EscapeCsvField(order?.DeliveryPostalCode ?? string.Empty),
+                    EscapeCsvField(order?.DeliveryCountry ?? string.Empty),
+                    EscapeCsvField(order?.DeliveryPhoneNumber ?? string.Empty),
+                    EscapeCsvField(subOrder.ShippingMethodName ?? string.Empty),
+                    EscapeCsvField(subOrder.TrackingNumber ?? string.Empty),
+                    EscapeCsvField(subOrder.ShippingCarrier ?? string.Empty),
+                    EscapeCsvField(itemsSummary),
+                    EscapeCsvField(subOrder.TotalAmount.ToString("F2")));
 
                 csv.AppendLine(line);
             }
