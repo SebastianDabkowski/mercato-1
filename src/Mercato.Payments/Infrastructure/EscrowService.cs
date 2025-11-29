@@ -203,6 +203,85 @@ public class EscrowService : IEscrowService
     }
 
     /// <inheritdoc />
+    public async Task<PartialRefundEscrowResult> PartialRefundEscrowAsync(PartialRefundEscrowCommand command)
+    {
+        var errors = ValidatePartialRefundEscrowCommand(command);
+        if (errors.Count > 0)
+        {
+            return PartialRefundEscrowResult.Failure(errors);
+        }
+
+        var entries = await _escrowRepository.GetByOrderIdAsync(command.OrderId);
+        
+        if (entries.Count == 0)
+        {
+            return PartialRefundEscrowResult.Failure("No escrow entries found for the specified order.");
+        }
+
+        // Find the specific seller's entry
+        var entry = entries.FirstOrDefault(e => e.SellerId == command.SellerId);
+        if (entry == null)
+        {
+            return PartialRefundEscrowResult.Failure("No escrow entry found for the specified seller.");
+        }
+
+        // Check if the entry can be partially refunded (must be Held or PartiallyRefunded)
+        if (entry.Status == EscrowStatus.Released)
+        {
+            return PartialRefundEscrowResult.Failure("Cannot refund escrow that has already been released to the seller.");
+        }
+
+        if (entry.Status == EscrowStatus.Refunded)
+        {
+            return PartialRefundEscrowResult.Failure("Escrow has already been fully refunded.");
+        }
+
+        // Check if refund amount would exceed remaining amount
+        var remainingAmount = entry.Amount - entry.RefundedAmount;
+        if (command.Amount > remainingAmount)
+        {
+            return PartialRefundEscrowResult.Failure(
+                $"Refund amount ({command.Amount:F2}) exceeds remaining escrow amount ({remainingAmount:F2}).");
+        }
+
+        // Prevent negative balances
+        if (command.Amount <= 0)
+        {
+            return PartialRefundEscrowResult.Failure("Refund amount must be greater than zero.");
+        }
+
+        var now = DateTimeOffset.UtcNow;
+
+        entry.RefundedAmount += command.Amount;
+        entry.RefundedAt = now;
+        entry.LastUpdatedAt = now;
+
+        // Determine the new status based on remaining amount
+        var newRemainingAmount = entry.Amount - entry.RefundedAmount;
+        if (newRemainingAmount <= 0)
+        {
+            entry.Status = EscrowStatus.Refunded;
+            entry.AuditNote = command.AuditNote ?? "Full refund completed via partial refund.";
+        }
+        else
+        {
+            entry.Status = EscrowStatus.PartiallyRefunded;
+            entry.AuditNote = command.AuditNote ?? $"Partial refund of {command.Amount:F2}. Remaining: {newRemainingAmount:F2}.";
+        }
+
+        await _escrowRepository.UpdateAsync(entry);
+
+        _logger.LogInformation(
+            "Partial escrow refund for order {OrderId}, seller {SellerId}: refunded {RefundAmount}, remaining {RemainingAmount}",
+            command.OrderId,
+            command.SellerId,
+            command.Amount,
+            newRemainingAmount);
+
+        return PartialRefundEscrowResult.Success(entry, command.Amount, newRemainingAmount);
+    }
+
+    /// <inheritdoc />
     public async Task<GetEscrowEntriesResult> GetEscrowEntriesByOrderIdAsync(Guid orderId)
     {
         if (orderId == Guid.Empty)
@@ -302,6 +381,28 @@ public class EscrowService : IEscrowService
         if (command.OrderId == Guid.Empty)
         {
             errors.Add("Order ID is required.");
+        }
+
+        return errors;
+    }
+
+    private static List<string> ValidatePartialRefundEscrowCommand(PartialRefundEscrowCommand command)
+    {
+        var errors = new List<string>();
+
+        if (command.OrderId == Guid.Empty)
+        {
+            errors.Add("Order ID is required.");
+        }
+
+        if (command.SellerId == Guid.Empty)
+        {
+            errors.Add("Seller ID is required.");
+        }
+
+        if (command.Amount <= 0)
+        {
+            errors.Add("Refund amount must be greater than zero.");
         }
 
         return errors;

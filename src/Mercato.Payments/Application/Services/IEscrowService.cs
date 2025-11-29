@@ -29,6 +29,13 @@ public interface IEscrowService
     Task<RefundEscrowResult> RefundEscrowAsync(RefundEscrowCommand command);
 
     /// <summary>
+    /// Processes a partial refund on escrow funds.
+    /// </summary>
+    /// <param name="command">The partial refund escrow command.</param>
+    /// <returns>The result of the partial refund escrow operation.</returns>
+    Task<PartialRefundEscrowResult> PartialRefundEscrowAsync(PartialRefundEscrowCommand command);
+
+    /// <summary>
     /// Gets all escrow entries for an order.
     /// </summary>
     /// <param name="orderId">The order identifier.</param>
@@ -396,6 +403,113 @@ public class GetEscrowEntriesResult
     /// </summary>
     /// <returns>A not authorized result.</returns>
     public static GetEscrowEntriesResult NotAuthorized() => new()
+    {
+        Succeeded = false,
+        IsNotAuthorized = true,
+        Errors = ["Not authorized."]
+    };
+}
+
+/// <summary>
+/// Command to process a partial refund on escrow funds.
+/// </summary>
+public class PartialRefundEscrowCommand
+{
+    /// <summary>
+    /// Gets or sets the order ID.
+    /// </summary>
+    public Guid OrderId { get; set; }
+
+    /// <summary>
+    /// Gets or sets the seller ID for seller-specific partial refunds.
+    /// </summary>
+    public Guid SellerId { get; set; }
+
+    /// <summary>
+    /// Gets or sets the refund amount.
+    /// </summary>
+    public decimal Amount { get; set; }
+
+    /// <summary>
+    /// Gets or sets an optional audit note.
+    /// </summary>
+    public string? AuditNote { get; set; }
+}
+
+/// <summary>
+/// Result of processing a partial refund on escrow.
+/// </summary>
+public class PartialRefundEscrowResult
+{
+    /// <summary>
+    /// Gets a value indicating whether the operation succeeded.
+    /// </summary>
+    public bool Succeeded { get; private init; }
+
+    /// <summary>
+    /// Gets the list of errors if the operation failed.
+    /// </summary>
+    public IReadOnlyList<string> Errors { get; private init; } = [];
+
+    /// <summary>
+    /// Gets a value indicating whether the user is not authorized.
+    /// </summary>
+    public bool IsNotAuthorized { get; private init; }
+
+    /// <summary>
+    /// Gets the updated escrow entry.
+    /// </summary>
+    public EscrowEntry? Entry { get; private init; }
+
+    /// <summary>
+    /// Gets the amount that was refunded.
+    /// </summary>
+    public decimal RefundedAmount { get; private init; }
+
+    /// <summary>
+    /// Gets the remaining amount in escrow.
+    /// </summary>
+    public decimal RemainingAmount { get; private init; }
+
+    /// <summary>
+    /// Creates a successful result with the updated escrow entry.
+    /// </summary>
+    /// <param name="entry">The updated escrow entry.</param>
+    /// <param name="refundedAmount">The amount that was refunded.</param>
+    /// <param name="remainingAmount">The remaining amount in escrow.</param>
+    /// <returns>A successful result.</returns>
+    public static PartialRefundEscrowResult Success(EscrowEntry entry, decimal refundedAmount, decimal remainingAmount) => new()
+    {
+        Succeeded = true,
+        Errors = [],
+        Entry = entry,
+        RefundedAmount = refundedAmount,
+        RemainingAmount = remainingAmount
+    };
+
+    /// <summary>
+    /// Creates a failed result with errors.
+    /// </summary>
+    /// <param name="errors">The list of error messages.</param>
+    /// <returns>A failed result.</returns>
+    public static PartialRefundEscrowResult Failure(IReadOnlyList<string> errors) => new()
+    {
+        Succeeded = false,
+        Errors = errors
+    };
+
+    /// <summary>
+    /// Creates a failed result with a single error message.
+    /// </summary>
+    /// <param name="error">The error message.</param>
+    /// <returns>A failed result.</returns>
+    public static PartialRefundEscrowResult Failure(string error) => Failure([error]);
+
+    /// <summary>
+    /// Creates a not authorized result.
+    /// </summary>
+    /// <returns>A not authorized result.</returns>
+    public static PartialRefundEscrowResult NotAuthorized() => new()
     {
         Succeeded = false,
         IsNotAuthorized = true,

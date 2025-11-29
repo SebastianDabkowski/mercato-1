@@ -57,11 +57,13 @@ public class PaymentDbContext : DbContext
     /// </summary>
     public DbSet<InvoiceLineItem> InvoiceLineItems { get; set; } = null!;
 
+    /// <summary>
+    /// Gets or sets the refunds.
+    /// </summary>
+    public DbSet<Refund> Refunds { get; set; } = null!;
+
     // TODO: Define DbSet<Transaction> when Transaction entity is implemented
     // public DbSet<Transaction> Transactions { get; set; }
-
-    // TODO: Define DbSet<Refund> when Refund entity is implemented
-    // public DbSet<Refund> Refunds { get; set; }
 
     /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -75,6 +77,9 @@ public class PaymentDbContext : DbContext
             
             entity.Property(e => e.Amount)
                 .HasPrecision(18, 2);
+
+            entity.Property(e => e.RefundedAmount)
+                .HasPrecision(18, 2);
             
             entity.Property(e => e.Currency)
                 .HasMaxLength(3)
@@ -82,6 +87,9 @@ public class PaymentDbContext : DbContext
             
             entity.Property(e => e.AuditNote)
                 .HasMaxLength(500);
+
+            // RemainingAmount is a calculated property, ignore it
+            entity.Ignore(e => e.RemainingAmount);
 
             entity.HasIndex(e => e.OrderId);
             entity.HasIndex(e => e.PaymentTransactionId);
@@ -307,6 +315,53 @@ public class PaymentDbContext : DbContext
 
             entity.HasIndex(e => e.InvoiceId);
             entity.HasIndex(e => e.CommissionRecordId);
+        });
+
+        // Configure Refund entity
+        modelBuilder.Entity<Refund>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.Amount)
+                .HasPrecision(18, 2);
+
+            entity.Property(e => e.Currency)
+                .HasMaxLength(3)
+                .IsRequired();
+
+            entity.Property(e => e.Reason)
+                .HasMaxLength(1000)
+                .IsRequired();
+
+            entity.Property(e => e.ExternalReferenceId)
+                .HasMaxLength(200);
+
+            entity.Property(e => e.ErrorMessage)
+                .HasMaxLength(1000);
+
+            entity.Property(e => e.InitiatedByUserId)
+                .HasMaxLength(450)
+                .IsRequired();
+
+            entity.Property(e => e.InitiatedByRole)
+                .HasMaxLength(100)
+                .IsRequired();
+
+            entity.Property(e => e.CommissionRefunded)
+                .HasPrecision(18, 2);
+
+            entity.Property(e => e.EscrowRefunded)
+                .HasPrecision(18, 2);
+
+            entity.Property(e => e.AuditNote)
+                .HasMaxLength(500);
+
+            entity.HasIndex(e => e.PaymentTransactionId);
+            entity.HasIndex(e => e.OrderId);
+            entity.HasIndex(e => e.SellerId);
+            entity.HasIndex(e => e.Status);
+            entity.HasIndex(e => new { e.OrderId, e.SellerId });
+            entity.HasIndex(e => new { e.OrderId, e.Status });
         });
 
         // TODO: Configure other entity mappings when entities are defined
