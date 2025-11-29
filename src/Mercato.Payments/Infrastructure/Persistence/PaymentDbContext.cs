@@ -37,6 +37,16 @@ public class PaymentDbContext : DbContext
     /// </summary>
     public DbSet<Payout> Payouts { get; set; } = null!;
 
+    /// <summary>
+    /// Gets or sets the settlements.
+    /// </summary>
+    public DbSet<Settlement> Settlements { get; set; } = null!;
+
+    /// <summary>
+    /// Gets or sets the settlement line items.
+    /// </summary>
+    public DbSet<SettlementLineItem> SettlementLineItems { get; set; } = null!;
+
     // TODO: Define DbSet<Transaction> when Transaction entity is implemented
     // public DbSet<Transaction> Transactions { get; set; }
 
@@ -158,6 +168,76 @@ public class PaymentDbContext : DbContext
             entity.HasIndex(e => e.ScheduledAt);
             entity.HasIndex(e => new { e.SellerId, e.Status });
             entity.HasIndex(e => new { e.Status, e.ScheduledAt });
+        });
+
+        // Configure Settlement entity
+        modelBuilder.Entity<Settlement>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.Currency)
+                .HasMaxLength(3)
+                .IsRequired();
+
+            entity.Property(e => e.GrossSales)
+                .HasPrecision(18, 2);
+
+            entity.Property(e => e.TotalRefunds)
+                .HasPrecision(18, 2);
+
+            entity.Property(e => e.NetSales)
+                .HasPrecision(18, 2);
+
+            entity.Property(e => e.TotalCommission)
+                .HasPrecision(18, 2);
+
+            entity.Property(e => e.PreviousMonthAdjustments)
+                .HasPrecision(18, 2);
+
+            entity.Property(e => e.NetPayable)
+                .HasPrecision(18, 2);
+
+            entity.Property(e => e.AuditNotes)
+                .HasMaxLength(4000);
+
+            entity.HasIndex(e => e.SellerId);
+            entity.HasIndex(e => e.Status);
+            entity.HasIndex(e => new { e.Year, e.Month });
+            entity.HasIndex(e => new { e.SellerId, e.Year, e.Month }).IsUnique();
+
+            entity.HasMany(e => e.LineItems)
+                .WithOne(li => li.Settlement)
+                .HasForeignKey(li => li.SettlementId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Configure SettlementLineItem entity
+        modelBuilder.Entity<SettlementLineItem>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.OrderNumber)
+                .HasMaxLength(100)
+                .IsRequired();
+
+            entity.Property(e => e.GrossAmount)
+                .HasPrecision(18, 2);
+
+            entity.Property(e => e.RefundAmount)
+                .HasPrecision(18, 2);
+
+            entity.Property(e => e.NetAmount)
+                .HasPrecision(18, 2);
+
+            entity.Property(e => e.CommissionAmount)
+                .HasPrecision(18, 2);
+
+            entity.Property(e => e.AdjustmentNotes)
+                .HasMaxLength(500);
+
+            entity.HasIndex(e => e.SettlementId);
+            entity.HasIndex(e => e.OrderId);
+            entity.HasIndex(e => new { e.SettlementId, e.OrderId });
         });
 
         // TODO: Configure other entity mappings when entities are defined
