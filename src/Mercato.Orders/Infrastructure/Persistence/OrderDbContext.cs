@@ -63,6 +63,11 @@ public class OrderDbContext : DbContext
     /// </summary>
     public DbSet<ProductReview> ProductReviews { get; set; }
 
+    /// <summary>
+    /// Gets or sets the seller ratings DbSet.
+    /// </summary>
+    public DbSet<SellerRating> SellerRatings { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -245,6 +250,21 @@ public class OrderDbContext : DbContext
             entity.HasOne(e => e.SellerSubOrderItem)
                 .WithMany()
                 .HasForeignKey(e => e.SellerSubOrderItemId);
+            entity.HasOne(e => e.SellerSubOrder)
+                .WithMany()
+                .HasForeignKey(e => e.SellerSubOrderId);
+        });
+
+        modelBuilder.Entity<SellerRating>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.BuyerId).IsRequired().HasMaxLength(450);
+            entity.HasIndex(e => e.BuyerId);
+            entity.HasIndex(e => e.StoreId);
+            entity.HasIndex(e => e.OrderId);
+            entity.HasIndex(e => e.SellerSubOrderId).IsUnique();
+            entity.HasIndex(e => new { e.StoreId, e.CreatedAt })
+                .HasDatabaseName("IX_SellerRatings_StoreId_CreatedAt");
             entity.HasOne(e => e.SellerSubOrder)
                 .WithMany()
                 .HasForeignKey(e => e.SellerSubOrderId);
