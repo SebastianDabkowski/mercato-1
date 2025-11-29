@@ -53,6 +53,50 @@ public class ProductReviewRepository : IProductReviewRepository
     }
 
     /// <inheritdoc />
+    public async Task<(IReadOnlyList<ProductReview> reviews, int totalCount, double? averageRating)> GetPagedByProductIdAsync(
+        Guid productId,
+        int page,
+        int pageSize,
+        ReviewSortOption sortBy)
+    {
+        var baseQuery = _context.ProductReviews
+            .Where(r => r.ProductId == productId && r.Status == ReviewStatus.Published);
+
+        // Get total count and average rating in a single query using GroupBy
+        var aggregateData = await baseQuery
+            .GroupBy(r => 1)
+            .Select(g => new
+            {
+                TotalCount = g.Count(),
+                AverageRating = g.Average(r => (double?)r.Rating)
+            })
+            .FirstOrDefaultAsync();
+
+        var totalCount = aggregateData?.TotalCount ?? 0;
+        var averageRating = aggregateData?.AverageRating;
+
+        // Apply sorting
+        IQueryable<ProductReview> sortedQuery = sortBy switch
+        {
+            ReviewSortOption.HighestRating => baseQuery
+                .OrderByDescending(r => r.Rating)
+                .ThenByDescending(r => r.CreatedAt),
+            ReviewSortOption.LowestRating => baseQuery
+                .OrderBy(r => r.Rating)
+                .ThenByDescending(r => r.CreatedAt),
+            _ => baseQuery.OrderByDescending(r => r.CreatedAt) // Newest is default
+        };
+
+        // Apply pagination
+        var reviews = await sortedQuery
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        return (reviews, totalCount, averageRating);
+    }
+
+    /// <inheritdoc />
     public async Task<IReadOnlyList<ProductReview>> GetByOrderIdAsync(Guid orderId)
     {
         return await _context.ProductReviews

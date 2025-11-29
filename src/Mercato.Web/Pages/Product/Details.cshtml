@@ -169,6 +169,133 @@
                 <!-- Products will be loaded via JavaScript -->
             </div>
         </div>
+
+        <!-- Product Reviews Section -->
+        <div id="reviews-section" class="mt-5">
+            <h4 class="mb-3">Customer Reviews</h4>
+            
+            @if (Model.ReviewsResult != null && Model.ReviewsResult.Succeeded)
+            {
+                @if (Model.ReviewsResult.TotalCount > 0)
+                {
+                    var isNewest = string.IsNullOrEmpty(Model.ReviewsSortBy) || Model.ReviewsSortBy == "newest";
+                    var isHighest = Model.ReviewsSortBy == "highest";
+                    var isLowest = Model.ReviewsSortBy == "lowest";
+
+                    <!-- Average Rating Display -->
+                    <div class="mb-4">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="fs-4 text-warning">@DetailsModel.GetStarRating((int)Math.Round(Model.ReviewsResult.AverageRating ?? 0))</span>
+                            @if (Model.ReviewsResult.AverageRating.HasValue)
+                            {
+                                <span class="fs-5">@Model.ReviewsResult.AverageRating.Value.ToString("F1") out of 5</span>
+                            }
+                            <span class="text-muted">(@Model.ReviewsResult.TotalCount @(Model.ReviewsResult.TotalCount == 1 ? "review" : "reviews"))</span>
+                        </div>
+                    </div>
+
+                    <!-- Sort Options -->
+                    <div class="mb-3">
+                        <form method="get" class="d-flex align-items-center gap-2">
+                            <input type="hidden" name="id" value="@Model.Product.Id" />
+                            @if (!string.IsNullOrEmpty(Model.ReturnUrl))
+                            {
+                                <input type="hidden" name="ReturnUrl" value="@Model.ReturnUrl" />
+                            }
+                            <label for="reviewsSortBy" class="form-label mb-0">Sort by:</label>
+                            <select name="reviewsSortBy" id="reviewsSortBy" class="form-select" style="width: auto;" onchange="this.form.submit()">
+                                <option value="newest" selected="@isNewest">Newest</option>
+                                <option value="highest" selected="@isHighest">Highest Rating</option>
+                                <option value="lowest" selected="@isLowest">Lowest Rating</option>
+                            </select>
+                        </form>
+                    </div>
+
+                    <!-- Reviews List -->
+                    <div class="reviews-list">
+                        @foreach (var review in Model.ReviewsResult.Reviews)
+                        {
+                            <div class="card mb-3">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <span class="text-warning">@DetailsModel.GetStarRating(review.Rating)</span>
+                                        <small class="text-muted">@review.CreatedAt.ToString("MMM d, yyyy")</small>
+                                    </div>
+                                    <p class="card-text mb-0">@review.ReviewText</p>
+                                </div>
+                            </div>
+                        }
+                    </div>
+
+                    <!-- Pagination -->
+                    @if (Model.ReviewsResult.TotalPages > 1)
+                    {
+                        <nav aria-label="Reviews pagination" class="mt-4">
+                            <ul class="pagination justify-content-center">
+                                @if (Model.ReviewsResult.HasPreviousPage)
+                                {
+                                    <li class="page-item">
+                                        <a class="page-link" asp-page="/Product/Details" asp-route-id="@Model.Product.Id" 
+                                           asp-route-reviewsPage="@(Model.ReviewsResult.Page - 1)" 
+                                           asp-route-reviewsSortBy="@Model.ReviewsSortBy"
+                                           asp-route-returnUrl="@Model.ReturnUrl">Previous</a>
+                                    </li>
+                                }
+                                else
+                                {
+                                    <li class="page-item disabled">
+                                        <span class="page-link">Previous</span>
+                                    </li>
+                                }
+
+                                @for (var i = 1; i <= Model.ReviewsResult.TotalPages; i++)
+                                {
+                                    var pageNumber = i;
+                                    <li class="page-item @(pageNumber == Model.ReviewsResult.Page ? "active" : "")">
+                                        <a class="page-link" asp-page="/Product/Details" asp-route-id="@Model.Product.Id" 
+                                           asp-route-reviewsPage="@pageNumber" 
+                                           asp-route-reviewsSortBy="@Model.ReviewsSortBy"
+                                           asp-route-returnUrl="@Model.ReturnUrl">@pageNumber</a>
+                                    </li>
+                                }
+
+                                @if (Model.ReviewsResult.HasNextPage)
+                                {
+                                    <li class="page-item">
+                                        <a class="page-link" asp-page="/Product/Details" asp-route-id="@Model.Product.Id" 
+                                           asp-route-reviewsPage="@(Model.ReviewsResult.Page + 1)" 
+                                           asp-route-reviewsSortBy="@Model.ReviewsSortBy"
+                                           asp-route-returnUrl="@Model.ReturnUrl">Next</a>
+                                    </li>
+                                }
+                                else
+                                {
+                                    <li class="page-item disabled">
+                                        <span class="page-link">Next</span>
+                                    </li>
+                                }
+                            </ul>
+                        </nav>
+                    }
+                }
+                else
+                {
+                    <!-- No Reviews Placeholder -->
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle me-2"></i>
+                        This product has no reviews yet. Be the first to leave a review after purchasing!
+                    </div>
+                }
+            }
+            else
+            {
+                <!-- Error Loading Reviews -->
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    Unable to load reviews at this time. Please try again later.
+                </div>
+            }
+        </div>
     </div>
 }
 else

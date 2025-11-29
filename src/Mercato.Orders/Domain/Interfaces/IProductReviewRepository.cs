@@ -29,6 +29,20 @@ public interface IProductReviewRepository
     Task<IReadOnlyList<ProductReview>> GetByProductIdAsync(Guid productId);
 
     /// <summary>
+    /// Gets paginated product reviews for a specific product with sorting and average rating calculation.
+    /// </summary>
+    /// <param name="productId">The product ID.</param>
+    /// <param name="page">The page number (1-based).</param>
+    /// <param name="pageSize">The number of reviews per page.</param>
+    /// <param name="sortBy">The sort option for reviews.</param>
+    /// <returns>A tuple containing the reviews for the current page, total count of reviews, and average rating.</returns>
+    Task<(IReadOnlyList<ProductReview> reviews, int totalCount, double? averageRating)> GetPagedByProductIdAsync(
+        Guid productId,
+        int page,
+        int pageSize,
+        ReviewSortOption sortBy);
+
+    /// <summary>
     /// Gets all product reviews for a specific order.
     /// </summary>
     /// <param name="orderId">The order ID.</param>
