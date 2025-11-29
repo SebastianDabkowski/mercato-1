@@ -28,6 +28,8 @@ public class ReturnRequestServiceTests
     private readonly Mock<ICaseMessageRepository> _mockCaseMessageRepository;
     private readonly Mock<IOrderConfirmationEmailService> _mockEmailService;
     private readonly Mock<IShippingNotificationService> _mockShippingNotificationService;
+    private readonly Mock<ISellerNotificationEmailService> _mockSellerNotificationEmailService;
+    private readonly Mock<IStoreEmailProvider> _mockStoreEmailProvider;
     private readonly Mock<IRefundService> _mockRefundService;
     private readonly Mock<ILogger<OrderService>> _mockLogger;
     private readonly ReturnSettings _returnSettings;
@@ -42,9 +44,17 @@ public class ReturnRequestServiceTests
         _mockCaseMessageRepository = new Mock<ICaseMessageRepository>(MockBehavior.Strict);
         _mockEmailService = new Mock<IOrderConfirmationEmailService>(MockBehavior.Strict);
         _mockShippingNotificationService = new Mock<IShippingNotificationService>(MockBehavior.Strict);
+        _mockSellerNotificationEmailService = new Mock<ISellerNotificationEmailService>(MockBehavior.Strict);
+        _mockStoreEmailProvider = new Mock<IStoreEmailProvider>(MockBehavior.Strict);
         _mockRefundService = new Mock<IRefundService>(MockBehavior.Strict);
         _mockLogger = new Mock<ILogger<OrderService>>();
         _returnSettings = new ReturnSettings { ReturnWindowDays = 30 };
+
+        // Setup default store email provider behavior
+        _mockStoreEmailProvider.Setup(p => p.GetStoreEmailsAsync(It.IsAny<IEnumerable<Guid>>()))
+            .ReturnsAsync(new Dictionary<Guid, string>());
+        _mockStoreEmailProvider.Setup(p => p.GetStoreEmailAsync(It.IsAny<Guid>()))
+            .ReturnsAsync((string?)null);
 
         _service = new OrderService(
             _mockOrderRepository.Object,
@@ -54,6 +64,8 @@ public class ReturnRequestServiceTests
             _mockCaseMessageRepository.Object,
             _mockEmailService.Object,
             _mockShippingNotificationService.Object,
+            _mockSellerNotificationEmailService.Object,
+            _mockStoreEmailProvider.Object,
             _mockRefundService.Object,
             Options.Create(_returnSettings),
             _mockLogger.Object);

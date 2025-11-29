@@ -13,6 +13,8 @@ public class PayoutService : IPayoutService
 {
     private readonly IPayoutRepository _payoutRepository;
     private readonly IEscrowRepository _escrowRepository;
+    private readonly IPayoutNotificationService _payoutNotificationService;
+    private readonly ISellerEmailProvider _sellerEmailProvider;
     private readonly ILogger<PayoutService> _logger;
     private readonly PayoutSettings _payoutSettings;
 
@@ -21,16 +23,22 @@ public class PayoutService : IPayoutService
     /// </summary>
     /// <param name="payoutRepository">The payout repository.</param>
     /// <param name="escrowRepository">The escrow repository.</param>
+    /// <param name="payoutNotificationService">The payout notification service.</param>
+    /// <param name="sellerEmailProvider">The seller email provider.</param>
     /// <param name="logger">The logger.</param>
     /// <param name="payoutSettings">The payout settings.</param>
     public PayoutService(
         IPayoutRepository payoutRepository,
         IEscrowRepository escrowRepository,
+        IPayoutNotificationService payoutNotificationService,
+        ISellerEmailProvider sellerEmailProvider,
         ILogger<PayoutService> logger,
         IOptions<PayoutSettings> payoutSettings)
     {
         _payoutRepository = payoutRepository;
         _escrowRepository = escrowRepository;
+        _payoutNotificationService = payoutNotificationService;
+        _sellerEmailProvider = sellerEmailProvider;
         _logger = logger;
         _payoutSettings = payoutSettings.Value;
     }
@@ -196,6 +204,10 @@ public class PayoutService : IPayoutService
 
         await _payoutRepository.UpdateRangeAsync(payoutsToProcess);
 
+        // Send payout processed notifications to sellers
+        var successfulPayouts = payoutsToProcess.Where(p => p.Status == PayoutStatus.Paid).ToList();
+        await SendPayoutNotificationsAsync(successfulPayouts);
+
         _logger.LogInformation(
             "Processed {TotalCount} payouts. Success: {SuccessCount}, Failed: {FailedCount}. BatchId: {BatchId}",
             payoutsToProcess.Count,
@@ -285,6 +297,10 @@ public class PayoutService : IPayoutService
         }
 
         await _payoutRepository.UpdateRangeAsync(payoutsToRetry);
+
+        // Send payout processed notifications to sellers for successful retries
+        var successfulPayouts = payoutsToRetry.Where(p => p.Status == PayoutStatus.Paid).ToList();
+        await SendPayoutNotificationsAsync(successfulPayouts);
 
         _logger.LogInformation(
             "Retried {TotalCount} payouts. Success: {SuccessCount}, Failed: {FailedCount}",
@@ -385,5 +401,49 @@ public class PayoutService : IPayoutService
         }
 
         return errors;
+    }
+
+    /// <summary>
+    /// Sends payout processed notification emails to sellers.
+    /// </summary>
+    private async Task SendPayoutNotificationsAsync(IReadOnlyList<Payout> payouts)
+    {
+        if (payouts.Count == 0)
+        {
+            return;
+        }
+
+        try
+        {
+            var sellerIds = payouts.Select(p => p.SellerId).Distinct().ToList();
+            var sellerEmails = await _sellerEmailProvider.GetSellerEmailsAsync(sellerIds);
+
+            foreach (var payout in payouts)
+            {
+                if (sellerEmails.TryGetValue(payout.SellerId, out var sellerEmail))
+                {
+                    var result = await _payoutNotificationService.SendPayoutProcessedNotificationAsync(payout, sellerEmail);
+                    if (!result.Succeeded)
+                    {
+                        _logger.LogWarning(
+                            "Failed to send payout notification for payout {PayoutId} to seller: {Errors}",
+                            payout.Id, string.Join(", ", result.Errors));
+                    }
+                }
+                else
+                {
+                    _logger.LogWarning(
+                        "No contact email found for seller {SellerId} - cannot send payout notification for payout {PayoutId}",
+                        payout.SellerId, payout.Id);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            // Log but don't fail the main operation if notification sending fails
+            _logger.LogWarning(ex,
+                "Failed to send payout notifications for {PayoutCount} payouts",
+                payouts.Count);
+        }
     }
 }

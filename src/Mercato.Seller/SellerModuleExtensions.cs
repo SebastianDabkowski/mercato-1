@@ -1,3 +1,5 @@
+using Mercato.Orders.Application.Services;
+using Mercato.Payments.Application.Services;
 using Mercato.Seller.Application.Services;
 using Mercato.Seller.Domain.Interfaces;
 using Mercato.Seller.Infrastructure;
@@ -22,6 +24,9 @@ public static class SellerModuleExtensions
         services.AddDbContext<SellerDbContext>(options =>
             options.UseSqlServer(connectionString));
 
+        // Configure seller email settings
+        services.Configure<SellerEmailSettings>(configuration.GetSection("SellerEmail"));
+
         // Register repositories
         services.AddScoped<IKycRepository, KycRepository>();
         services.AddScoped<ISellerOnboardingRepository, SellerOnboardingRepository>();
@@ -40,6 +45,10 @@ public static class SellerModuleExtensions
         services.AddScoped<IStoreUserService, StoreUserService>();
         services.AddScoped<IShippingMethodService, ShippingMethodService>();
         services.AddScoped<ISellerReputationService, SellerReputationService>();
+        services.AddScoped<ISellerNotificationEmailService, SellerNotificationEmailService>();
+        services.AddScoped<IStoreEmailProvider, StoreEmailProvider>();
+        services.AddScoped<IPayoutNotificationService, PayoutNotificationService>();
+        services.AddScoped<ISellerEmailProvider, SellerEmailProvider>();
 
         return services;
     }

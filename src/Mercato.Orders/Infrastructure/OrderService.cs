@@ -22,6 +22,8 @@ public class OrderService : IOrderService
     private readonly ICaseMessageRepository _caseMessageRepository;
     private readonly IOrderConfirmationEmailService _emailService;
     private readonly IShippingNotificationService _shippingNotificationService;
+    private readonly ISellerNotificationEmailService _sellerNotificationEmailService;
+    private readonly IStoreEmailProvider _storeEmailProvider;
     private readonly IRefundService _refundService;
     private readonly ReturnSettings _returnSettings;
     private readonly ILogger<OrderService> _logger;
@@ -36,6 +38,8 @@ public class OrderService : IOrderService
     /// <param name="caseMessageRepository">The case message repository.</param>
     /// <param name="emailService">The email service.</param>
     /// <param name="shippingNotificationService">The shipping notification service.</param>
+    /// <param name="sellerNotificationEmailService">The seller notification email service.</param>
+    /// <param name="storeEmailProvider">The store email provider.</param>
     /// <param name="refundService">The refund service.</param>
     /// <param name="returnSettings">The return settings.</param>
     /// <param name="logger">The logger.</param>
@@ -47,6 +51,8 @@ public class OrderService : IOrderService
         ICaseMessageRepository caseMessageRepository,
         IOrderConfirmationEmailService emailService,
         IShippingNotificationService shippingNotificationService,
+        ISellerNotificationEmailService sellerNotificationEmailService,
+        IStoreEmailProvider storeEmailProvider,
         IRefundService refundService,
         IOptions<ReturnSettings> returnSettings,
         ILogger<OrderService> logger)
@@ -58,6 +64,8 @@ public class OrderService : IOrderService
         _caseMessageRepository = caseMessageRepository;
         _emailService = emailService;
         _shippingNotificationService = shippingNotificationService;
+        _sellerNotificationEmailService = sellerNotificationEmailService;
+        _storeEmailProvider = storeEmailProvider;
         _refundService = refundService;
         _returnSettings = returnSettings.Value;
         _logger = logger;
@@ -167,6 +175,9 @@ public class OrderService : IOrderService
             }
 
             await _orderRepository.AddAsync(order);
+
+            // Send new order notifications to each seller
+            await SendNewOrderNotificationsAsync(order);
 
             _logger.LogInformation(
                 "Created order {OrderNumber} for buyer {BuyerId} with {ItemCount} items and {SubOrderCount} seller sub-orders, total {TotalAmount}",
@@ -1045,6 +1056,9 @@ public class OrderService : IOrderService
             };
 
             await _returnRequestRepository.AddAsync(returnRequest);
+
+            // Send return/complaint notification to the seller
+            await SendReturnOrComplaintNotificationAsync(returnRequest, subOrder);
 
             _logger.LogInformation(
                 "Created {CaseType} case {CaseNumber} for sub-order {SubOrderNumber} by buyer {BuyerId} with {ItemCount} items",
@@ -2208,5 +2222,78 @@ public class OrderService : IOrderService
         }
 
         return errors;
+    }
+
+    /// <summary>
+    /// Sends new order notification emails to all sellers with products in the order.
+    /// </summary>
+    private async Task SendNewOrderNotificationsAsync(Order order)
+    {
+        try
+        {
+            var storeIds = order.SellerSubOrders.Select(s => s.StoreId).Distinct().ToList();
+            var storeEmails = await _storeEmailProvider.GetStoreEmailsAsync(storeIds);
+
+            foreach (var subOrder in order.SellerSubOrders)
+            {
+                if (storeEmails.TryGetValue(subOrder.StoreId, out var sellerEmail))
+                {
+                    var emailResult = await _sellerNotificationEmailService.SendNewOrderNotificationAsync(subOrder, order, sellerEmail);
+                    if (!emailResult.Succeeded)
+                    {
+                        _logger.LogWarning(
+                            "Failed to send new order notification for sub-order {SubOrderNumber} to seller: {Errors}",
+                            subOrder.SubOrderNumber, string.Join(", ", emailResult.Errors));
+                    }
+                }
+                else
+                {
+                    _logger.LogWarning(
+                        "No contact email found for store {StoreId} - cannot send new order notification for sub-order {SubOrderNumber}",
+                        subOrder.StoreId, subOrder.SubOrderNumber);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            // Log but don't fail the main operation if notification sending fails
+            _logger.LogWarning(ex,
+                "Failed to send new order notifications for order {OrderNumber}",
+                order.OrderNumber);
+        }
+    }
+
+    /// <summary>
+    /// Sends a return or complaint notification email to the seller.
+    /// </summary>
+    private async Task SendReturnOrComplaintNotificationAsync(ReturnRequest returnRequest, SellerSubOrder subOrder)
+    {
+        try
+        {
+            var sellerEmail = await _storeEmailProvider.GetStoreEmailAsync(subOrder.StoreId);
+            if (!string.IsNullOrEmpty(sellerEmail))
+            {
+                var emailResult = await _sellerNotificationEmailService.SendReturnOrComplaintNotificationAsync(returnRequest, subOrder, sellerEmail);
+                if (!emailResult.Succeeded)
+                {
+                    _logger.LogWarning(
+                        "Failed to send return/complaint notification for case {CaseNumber} to seller: {Errors}",
+                        returnRequest.CaseNumber, string.Join(", ", emailResult.Errors));
+                }
+            }
+            else
+            {
+                _logger.LogWarning(
+                    "No contact email found for store {StoreId} - cannot send return/complaint notification for case {CaseNumber}",
+                    subOrder.StoreId, returnRequest.CaseNumber);
+            }
+        }
+        catch (Exception ex)
+        {
+            // Log but don't fail the main operation if notification sending fails
+            _logger.LogWarning(ex,
+                "Failed to send return/complaint notification for case {CaseNumber}",
+                returnRequest.CaseNumber);
+        }
     }
 }
