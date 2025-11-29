@@ -169,10 +169,11 @@
                             {
                                 var isSelected = Model.SelectedPaymentMethodId == method.Id;
                                 <div class="form-check border rounded p-3 mb-2 @(isSelected ? "border-primary bg-light" : "")">
-                                    <input class="form-check-input" type="radio"
+                                    <input class="form-check-input payment-method-radio" type="radio"
                                            name="SelectedPaymentMethodId"
                                            id="payment-@method.Id"
                                            value="@method.Id"
+                                           data-method-id="@method.Id"
                                            checked="@isSelected">
                                     <label class="form-check-label w-100" for="payment-@method.Id">
                                         <div class="d-flex align-items-center">
@@ -191,6 +192,27 @@
                                 </div>
                             }
 
+                            <!-- BLIK Code Input (hidden by default, shown when BLIK is selected) -->
+                            <div id="blik-code-section" class="@(Model.RequiresBlikCode || Model.SelectedPaymentMethodId == "blik" ? "" : "d-none")">
+                                <div class="alert alert-info mt-3">
+                                    <i class="bi bi-phone me-2"></i>
+                                    <strong>Enter your BLIK code</strong>
+                                    <p class="mb-2 mt-1 small">Open your banking app, generate a BLIK code, and enter it below.</p>
+                                    <div class="input-group" style="max-width: 200px;">
+                                        <input type="text"
+                                               class="form-control text-center fw-bold"
+                                               name="BlikCode"
+                                               id="blik-code-input"
+                                               placeholder="000000"
+                                               maxlength="6"
+                                               pattern="[0-9]{6}"
+                                               inputmode="numeric"
+                                               value="@Model.BlikCode">
+                                    </div>
+                                    <small class="text-muted">6-digit code from your banking app</small>
+                                </div>
+                            </div>
+
                             <div class="alert alert-info mt-3 mb-0">
                                 <i class="bi bi-shield-check me-2"></i>
                                 <small>Your payment information is secure. This is a simulated payment for demonstration purposes.</small>
@@ -205,6 +227,12 @@
                                 {
                                     <button type="submit" class="btn btn-success btn-lg" disabled>
                                         <i class="bi bi-lock me-1"></i>Pay @Model.TotalAmount.ToString("C")
+                                    </button>
+                                }
+                                else if (Model.RequiresBlikCode)
+                                {
+                                    <button type="submit" asp-page-handler="SubmitBlikCode" class="btn btn-success btn-lg">
+                                        <i class="bi bi-check-circle me-1"></i>Confirm BLIK Payment @Model.TotalAmount.ToString("C")
                                     </button>
                                 }
                                 else
@@ -288,4 +316,34 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const blikSection = document.getElementById('blik-code-section');
+            const blikInput = document.getElementById('blik-code-input');
+            const paymentRadios = document.querySelectorAll('.payment-method-radio');
+            
+            function toggleBlikSection() {
+                const selectedRadio = document.querySelector('.payment-method-radio:checked');
+                if (selectedRadio && selectedRadio.value === 'blik') {
+                    blikSection.classList.remove('d-none');
+                    if (blikInput) {
+                        blikInput.focus();
+                    }
+                } else {
+                    blikSection.classList.add('d-none');
+                }
+            }
+            
+            paymentRadios.forEach(function(radio) {
+                radio.addEventListener('change', toggleBlikSection);
+            });
+            
+            // BLIK code input - allow only digits
+            if (blikInput) {
+                blikInput.addEventListener('input', function(e) {
+                    this.value = this.value.replace(/[^0-9]/g, '').slice(0, 6);
+                });
+            }
+        });
+    </script>
 }

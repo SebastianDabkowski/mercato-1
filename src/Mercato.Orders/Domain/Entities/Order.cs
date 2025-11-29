@@ -137,6 +137,11 @@ public class Order
     public DateTimeOffset? RefundedAt { get; set; }
 
     /// <summary>
+    /// Gets or sets the date and time when the order payment failed.
+    /// </summary>
+    public DateTimeOffset? FailedAt { get; set; }
+
+    /// <summary>
     /// Navigation property to the order items.
     /// </summary>
     public ICollection<OrderItem> Items { get; set; } = new List<OrderItem>();
