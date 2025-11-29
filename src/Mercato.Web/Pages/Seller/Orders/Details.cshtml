@@ -28,11 +28,26 @@
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
                 <h1 class="mb-1">@subOrder.SubOrderNumber</h1>
+                <p class="text-muted mb-0">
+                    <small>Sub-Order ID: <code>@subOrder.Id</code></small>
+                </p>
                 <p class="text-muted mb-0">Received on @subOrder.CreatedAt.ToString("MMMM dd, yyyy 'at' h:mm tt")</p>
+                @if (Model.ParentOrder != null)
+                {
+                    <p class="text-muted mb-0">
+                        <small>Parent Order: <strong>@Model.ParentOrder.OrderNumber</strong> (ID: <code>@Model.ParentOrder.Id</code>)</small>
+                    </p>
+                }
             </div>
-            <span class="badge fs-6 @DetailsModel.GetStatusBadgeClass(subOrder.Status)">
-                @DetailsModel.GetStatusDisplayText(subOrder.Status)
-            </span>
+            <div class="text-end">
+                <span class="badge fs-6 @DetailsModel.GetStatusBadgeClass(subOrder.Status)">
+                    @DetailsModel.GetStatusDisplayText(subOrder.Status)
+                </span>
+                <br>
+                <span class="badge fs-6 mt-2 @DetailsModel.GetPaymentStatusBadgeClass(subOrder.Status)">
+                    <i class="bi bi-credit-card me-1"></i>@DetailsModel.GetPaymentStatusDisplayText(subOrder.Status)
+                </span>
+            </div>
         </div>
 
         <div class="row">
@@ -51,6 +66,7 @@
                                         <th>Product</th>
                                         <th class="text-center">Quantity</th>
                                         <th class="text-end">Unit Price</th>
+                                        <th class="text-end">Tax</th>
                                         <th class="text-end">Total</th>
                                     </tr>
                                 </thead>
@@ -63,21 +79,22 @@
                                             </td>
                                             <td class="text-center align-middle">@item.Quantity</td>
                                             <td class="text-end align-middle">@item.UnitPrice.ToString("C")</td>
+                                            <td class="text-end align-middle text-muted">N/A</td>
                                             <td class="text-end align-middle">@item.TotalPrice.ToString("C")</td>
                                         </tr>
                                     }
                                 </tbody>
                                 <tfoot class="table-light">
                                     <tr>
-                                        <td colspan="3" class="text-end"><strong>Subtotal:</strong></td>
+                                        <td colspan="4" class="text-end"><strong>Subtotal:</strong></td>
                                         <td class="text-end"><strong>@subOrder.ItemsSubtotal.ToString("C")</strong></td>
                                     </tr>
                                     <tr>
-                                        <td colspan="3" class="text-end text-muted">Shipping:</td>
+                                        <td colspan="4" class="text-end text-muted">Shipping:</td>
                                         <td class="text-end text-muted">@subOrder.ShippingCost.ToString("C")</td>
                                     </tr>
                                     <tr>
-                                        <td colspan="3" class="text-end"><strong>Total:</strong></td>
+                                        <td colspan="4" class="text-end"><strong>Total:</strong></td>
                                         <td class="text-end"><strong class="text-primary fs-5">@subOrder.TotalAmount.ToString("C")</strong></td>
                                     </tr>
                                 </tfoot>
@@ -136,14 +153,24 @@
                     </div>
                 }
 
-                @* Tracking Information *@
-                @if (!string.IsNullOrEmpty(subOrder.TrackingNumber))
-                {
-                    <div class="card mb-4">
-                        <div class="card-header">
-                            <h5 class="mb-0"><i class="bi bi-truck me-2"></i>Shipping Information</h5>
+                @* Shipping Information *@
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-truck me-2"></i>Shipping Information</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <strong>Shipping Method:</strong>
+                                <span class="ms-2">@(subOrder.ShippingMethodName ?? "Standard Shipping")</span>
+                            </div>
+                            <div class="col-md-6">
+                                <strong>Shipping Cost:</strong>
+                                <span class="ms-2">@subOrder.ShippingCost.ToString("C")</span>
+                            </div>
                         </div>
-                        <div class="card-body">
+                        @if (!string.IsNullOrEmpty(subOrder.TrackingNumber))
+                        {
                             <div class="row">
                                 <div class="col-md-6">
                                     <strong>Carrier:</strong>
@@ -160,14 +187,22 @@
                                     <small>Shipped on @subOrder.ShippedAt.Value.ToString("MMMM dd, yyyy 'at' h:mm tt")</small>
                                 </div>
                             }
-                        </div>
+                        }
+                        @if (Model.ParentOrder != null && !string.IsNullOrEmpty(Model.ParentOrder.DeliveryInstructions))
+                        {
+                            <hr>
+                            <div class="mt-3">
+                                <strong><i class="bi bi-info-circle me-1"></i>Delivery Instructions:</strong>
+                                <p class="mb-0 mt-2 text-muted">@Model.ParentOrder.DeliveryInstructions</p>
+                            </div>
+                        }
                     </div>
-                }
+                </div>
 
-                @* Timeline *@
+                @* Timeline / Activity Log *@
                 <div class="card mb-4">
                     <div class="card-header">
-                        <h5 class="mb-0"><i class="bi bi-clock-history me-2"></i>Timeline</h5>
+                        <h5 class="mb-0"><i class="bi bi-clock-history me-2"></i>Activity Log</h5>
                     </div>
                     <div class="card-body">
                         <ul class="list-unstyled mb-0">
@@ -188,12 +223,27 @@
                                     </div>
                                 </li>
                             }
+                            @if (subOrder.Status == Mercato.Orders.Domain.Entities.SellerSubOrderStatus.Preparing ||
+                                 subOrder.ShippedAt.HasValue || subOrder.DeliveredAt.HasValue)
+                            {
+                                <li class="d-flex align-items-start mb-3">
+                                    <span class="badge bg-success rounded-circle p-2 me-3"><i class="bi bi-check"></i></span>
+                                    <div>
+                                        <strong>Preparing for Shipment</strong>
+                                        <br><small class="text-muted">Status updated</small>
+                                    </div>
+                                </li>
+                            }
                             @if (subOrder.ShippedAt.HasValue)
                             {
                                 <li class="d-flex align-items-start mb-3">
                                     <span class="badge bg-success rounded-circle p-2 me-3"><i class="bi bi-check"></i></span>
                                     <div>
                                         <strong>Shipped</strong>
+                                        @if (!string.IsNullOrEmpty(subOrder.ShippingCarrier) || !string.IsNullOrEmpty(subOrder.TrackingNumber))
+                                        {
+                                            <span class="text-muted"> - @(subOrder.ShippingCarrier ?? "Carrier") @(!string.IsNullOrEmpty(subOrder.TrackingNumber) ? $"#{subOrder.TrackingNumber}" : "")</span>
+                                        }
                                         <br><small class="text-muted">@subOrder.ShippedAt.Value.ToString("MMMM dd, yyyy 'at' h:mm tt")</small>
                                     </div>
                                 </li>
@@ -218,13 +268,57 @@
                                     </div>
                                 </li>
                             }
+                            @if (subOrder.RefundedAt.HasValue)
+                            {
+                                <li class="d-flex align-items-start mb-3">
+                                    <span class="badge bg-dark rounded-circle p-2 me-3"><i class="bi bi-arrow-counterclockwise"></i></span>
+                                    <div>
+                                        <strong>Refunded</strong>
+                                        <br><small class="text-muted">@subOrder.RefundedAt.Value.ToString("MMMM dd, yyyy 'at' h:mm tt")</small>
+                                    </div>
+                                </li>
+                            }
                         </ul>
                     </div>
                 </div>
             </div>
 
-            @* Right Column - Delivery Address *@
+            @* Right Column - Delivery Address and Buyer Contact *@
             <div class="col-lg-4">
+                @* Buyer Contact Section *@
+                @if (Model.ParentOrder != null)
+                {
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="bi bi-person me-2"></i>Buyer Contact</h5>
+                        </div>
+                        <div class="card-body">
+                            <p class="text-muted small mb-3">
+                                <i class="bi bi-shield-check me-1"></i>
+                                Contact information for fulfilment purposes only.
+                            </p>
+                            <div class="mb-2">
+                                <strong><i class="bi bi-person-fill me-2"></i>Name:</strong>
+                                <span class="ms-2">@Model.ParentOrder.DeliveryFullName</span>
+                            </div>
+                            @if (!string.IsNullOrEmpty(Model.ParentOrder.BuyerEmail))
+                            {
+                                <div class="mb-2">
+                                    <strong><i class="bi bi-envelope me-2"></i>Email:</strong>
+                                    <span class="ms-2"><a href="mailto:@Model.ParentOrder.BuyerEmail">@Model.ParentOrder.BuyerEmail</a></span>
+                                </div>
+                            }
+                            @if (!string.IsNullOrEmpty(Model.ParentOrder.DeliveryPhoneNumber))
+                            {
+                                <div class="mb-2">
+                                    <strong><i class="bi bi-telephone me-2"></i>Phone:</strong>
+                                    <span class="ms-2"><a href="tel:@Model.ParentOrder.DeliveryPhoneNumber">@Model.ParentOrder.DeliveryPhoneNumber</a></span>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+
                 @* Delivery Address *@
                 @if (Model.ParentOrder != null)
                 {
@@ -241,10 +335,6 @@
                             }
                             @Model.ParentOrder.DeliveryCity@(string.IsNullOrEmpty(Model.ParentOrder.DeliveryState) ? "" : ", " + Model.ParentOrder.DeliveryState) @Model.ParentOrder.DeliveryPostalCode<br>
                             @Model.ParentOrder.DeliveryCountry
-                            @if (!string.IsNullOrEmpty(Model.ParentOrder.DeliveryPhoneNumber))
-                            {
-                                <br><span class="text-muted small"><i class="bi bi-telephone me-1"></i>@Model.ParentOrder.DeliveryPhoneNumber</span>
-                            }
                         </div>
                     </div>
                 }

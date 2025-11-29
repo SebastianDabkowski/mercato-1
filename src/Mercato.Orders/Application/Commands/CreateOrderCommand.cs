@@ -11,6 +11,11 @@ public class CreateOrderCommand
     public string BuyerId { get; set; } = string.Empty;
 
     /// <summary>
+    /// Gets or sets the buyer email address for order communication.
+    /// </summary>
+    public string? BuyerEmail { get; set; }
+
+    /// <summary>
     /// Gets or sets the payment transaction ID.
     /// </summary>
     public Guid PaymentTransactionId { get; set; }
@@ -75,6 +80,11 @@ public class CreateOrderItem
     /// Gets or sets the product image URL.
     /// </summary>
     public string? ProductImageUrl { get; set; }
+
+    /// <summary>
+    /// Gets or sets the shipping method name chosen by the buyer for this store.
+    /// </summary>
+    public string? ShippingMethodName { get; set; }
 }
 
 /// <summary>
@@ -121,4 +131,9 @@ public class DeliveryAddressInfo
     /// Gets or sets the phone number.
     /// </summary>
     public string? PhoneNumber { get; set; }
+
+    /// <summary>
+    /// Gets or sets the delivery instructions provided by the buyer.
+    /// </summary>
+    public string? DeliveryInstructions { get; set; }
 }

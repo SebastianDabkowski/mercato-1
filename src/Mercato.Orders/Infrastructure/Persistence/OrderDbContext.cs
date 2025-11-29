@@ -59,6 +59,8 @@ public class OrderDbContext : DbContext
             entity.Property(e => e.DeliveryPostalCode).IsRequired().HasMaxLength(20);
             entity.Property(e => e.DeliveryCountry).IsRequired().HasMaxLength(2);
             entity.Property(e => e.DeliveryPhoneNumber).HasMaxLength(30);
+            entity.Property(e => e.BuyerEmail).HasMaxLength(256);
+            entity.Property(e => e.DeliveryInstructions).HasMaxLength(1000);
             entity.HasMany(e => e.Items).WithOne(i => i.Order).HasForeignKey(i => i.OrderId);
             entity.HasMany(e => e.SellerSubOrders).WithOne(s => s.Order).HasForeignKey(s => s.OrderId);
         });
@@ -87,6 +89,7 @@ public class OrderDbContext : DbContext
             entity.Property(e => e.TotalAmount).HasPrecision(18, 2);
             entity.Property(e => e.TrackingNumber).HasMaxLength(100);
             entity.Property(e => e.ShippingCarrier).HasMaxLength(100);
+            entity.Property(e => e.ShippingMethodName).HasMaxLength(100);
             entity.HasMany(e => e.Items).WithOne(i => i.SellerSubOrder).HasForeignKey(i => i.SellerSubOrderId);
         });
 

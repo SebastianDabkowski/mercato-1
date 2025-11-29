@@ -1701,4 +1701,135 @@ public class OrderServiceTests
     }
 
     #endregion
+
+    #region CreateOrderAsync with Buyer Email and Delivery Instructions Tests
+
+    [Fact]
+    public async Task CreateOrderAsync_WithBuyerEmail_SetsBuyerEmail()
+    {
+        // Arrange
+        var command = CreateTestOrderCommand();
+        command.BuyerEmail = "buyer@example.com";
+
+        _mockOrderRepository.Setup(r => r.AddAsync(It.IsAny<Order>()))
+            .ReturnsAsync((Order o) => o);
+
+        // Act
+        var result = await _service.CreateOrderAsync(command);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        _mockOrderRepository.Verify(r => r.AddAsync(It.Is<Order>(o =>
+            o.BuyerEmail == "buyer@example.com")), Times.Once);
+    }
+
+    [Fact]
+    public async Task CreateOrderAsync_WithDeliveryInstructions_SetsDeliveryInstructions()
+    {
+        // Arrange
+        var command = CreateTestOrderCommand();
+        command.DeliveryAddress.DeliveryInstructions = "Leave at the front door";
+
+        _mockOrderRepository.Setup(r => r.AddAsync(It.IsAny<Order>()))
+            .ReturnsAsync((Order o) => o);
+
+        // Act
+        var result = await _service.CreateOrderAsync(command);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        _mockOrderRepository.Verify(r => r.AddAsync(It.Is<Order>(o =>
+            o.DeliveryInstructions == "Leave at the front door")), Times.Once);
+    }
+
+    [Fact]
+    public async Task CreateOrderAsync_WithShippingMethodName_SetsShippingMethodOnSubOrder()
+    {
+        // Arrange
+        var command = new CreateOrderCommand
+        {
+            BuyerId = TestBuyerId,
+            PaymentTransactionId = TestTransactionId,
+            Items = new List<CreateOrderItem>
+            {
+                new CreateOrderItem
+                {
+                    ProductId = TestProductId,
+                    StoreId = TestStoreId,
+                    ProductTitle = "Test Product",
+                    UnitPrice = 29.99m,
+                    Quantity = 2,
+                    StoreName = "Test Store",
+                    ShippingMethodName = "Express Shipping"
+                }
+            },
+            ShippingTotal = 5.99m,
+            DeliveryAddress = CreateTestDeliveryAddress()
+        };
+
+        _mockOrderRepository.Setup(r => r.AddAsync(It.IsAny<Order>()))
+            .ReturnsAsync((Order o) => o);
+
+        // Act
+        var result = await _service.CreateOrderAsync(command);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        _mockOrderRepository.Verify(r => r.AddAsync(It.Is<Order>(o =>
+            o.SellerSubOrders.Count == 1 &&
+            o.SellerSubOrders.First().ShippingMethodName == "Express Shipping")), Times.Once);
+    }
+
+    [Fact]
+    public async Task CreateOrderAsync_WithAllNewFields_SetsAllFieldsCorrectly()
+    {
+        // Arrange
+        var command = new CreateOrderCommand
+        {
+            BuyerId = TestBuyerId,
+            BuyerEmail = "buyer@example.com",
+            PaymentTransactionId = TestTransactionId,
+            PaymentMethodName = "Credit Card",
+            Items = new List<CreateOrderItem>
+            {
+                new CreateOrderItem
+                {
+                    ProductId = TestProductId,
+                    StoreId = TestStoreId,
+                    ProductTitle = "Test Product",
+                    UnitPrice = 29.99m,
+                    Quantity = 2,
+                    StoreName = "Test Store",
+                    ShippingMethodName = "Standard Shipping"
+                }
+            },
+            ShippingTotal = 5.99m,
+            DeliveryAddress = new DeliveryAddressInfo
+            {
+                FullName = "Test Buyer",
+                AddressLine1 = "123 Test St",
+                City = "Test City",
+                State = "TS",
+                PostalCode = "12345",
+                Country = "US",
+                PhoneNumber = "+1234567890",
+                DeliveryInstructions = "Ring the doorbell"
+            }
+        };
+
+        _mockOrderRepository.Setup(r => r.AddAsync(It.IsAny<Order>()))
+            .ReturnsAsync((Order o) => o);
+
+        // Act
+        var result = await _service.CreateOrderAsync(command);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        _mockOrderRepository.Verify(r => r.AddAsync(It.Is<Order>(o =>
+            o.BuyerEmail == "buyer@example.com" &&
+            o.DeliveryInstructions == "Ring the doorbell" &&
+            o.SellerSubOrders.First().ShippingMethodName == "Standard Shipping")), Times.Once);
+    }
+
+    #endregion
 }
