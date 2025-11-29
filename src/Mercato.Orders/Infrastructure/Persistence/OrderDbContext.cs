@@ -53,6 +53,11 @@ public class OrderDbContext : DbContext
     /// </summary>
     public DbSet<ShippingStatusHistory> ShippingStatusHistories { get; set; }
 
+    /// <summary>
+    /// Gets or sets the case status histories DbSet.
+    /// </summary>
+    public DbSet<CaseStatusHistory> CaseStatusHistories { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -143,9 +148,16 @@ public class OrderDbContext : DbContext
             entity.Property(e => e.ResolutionReason).HasMaxLength(2000);
             entity.Property(e => e.RefundAmount).HasPrecision(18, 2);
             entity.Property(e => e.LastActivityByUserId).HasMaxLength(450);
+            entity.Property(e => e.EscalatedByUserId).HasMaxLength(450);
+            entity.Property(e => e.EscalationReason).HasMaxLength(2000);
+            entity.Property(e => e.AdminDecision).HasMaxLength(100);
+            entity.Property(e => e.AdminDecisionReason).HasMaxLength(2000);
+            entity.Property(e => e.AdminDecisionByUserId).HasMaxLength(450);
             entity.HasIndex(e => e.SellerSubOrderId);
             entity.HasIndex(e => e.BuyerId);
             entity.HasIndex(e => e.LinkedRefundId);
+            entity.HasIndex(e => e.Status)
+                .HasDatabaseName("IX_ReturnRequests_Status");
             entity.HasOne(e => e.SellerSubOrder)
                 .WithMany()
                 .HasForeignKey(e => e.SellerSubOrderId);
@@ -155,6 +167,9 @@ public class OrderDbContext : DbContext
             entity.HasMany(e => e.Messages)
                 .WithOne(m => m.ReturnRequest)
                 .HasForeignKey(m => m.ReturnRequestId);
+            entity.HasMany(e => e.StatusHistory)
+                .WithOne(h => h.ReturnRequest)
+                .HasForeignKey(h => h.ReturnRequestId);
             // Ignore computed properties
             entity.Ignore(e => e.HasSelectedItems);
         });
@@ -195,6 +210,17 @@ public class OrderDbContext : DbContext
             entity.HasOne(e => e.SellerSubOrder)
                 .WithMany()
                 .HasForeignKey(e => e.SellerSubOrderId);
+        });
+
+        modelBuilder.Entity<CaseStatusHistory>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.ChangedByUserId).HasMaxLength(450);
+            entity.Property(e => e.ChangedByRole).HasMaxLength(50);
+            entity.Property(e => e.Notes).HasMaxLength(2000);
+            entity.HasIndex(e => e.ReturnRequestId);
+            entity.HasIndex(e => new { e.ReturnRequestId, e.ChangedAt })
+                .HasDatabaseName("IX_CaseStatusHistories_RequestId_ChangedAt");
         });
     }
 }

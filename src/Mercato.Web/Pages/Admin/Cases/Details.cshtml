@@ -1,0 +1,379 @@
+@page "{id:guid}"
+@model Mercato.Web.Pages.Admin.Cases.DetailsModel
+@{
+    ViewData["Title"] = Model.CaseDetails?.ReturnRequest?.CaseNumber ?? "Case Details";
+}
+
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <a asp-page="Index" class="btn btn-outline-secondary btn-sm mb-2">
+                <i class="bi bi-arrow-left me-1"></i>Back to Cases
+            </a>
+            <h1><i class="bi bi-folder2-open me-2"></i>Case Details</h1>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            @Model.ErrorMessage
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(Model.SuccessMessage))
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            @Model.SuccessMessage
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    @if (Model.CaseDetails == null)
+    {
+        <div class="alert alert-warning">
+            Case not found or you don't have access to view it.
+        </div>
+    }
+    else
+    {
+        var returnRequest = Model.CaseDetails.ReturnRequest;
+        
+        <div class="row">
+            @* Case Overview *@
+            <div class="col-lg-8">
+                <div class="card mb-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="bi bi-info-circle me-2"></i>Case Overview
+                        </h5>
+                        <div>
+                            <span class="badge @DetailsModel.GetStatusBadgeClass(returnRequest.Status) me-2">
+                                @DetailsModel.GetStatusDisplayText(returnRequest.Status)
+                            </span>
+                            <span class="badge bg-secondary">
+                                @DetailsModel.GetCaseTypeDisplayText(returnRequest.CaseType)
+                            </span>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <dl>
+                                    <dt>Case Number</dt>
+                                    <dd><strong>@returnRequest.CaseNumber</strong></dd>
+
+                                    <dt>Store</dt>
+                                    <dd>@returnRequest.SellerSubOrder?.StoreName</dd>
+
+                                    <dt>Buyer ID</dt>
+                                    <dd><code>@returnRequest.BuyerId</code></dd>
+
+                                    <dt>Created</dt>
+                                    <dd>@returnRequest.CreatedAt.ToString("MMM dd, yyyy h:mm tt")</dd>
+
+                                    <dt>Last Updated</dt>
+                                    <dd>@returnRequest.LastUpdatedAt.ToString("MMM dd, yyyy h:mm tt")</dd>
+                                </dl>
+                            </div>
+                            <div class="col-md-6">
+                                <dl>
+                                    <dt>Sub-Order</dt>
+                                    <dd>@returnRequest.SellerSubOrder?.SubOrderNumber</dd>
+
+                                    <dt>Reason</dt>
+                                    <dd>@returnRequest.Reason</dd>
+
+                                    @if (!string.IsNullOrEmpty(returnRequest.SellerNotes))
+                                    {
+                                        <dt>Seller Notes</dt>
+                                        <dd>@returnRequest.SellerNotes</dd>
+                                    }
+
+                                    @if (returnRequest.ResolutionType.HasValue)
+                                    {
+                                        <dt>Resolution Type</dt>
+                                        <dd>@returnRequest.ResolutionType</dd>
+                                    }
+
+                                    @if (!string.IsNullOrEmpty(returnRequest.ResolutionReason))
+                                    {
+                                        <dt>Resolution Reason</dt>
+                                        <dd>@returnRequest.ResolutionReason</dd>
+                                    }
+                                </dl>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                @* Escalation Info *@
+                @if (returnRequest.EscalatedAt.HasValue)
+                {
+                    <div class="card mb-4 border-warning">
+                        <div class="card-header bg-warning text-dark">
+                            <h5 class="mb-0"><i class="bi bi-exclamation-triangle me-2"></i>Escalation Details</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <dl>
+                                        <dt>Escalated At</dt>
+                                        <dd>@returnRequest.EscalatedAt.Value.ToString("MMM dd, yyyy h:mm tt")</dd>
+
+                                        <dt>Escalated By</dt>
+                                        <dd><code>@returnRequest.EscalatedByUserId</code></dd>
+                                    </dl>
+                                </div>
+                                <div class="col-md-6">
+                                    <dl>
+                                        <dt>Escalation Reason</dt>
+                                        <dd>@returnRequest.EscalationReason</dd>
+                                    </dl>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+
+                @* Admin Decision Info *@
+                @if (!string.IsNullOrEmpty(returnRequest.AdminDecision))
+                {
+                    <div class="card mb-4 border-success">
+                        <div class="card-header bg-success text-white">
+                            <h5 class="mb-0"><i class="bi bi-check-circle me-2"></i>Admin Decision</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <dl>
+                                        <dt>Decision</dt>
+                                        <dd><strong>@returnRequest.AdminDecision</strong></dd>
+
+                                        <dt>Decision At</dt>
+                                        <dd>@returnRequest.AdminDecisionAt?.ToString("MMM dd, yyyy h:mm tt")</dd>
+                                    </dl>
+                                </div>
+                                <div class="col-md-6">
+                                    <dl>
+                                        <dt>Decision By</dt>
+                                        <dd><code>@returnRequest.AdminDecisionByUserId</code></dd>
+
+                                        <dt>Reason</dt>
+                                        <dd>@returnRequest.AdminDecisionReason</dd>
+                                    </dl>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+
+                @* Messages *@
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-chat-dots me-2"></i>Messages</h5>
+                    </div>
+                    <div class="card-body">
+                        @if (Model.CaseDetails.Messages.Count == 0)
+                        {
+                            <p class="text-muted mb-0">No messages in this case.</p>
+                        }
+                        else
+                        {
+                            <div class="message-thread" style="max-height: 400px; overflow-y: auto;">
+                                @foreach (var message in Model.CaseDetails.Messages)
+                                {
+                                    <div class="card mb-2 @DetailsModel.GetMessageRoleClass(message.SenderRole)">
+                                        <div class="card-body py-2 px-3">
+                                            <div class="d-flex justify-content-between align-items-start">
+                                                <strong>@message.SenderRole</strong>
+                                                <small class="text-muted">@message.CreatedAt.ToString("MMM dd, h:mm tt")</small>
+                                            </div>
+                                            <p class="mb-0 mt-1">@message.Content</p>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                @* Status History *@
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-clock-history me-2"></i>Status History</h5>
+                    </div>
+                    <div class="card-body">
+                        @if (Model.CaseDetails.StatusHistory.Count == 0)
+                        {
+                            <p class="text-muted mb-0">No status history recorded.</p>
+                        }
+                        else
+                        {
+                            <div class="table-responsive">
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Date</th>
+                                            <th>From</th>
+                                            <th>To</th>
+                                            <th>Changed By</th>
+                                            <th>Notes</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var history in Model.CaseDetails.StatusHistory)
+                                        {
+                                            <tr>
+                                                <td>@history.ChangedAt.ToString("MMM dd, h:mm tt")</td>
+                                                <td>
+                                                    <span class="badge @DetailsModel.GetStatusBadgeClass(history.OldStatus)">
+                                                        @DetailsModel.GetStatusDisplayText(history.OldStatus)
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <span class="badge @DetailsModel.GetStatusBadgeClass(history.NewStatus)">
+                                                        @DetailsModel.GetStatusDisplayText(history.NewStatus)
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <small>@history.ChangedByRole</small>
+                                                </td>
+                                                <td>
+                                                    <small class="text-muted">@history.Notes</small>
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            @* Actions Sidebar *@
+            <div class="col-lg-4">
+                @* Refund Info *@
+                @if (Model.CaseDetails.RefundInfo != null)
+                {
+                    <div class="card mb-4 border-info">
+                        <div class="card-header bg-info text-white">
+                            <h5 class="mb-0"><i class="bi bi-currency-dollar me-2"></i>Linked Refund</h5>
+                        </div>
+                        <div class="card-body">
+                            <dl class="mb-0">
+                                <dt>Refund ID</dt>
+                                <dd><code>@Model.CaseDetails.RefundInfo.RefundId</code></dd>
+
+                                <dt>Amount</dt>
+                                <dd><strong>@Model.CaseDetails.RefundInfo.Amount.ToString("C")</strong></dd>
+
+                                <dt>Status</dt>
+                                <dd>@Model.CaseDetails.RefundInfo.Status</dd>
+
+                                <dt>Created</dt>
+                                <dd>@Model.CaseDetails.RefundInfo.CreatedAt.ToString("MMM dd, yyyy")</dd>
+                            </dl>
+                        </div>
+                    </div>
+                }
+
+                @* Admin Actions *@
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-gear me-2"></i>Admin Actions</h5>
+                    </div>
+                    <div class="card-body">
+                        @if (returnRequest.Status != Mercato.Orders.Domain.Entities.ReturnStatus.UnderAdminReview && 
+                             returnRequest.Status != Mercato.Orders.Domain.Entities.ReturnStatus.Completed)
+                        {
+                            @* Escalate Form *@
+                            <div class="mb-4">
+                                <h6>Escalate Case</h6>
+                                <form method="post" asp-page-handler="Escalate" asp-route-id="@returnRequest.Id">
+                                    <div class="mb-3">
+                                        <label class="form-label">Escalation Reason</label>
+                                        <textarea name="EscalationReason" class="form-control" rows="3" 
+                                                  placeholder="Provide reason for escalation..."></textarea>
+                                    </div>
+                                    <button type="submit" class="btn btn-warning w-100">
+                                        <i class="bi bi-exclamation-triangle me-1"></i>Escalate to Admin Review
+                                    </button>
+                                </form>
+                            </div>
+                            <hr />
+                        }
+
+                        @if (returnRequest.Status == Mercato.Orders.Domain.Entities.ReturnStatus.UnderAdminReview)
+                        {
+                            @* Admin Decision Form *@
+                            <div>
+                                <h6>Record Decision</h6>
+                                <form method="post" asp-page-handler="Decision" asp-route-id="@returnRequest.Id">
+                                    <div class="mb-3">
+                                        <label class="form-label">Decision</label>
+                                        <select name="AdminDecision" class="form-select" required>
+                                            <option value="">Select decision...</option>
+                                            <option value="OverrideSellerDecision">Override Seller Decision</option>
+                                            <option value="EnforceRefund">Enforce Refund</option>
+                                            <option value="ApproveReturn">Approve Return</option>
+                                            <option value="RejectReturn">Reject Return</option>
+                                            <option value="CloseWithoutAction">Close Without Action</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Refund Amount (if enforcing refund)</label>
+                                        <input type="number" name="RefundAmount" class="form-control" 
+                                               step="0.01" min="0" placeholder="0.00" />
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Decision Reason</label>
+                                        <textarea name="AdminDecisionReason" class="form-control" rows="3" 
+                                                  placeholder="Provide detailed reason for decision..." required></textarea>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary w-100">
+                                        <i class="bi bi-check-circle me-1"></i>Record Decision
+                                    </button>
+                                </form>
+                            </div>
+                        }
+
+                        @if (returnRequest.Status == Mercato.Orders.Domain.Entities.ReturnStatus.Completed)
+                        {
+                            <div class="alert alert-secondary mb-0">
+                                <i class="bi bi-check-circle me-2"></i>This case has been completed. No further actions available.
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                @* Order Items *@
+                @if (returnRequest.SellerSubOrder?.Items?.Count > 0)
+                {
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="bi bi-box me-2"></i>Order Items</h5>
+                        </div>
+                        <div class="card-body">
+                            <ul class="list-group list-group-flush">
+                                @foreach (var item in returnRequest.SellerSubOrder.Items)
+                                {
+                                    <li class="list-group-item d-flex justify-content-between align-items-start">
+                                        <div>
+                                            <strong>@item.ProductTitle</strong>
+                                            <br />
+                                            <small class="text-muted">Qty: @item.Quantity</small>
+                                        </div>
+                                        <span>@item.UnitPrice.ToString("C")</span>
+                                    </li>
+                                }
+                            </ul>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>

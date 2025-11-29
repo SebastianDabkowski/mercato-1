@@ -1,0 +1,225 @@
+@page
+@model Mercato.Web.Pages.Admin.Cases.IndexModel
+@{
+    ViewData["Title"] = "Returns & Disputes";
+}
+
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1><i class="bi bi-inbox-fill me-2"></i>Returns & Disputes</h1>
+    </div>
+
+    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+    {
+        <div class="alert alert-danger">@Model.ErrorMessage</div>
+    }
+
+    @* Filter Section *@
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="bi bi-funnel me-2"></i>Filter Cases</h5>
+        </div>
+        <div class="card-body">
+            <form method="get" asp-page="Index">
+                <div class="row g-3">
+                    @* Search Term *@
+                    <div class="col-md-3">
+                        <label class="form-label">Search</label>
+                        <input type="text" name="SearchTerm" class="form-control" 
+                               placeholder="Case #, buyer ID, or store name"
+                               value="@Model.SearchTerm" />
+                    </div>
+
+                    @* Status Filter *@
+                    <div class="col-md-2">
+                        <label class="form-label">Status</label>
+                        <select name="Status" class="form-select" multiple size="4">
+                            @foreach (var status in IndexModel.AllStatuses)
+                            {
+                                <option value="@status" selected="@Model.Status.Contains(status)">
+                                    @IndexModel.GetStatusDisplayText(status)
+                                </option>
+                            }
+                        </select>
+                        <small class="text-muted">Hold Ctrl/Cmd to select multiple</small>
+                    </div>
+
+                    @* Case Type Filter *@
+                    <div class="col-md-2">
+                        <label class="form-label">Case Type</label>
+                        <select name="Type" class="form-select" multiple size="2">
+                            @foreach (var type in IndexModel.AllCaseTypes)
+                            {
+                                <option value="@type" selected="@Model.Type.Contains(type)">
+                                    @IndexModel.GetCaseTypeDisplayText(type)
+                                </option>
+                            }
+                        </select>
+                    </div>
+
+                    @* Date Range Filter *@
+                    <div class="col-md-2">
+                        <label class="form-label">From Date</label>
+                        <input type="date" name="FromDate" class="form-control" 
+                               value="@(Model.FromDate?.ToString("yyyy-MM-dd"))" />
+                    </div>
+
+                    <div class="col-md-2">
+                        <label class="form-label">To Date</label>
+                        <input type="date" name="ToDate" class="form-control" 
+                               value="@(Model.ToDate?.ToString("yyyy-MM-dd"))" />
+                    </div>
+
+                    <div class="col-md-1 d-flex align-items-end">
+                        <div>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-search me-1"></i>Search
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="row mt-2">
+                    <div class="col-12">
+                        <a asp-page="Index" class="btn btn-outline-secondary btn-sm">
+                            <i class="bi bi-x-circle me-1"></i>Clear Filters
+                        </a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    @* Results Summary *@
+    @if (Model.TotalCount > 0)
+    {
+        <p class="text-muted">
+            Showing @((Model.CurrentPage - 1) * Model.PageSize + 1) - @Math.Min(Model.CurrentPage * Model.PageSize, Model.TotalCount) of @Model.TotalCount case@(Model.TotalCount > 1 ? "s" : "")
+        </p>
+    }
+
+    @if (Model.Cases.Count == 0)
+    {
+        <div class="text-center py-5">
+            <i class="bi bi-inbox text-muted" style="font-size: 4rem;"></i>
+            <h3 class="mt-3 text-muted">No Cases Found</h3>
+            <p class="text-muted">No cases match your search criteria.</p>
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Case #</th>
+                        <th>Type</th>
+                        <th>Store</th>
+                        <th>Buyer</th>
+                        <th class="text-center">Status</th>
+                        <th class="text-center">Age</th>
+                        <th>Created</th>
+                        <th class="text-center">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var caseItem in Model.Cases)
+                    {
+                        <tr class="@(caseItem.IsEscalated ? "table-warning" : "")">
+                            <td>
+                                <strong>@caseItem.CaseNumber</strong>
+                                @if (caseItem.HasNewActivity)
+                                {
+                                    <span class="badge bg-danger ms-1">New</span>
+                                }
+                            </td>
+                            <td>
+                                <span class="badge @IndexModel.GetCaseTypeBadgeClass(caseItem.CaseType)">
+                                    @IndexModel.GetCaseTypeDisplayText(caseItem.CaseType)
+                                </span>
+                            </td>
+                            <td>
+                                <span>@caseItem.StoreName</span>
+                            </td>
+                            <td>
+                                <span class="text-muted">@caseItem.BuyerAlias</span>
+                            </td>
+                            <td class="text-center">
+                                <span class="badge @IndexModel.GetStatusBadgeClass(caseItem.Status)">
+                                    @IndexModel.GetStatusDisplayText(caseItem.Status)
+                                </span>
+                            </td>
+                            <td class="text-center">
+                                <span class="@(caseItem.AgeDays > 7 ? "text-danger fw-bold" : caseItem.AgeDays > 3 ? "text-warning" : "")">
+                                    @caseItem.AgeDays day@(caseItem.AgeDays != 1 ? "s" : "")
+                                </span>
+                            </td>
+                            <td>
+                                @caseItem.CreatedAt.ToString("MMM dd, yyyy")
+                                <small class="text-muted d-block">@caseItem.CreatedAt.ToString("h:mm tt")</small>
+                            </td>
+                            <td class="text-center">
+                                <a asp-page="Details" asp-route-id="@caseItem.Id" class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-eye me-1"></i>View
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        @* Pagination *@
+        @if (Model.TotalPages > 1)
+        {
+            <nav aria-label="Case list pagination" class="mt-4">
+                <ul class="pagination justify-content-center">
+                    <li class="page-item @(Model.HasPreviousPage ? "" : "disabled")">
+                        <a class="page-link" href="@Model.GetPaginationQueryString(Model.CurrentPage - 1)">
+                            <span aria-hidden="true">&laquo;</span>
+                        </a>
+                    </li>
+
+                    @{
+                        var startPage = Math.Max(1, Model.CurrentPage - 2);
+                        var endPage = Math.Min(Model.TotalPages, Model.CurrentPage + 2);
+
+                        if (startPage > 1)
+                        {
+                            <li class="page-item">
+                                <a class="page-link" href="@Model.GetPaginationQueryString(1)">1</a>
+                            </li>
+                            if (startPage > 2)
+                            {
+                                <li class="page-item disabled"><span class="page-link">...</span></li>
+                            }
+                        }
+
+                        for (var i = startPage; i <= endPage; i++)
+                        {
+                            <li class="page-item @(i == Model.CurrentPage ? "active" : "")">
+                                <a class="page-link" href="@Model.GetPaginationQueryString(i)">@i</a>
+                            </li>
+                        }
+
+                        if (endPage < Model.TotalPages)
+                        {
+                            if (endPage < Model.TotalPages - 1)
+                            {
+                                <li class="page-item disabled"><span class="page-link">...</span></li>
+                            }
+                            <li class="page-item">
+                                <a class="page-link" href="@Model.GetPaginationQueryString(Model.TotalPages)">@Model.TotalPages</a>
+                            </li>
+                        }
+                    }
+
+                    <li class="page-item @(Model.HasNextPage ? "" : "disabled")">
+                        <a class="page-link" href="@Model.GetPaginationQueryString(Model.CurrentPage + 1)">
+                            <span aria-hidden="true">&raquo;</span>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+        }
+    }
+</div>
