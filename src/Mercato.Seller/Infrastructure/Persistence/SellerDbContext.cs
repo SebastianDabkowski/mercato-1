@@ -50,6 +50,11 @@ public class SellerDbContext : DbContext
     /// </summary>
     public DbSet<ShippingRule> ShippingRules { get; set; }
 
+    /// <summary>
+    /// Gets or sets the shipping methods.
+    /// </summary>
+    public DbSet<ShippingMethod> ShippingMethods { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -181,6 +186,20 @@ public class SellerDbContext : DbContext
             entity.Property(e => e.PerItemRate).HasPrecision(18, 2);
 
             entity.HasIndex(e => e.StoreId).IsUnique();
+        });
+
+        // Configure ShippingMethod entity
+        modelBuilder.Entity<ShippingMethod>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.StoreId).IsRequired();
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.Description).HasMaxLength(500);
+            entity.Property(e => e.AvailableCountries).HasMaxLength(1000);
+            entity.Property(e => e.IsActive).IsRequired();
+
+            entity.HasIndex(e => e.StoreId);
+            entity.HasIndex(e => new { e.StoreId, e.IsActive });
         });
     }
 }
