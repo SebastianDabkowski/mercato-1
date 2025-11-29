@@ -92,6 +92,16 @@ public class Order
     public string? DeliveryPhoneNumber { get; set; }
 
     /// <summary>
+    /// Gets or sets the buyer email address for order communication.
+    /// </summary>
+    public string? BuyerEmail { get; set; }
+
+    /// <summary>
+    /// Gets or sets the delivery instructions provided by the buyer.
+    /// </summary>
+    public string? DeliveryInstructions { get; set; }
+
+    /// <summary>
     /// Gets or sets the date and time when the order was created.
     /// </summary>
     public DateTimeOffset CreatedAt { get; set; }

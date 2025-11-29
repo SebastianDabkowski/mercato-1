@@ -97,6 +97,11 @@ public class SellerSubOrder
     public string? ShippingCarrier { get; set; }
 
     /// <summary>
+    /// Gets or sets the shipping method name chosen by the buyer.
+    /// </summary>
+    public string? ShippingMethodName { get; set; }
+
+    /// <summary>
     /// Navigation property to the parent order.
     /// </summary>
     public Order Order { get; set; } = null!;

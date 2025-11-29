@@ -74,6 +74,8 @@ public class OrderService : IOrderService
                 DeliveryPostalCode = command.DeliveryAddress.PostalCode,
                 DeliveryCountry = command.DeliveryAddress.Country,
                 DeliveryPhoneNumber = command.DeliveryAddress.PhoneNumber,
+                BuyerEmail = command.BuyerEmail,
+                DeliveryInstructions = command.DeliveryAddress.DeliveryInstructions,
                 CreatedAt = now,
                 LastUpdatedAt = now,
                 Items = command.Items.Select(item => new OrderItem
@@ -92,6 +94,7 @@ public class OrderService : IOrderService
             };
 
             // Create seller sub-orders by grouping items by store
+            // Shipping method is taken from the first item in each store group
             var itemsByStore = command.Items.GroupBy(i => new { i.StoreId, i.StoreName });
             var sellerCount = itemsByStore.Count();
             var shippingPerSeller = sellerCount > 0 ? command.ShippingTotal / sellerCount : 0;
@@ -103,6 +106,7 @@ public class OrderService : IOrderService
                 var subOrderId = Guid.NewGuid();
                 var subOrderNumber = GenerateSubOrderNumber(orderNumber, subOrderIndex);
                 var storeItemsSubtotal = storeGroup.Sum(i => i.UnitPrice * i.Quantity);
+                var shippingMethodName = storeGroup.FirstOrDefault()?.ShippingMethodName;
 
                 var sellerSubOrder = new SellerSubOrder
                 {
@@ -115,6 +119,7 @@ public class OrderService : IOrderService
                     ItemsSubtotal = storeItemsSubtotal,
                     ShippingCost = shippingPerSeller,
                     TotalAmount = storeItemsSubtotal + shippingPerSeller,
+                    ShippingMethodName = shippingMethodName,
                     CreatedAt = now,
                     LastUpdatedAt = now,
                     Items = storeGroup.Select(item => new SellerSubOrderItem

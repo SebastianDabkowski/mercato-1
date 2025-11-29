@@ -226,6 +226,33 @@ public class DetailsModel : PageModel
         _ => status.ToString()
     };
 
+    /// <summary>
+    /// Gets the CSS class for a payment status badge based on the order status.
+    /// </summary>
+    /// <param name="status">The seller sub-order status.</param>
+    /// <returns>The CSS class name.</returns>
+    public static string GetPaymentStatusBadgeClass(SellerSubOrderStatus status) => status switch
+    {
+        SellerSubOrderStatus.New => "bg-warning text-dark",
+        SellerSubOrderStatus.Cancelled => "bg-danger",
+        SellerSubOrderStatus.Refunded => "bg-dark",
+        _ => "bg-success"
+    };
+
+    /// <summary>
+    /// Gets the display text for the payment status based on the order status.
+    /// This provides an abstract view of payment status without exposing sensitive payment details.
+    /// </summary>
+    /// <param name="status">The seller sub-order status.</param>
+    /// <returns>The payment status display text.</returns>
+    public static string GetPaymentStatusDisplayText(SellerSubOrderStatus status) => status switch
+    {
+        SellerSubOrderStatus.New => "Payment Pending",
+        SellerSubOrderStatus.Cancelled => "Payment Cancelled",
+        SellerSubOrderStatus.Refunded => "Refunded",
+        _ => "Paid"
+    };
+
     private string? GetSellerId()
     {
         return User.FindFirstValue(ClaimTypes.NameIdentifier);
