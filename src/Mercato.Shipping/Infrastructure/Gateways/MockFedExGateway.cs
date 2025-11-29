@@ -87,6 +87,31 @@ public class MockFedExGateway : IShippingProviderGateway
         return CancelShipmentGatewayResult.Success();
     }
 
+    /// <inheritdoc />
+    public async Task<GetShippingLabelGatewayResult> GetLabelAsync(GetShippingLabelGatewayRequest request)
+    {
+        // Simulate API call delay
+        await Task.Delay(Random.Next(100, 500));
+
+        // Simulate occasional failures (4% failure rate)
+        if (Random.Next(100) < 4)
+        {
+            return GetShippingLabelGatewayResult.Failure("FedEx label service temporarily unavailable. Please try again.");
+        }
+
+        // Validate tracking number
+        if (string.IsNullOrWhiteSpace(request.TrackingNumber))
+        {
+            return GetShippingLabelGatewayResult.Failure("Tracking number is required to retrieve label.");
+        }
+
+        // Generate mock PDF label data
+        var labelData = MockLabelGenerator.GenerateMockPdfLabel(request.TrackingNumber, "FedEx");
+        var fileName = $"FedEx-Label-{request.TrackingNumber}.pdf";
+
+        return GetShippingLabelGatewayResult.Success(labelData, "application/pdf", fileName);
+    }
+
     private static ShipmentStatus GetMockStatus(string trackingNumber)
     {
         // Use tracking number hash to generate consistent but varied statuses

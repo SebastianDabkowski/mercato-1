@@ -37,6 +37,11 @@ public class ShippingDbContext : DbContext
     /// </summary>
     public DbSet<ShipmentStatusUpdate> ShipmentStatusUpdates { get; set; } = null!;
 
+    /// <summary>
+    /// Gets or sets the shipping labels.
+    /// </summary>
+    public DbSet<ShippingLabel> ShippingLabels { get; set; } = null!;
+
     /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -139,6 +144,30 @@ public class ShippingDbContext : DbContext
 
             entity.HasIndex(e => e.ShipmentId);
             entity.HasIndex(e => e.Timestamp);
+        });
+
+        // Configure ShippingLabel entity
+        modelBuilder.Entity<ShippingLabel>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.ContentType)
+                .HasMaxLength(100)
+                .IsRequired();
+
+            entity.Property(e => e.FileName)
+                .HasMaxLength(255)
+                .IsRequired();
+
+            entity.Property(e => e.LabelFormat)
+                .HasMaxLength(20);
+
+            entity.HasIndex(e => e.ShipmentId).IsUnique();
+
+            entity.HasOne(e => e.Shipment)
+                .WithMany()
+                .HasForeignKey(e => e.ShipmentId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
     }
 }
