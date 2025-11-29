@@ -19,6 +19,7 @@ public class DetailsModel : PageModel
 {
     private readonly IOrderService _orderService;
     private readonly IPaymentService _paymentService;
+    private readonly IProductReviewService _productReviewService;
     private readonly EmailSettings _emailSettings;
     private readonly ReturnSettings _returnSettings;
     private readonly ILogger<DetailsModel> _logger;
@@ -28,18 +29,21 @@ public class DetailsModel : PageModel
     /// </summary>
     /// <param name="orderService">The order service.</param>
     /// <param name="paymentService">The payment service.</param>
+    /// <param name="productReviewService">The product review service.</param>
     /// <param name="emailSettings">The email settings.</param>
     /// <param name="returnSettings">The return settings.</param>
     /// <param name="logger">The logger.</param>
     public DetailsModel(
         IOrderService orderService,
         IPaymentService paymentService,
+        IProductReviewService productReviewService,
         IOptions<EmailSettings> emailSettings,
         IOptions<ReturnSettings> returnSettings,
         ILogger<DetailsModel> logger)
     {
         _orderService = orderService;
         _paymentService = paymentService;
+        _productReviewService = productReviewService;
         _emailSettings = emailSettings.Value;
         _returnSettings = returnSettings.Value;
         _logger = logger;
@@ -81,6 +85,18 @@ public class DetailsModel : PageModel
     /// Key is sub-order ID.
     /// </summary>
     public Dictionary<Guid, ReturnRequest> SubOrderReturnRequests { get; private set; } = new();
+
+    /// <summary>
+    /// Gets the review eligibility for each item.
+    /// Key is seller sub-order item ID.
+    /// </summary>
+    public Dictionary<Guid, ReviewEligibility> ItemReviewEligibility { get; private set; } = new();
+
+    /// <summary>
+    /// Gets the existing reviews for items.
+    /// Key is seller sub-order item ID.
+    /// </summary>
+    public Dictionary<Guid, ProductReview> ItemReviews { get; private set; } = new();
 
     /// <summary>
     /// Handles GET requests for the order details page.
@@ -140,6 +156,20 @@ public class DetailsModel : PageModel
                         BlockedReason = canInitiateResult.BlockedReason
                     };
                 }
+
+                // Load review eligibility for each item in the sub-order
+                foreach (var item in subOrder.Items)
+                {
+                    var canSubmitReviewResult = await _productReviewService.CanSubmitReviewAsync(item.Id, buyerId);
+                    if (canSubmitReviewResult.Succeeded)
+                    {
+                        ItemReviewEligibility[item.Id] = new ReviewEligibility
+                        {
+                            CanSubmit = canSubmitReviewResult.CanSubmit,
+                            BlockedReason = canSubmitReviewResult.BlockedReason
+                        };
+                    }
+                }
             }
 
             // Load all return requests for this buyer and match to sub-orders
@@ -151,6 +181,20 @@ public class DetailsModel : PageModel
                     if (Order.SellerSubOrders.Any(s => s.Id == returnRequest.SellerSubOrderId))
                     {
                         SubOrderReturnRequests[returnRequest.SellerSubOrderId] = returnRequest;
+                    }
+                }
+            }
+
+            // Load all reviews for this buyer and match to items
+            var reviewsResult = await _productReviewService.GetReviewsByBuyerIdAsync(buyerId);
+            if (reviewsResult.Succeeded)
+            {
+                foreach (var review in reviewsResult.Reviews)
+                {
+                    var itemExists = Order.SellerSubOrders.Any(s => s.Items.Any(i => i.Id == review.SellerSubOrderItemId));
+                    if (itemExists)
+                    {
+                        ItemReviews[review.SellerSubOrderItemId] = review;
                     }
                 }
             }
@@ -390,6 +434,22 @@ public class ReturnEligibility
 
     /// <summary>
     /// Gets or sets the reason why return cannot be initiated (if applicable).
+    /// </summary>
+    public string? BlockedReason { get; set; }
+}
+
+/// <summary>
+/// Represents review eligibility information for an item.
+/// </summary>
+public class ReviewEligibility
+{
+    /// <summary>
+    /// Gets or sets whether a review can be submitted.
+    /// </summary>
+    public bool CanSubmit { get; set; }
+
+    /// <summary>
+    /// Gets or sets the reason why review cannot be submitted (if applicable).
     /// </summary>
     public string? BlockedReason { get; set; }
 }

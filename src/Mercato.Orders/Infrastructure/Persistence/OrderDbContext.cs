@@ -58,6 +58,11 @@ public class OrderDbContext : DbContext
     /// </summary>
     public DbSet<CaseStatusHistory> CaseStatusHistories { get; set; }
 
+    /// <summary>
+    /// Gets or sets the product reviews DbSet.
+    /// </summary>
+    public DbSet<ProductReview> ProductReviews { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -221,6 +226,28 @@ public class OrderDbContext : DbContext
             entity.HasIndex(e => e.ReturnRequestId);
             entity.HasIndex(e => new { e.ReturnRequestId, e.ChangedAt })
                 .HasDatabaseName("IX_CaseStatusHistories_RequestId_ChangedAt");
+        });
+
+        modelBuilder.Entity<ProductReview>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.BuyerId).IsRequired().HasMaxLength(450);
+            entity.Property(e => e.ReviewText).IsRequired().HasMaxLength(2000);
+            entity.HasIndex(e => e.BuyerId);
+            entity.HasIndex(e => e.ProductId);
+            entity.HasIndex(e => e.StoreId);
+            entity.HasIndex(e => e.OrderId);
+            entity.HasIndex(e => e.SellerSubOrderItemId).IsUnique();
+            entity.HasIndex(e => e.Status)
+                .HasDatabaseName("IX_ProductReviews_Status");
+            entity.HasIndex(e => new { e.ProductId, e.Status })
+                .HasDatabaseName("IX_ProductReviews_ProductId_Status");
+            entity.HasOne(e => e.SellerSubOrderItem)
+                .WithMany()
+                .HasForeignKey(e => e.SellerSubOrderItemId);
+            entity.HasOne(e => e.SellerSubOrder)
+                .WithMany()
+                .HasForeignKey(e => e.SellerSubOrderId);
         });
     }
 }
