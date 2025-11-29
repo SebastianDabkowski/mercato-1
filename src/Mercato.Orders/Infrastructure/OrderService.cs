@@ -490,6 +490,56 @@ public class OrderService : IOrderService
         }
     }
 
+    /// <inheritdoc />
+    public async Task<UpdateTrackingInfoResult> UpdateTrackingInfoAsync(
+        Guid subOrderId,
+        Guid storeId,
+        UpdateTrackingInfoCommand command)
+    {
+        if (storeId == Guid.Empty)
+        {
+            return UpdateTrackingInfoResult.Failure("Store ID is required.");
+        }
+
+        try
+        {
+            var subOrder = await _sellerSubOrderRepository.GetByIdAsync(subOrderId);
+            if (subOrder == null)
+            {
+                return UpdateTrackingInfoResult.Failure("Sub-order not found.");
+            }
+
+            if (subOrder.StoreId != storeId)
+            {
+                return UpdateTrackingInfoResult.NotAuthorized();
+            }
+
+            // Tracking info can only be updated for shipped orders
+            if (subOrder.Status != SellerSubOrderStatus.Shipped)
+            {
+                return UpdateTrackingInfoResult.Failure("Tracking information can only be updated for shipped orders.");
+            }
+
+            var now = DateTimeOffset.UtcNow;
+            subOrder.TrackingNumber = command.TrackingNumber;
+            subOrder.ShippingCarrier = command.ShippingCarrier;
+            subOrder.LastUpdatedAt = now;
+
+            await _sellerSubOrderRepository.UpdateAsync(subOrder);
+
+            _logger.LogInformation(
+                "Updated tracking info for seller sub-order {SubOrderNumber}: Carrier={Carrier}, TrackingNumber={TrackingNumber}",
+                subOrder.SubOrderNumber, command.ShippingCarrier, command.TrackingNumber);
+
+            return UpdateTrackingInfoResult.Success();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating tracking info for sub-order {SubOrderId}", subOrderId);
+            return UpdateTrackingInfoResult.Failure("An error occurred while updating the tracking information.");
+        }
+    }
+
     /// <summary>
     /// Updates the parent order when a sub-order is refunded.
     /// Sets the order's RefundedAt timestamp and updates status to Refunded if all sub-orders are refunded.

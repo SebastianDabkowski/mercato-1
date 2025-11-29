@@ -96,6 +96,18 @@ public interface IOrderService
         UpdateSellerSubOrderStatusCommand command);
 
     /// <summary>
+    /// Updates the tracking information for a shipped seller sub-order without changing status.
+    /// </summary>
+    /// <param name="subOrderId">The seller sub-order ID.</param>
+    /// <param name="storeId">The store ID for authorization.</param>
+    /// <param name="command">The tracking info update command.</param>
+    /// <returns>The result of the update operation.</returns>
+    Task<UpdateTrackingInfoResult> UpdateTrackingInfoAsync(
+        Guid subOrderId,
+        Guid storeId,
+        UpdateTrackingInfoCommand command);
+
+    /// <summary>
     /// Gets filtered and paginated seller sub-orders for a specific store.
     /// </summary>
     /// <param name="query">The filter query parameters.</param>
