@@ -62,6 +62,8 @@
                                         <th>Name</th>
                                         <th>Description</th>
                                         <th>Countries</th>
+                                        <th class="text-end">Base Cost</th>
+                                        <th>Delivery Time</th>
                                         <th class="text-center">Status</th>
                                         <th class="text-end">Actions</th>
                                     </tr>
@@ -104,6 +106,34 @@
                                                         <span class="badge bg-secondary me-1">@countries[1]</span>
                                                         <span class="badge bg-info">+@(countries.Length - 2) more</span>
                                                     }
+                                                }
+                                            </td>
+                                            <td class="text-end">
+                                                @method.BaseCost.ToString("C")
+                                            </td>
+                                            <td>
+                                                @if (method.EstimatedDeliveryMinDays.HasValue && method.EstimatedDeliveryMaxDays.HasValue)
+                                                {
+                                                    if (method.EstimatedDeliveryMinDays == method.EstimatedDeliveryMaxDays)
+                                                    {
+                                                        <span>@method.EstimatedDeliveryMinDays business day@(method.EstimatedDeliveryMinDays == 1 ? "" : "s")</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span>@method.EstimatedDeliveryMinDays–@method.EstimatedDeliveryMaxDays business days</span>
+                                                    }
+                                                }
+                                                else if (method.EstimatedDeliveryMinDays.HasValue)
+                                                {
+                                                    <span>@method.EstimatedDeliveryMinDays+ business days</span>
+                                                }
+                                                else if (method.EstimatedDeliveryMaxDays.HasValue)
+                                                {
+                                                    <span>Up to @method.EstimatedDeliveryMaxDays business days</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted fst-italic">—</span>
                                                 }
                                             </td>
                                             <td class="text-center">

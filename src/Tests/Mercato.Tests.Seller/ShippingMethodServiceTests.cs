@@ -162,6 +162,63 @@ public class ShippingMethodServiceTests
     }
 
     [Fact]
+    public async Task CreateAsync_WithBaseCostAndDeliveryTime_SavesValues()
+    {
+        // Arrange
+        var mockRepository = new Mock<IShippingMethodRepository>(MockBehavior.Strict);
+        mockRepository.Setup(r => r.AddAsync(It.IsAny<ShippingMethod>()))
+            .Returns(Task.CompletedTask);
+
+        var service = CreateService(mockRepository.Object);
+        var command = new CreateShippingMethodCommand
+        {
+            StoreId = TestStoreId,
+            Name = "Express Courier",
+            BaseCost = 15.99m,
+            EstimatedDeliveryMinDays = 2,
+            EstimatedDeliveryMaxDays = 3
+        };
+
+        // Act
+        var result = await service.CreateAsync(command);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.NotNull(result.ShippingMethodId);
+        Assert.Empty(result.Errors);
+        mockRepository.Verify(r => r.AddAsync(It.Is<ShippingMethod>(m =>
+            m.StoreId == TestStoreId &&
+            m.Name == "Express Courier" &&
+            m.BaseCost == 15.99m &&
+            m.EstimatedDeliveryMinDays == 2 &&
+            m.EstimatedDeliveryMaxDays == 3)), Times.Once);
+    }
+
+    [Fact]
+    public async Task CreateAsync_WithDeliveryMinGreaterThanMax_ReturnsValidationError()
+    {
+        // Arrange
+        var mockRepository = new Mock<IShippingMethodRepository>(MockBehavior.Strict);
+        var service = CreateService(mockRepository.Object);
+        var command = new CreateShippingMethodCommand
+        {
+            StoreId = TestStoreId,
+            Name = "Express Courier",
+            BaseCost = 15.99m,
+            EstimatedDeliveryMinDays = 5,
+            EstimatedDeliveryMaxDays = 2
+        };
+
+        // Act
+        var result = await service.CreateAsync(command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Null(result.ShippingMethodId);
+        Assert.Contains(result.Errors, e => e.Contains("Minimum delivery days cannot be greater than maximum delivery days"));
+    }
+
+    [Fact]
     public async Task CreateAsync_WithMissingName_ReturnsValidationError()
     {
         // Arrange
@@ -455,6 +512,69 @@ public class ShippingMethodServiceTests
         Assert.False(result.Succeeded);
         // Will fail with "not found" since Guid.Empty won't find anything
         Assert.Contains(result.Errors, e => e.Contains("not found"));
+    }
+
+    [Fact]
+    public async Task UpdateAsync_WithBaseCostAndDeliveryTime_UpdatesValues()
+    {
+        // Arrange
+        var existingMethod = CreateShippingMethod();
+        var mockRepository = new Mock<IShippingMethodRepository>(MockBehavior.Strict);
+        mockRepository.Setup(r => r.GetByIdAsync(TestShippingMethodId))
+            .ReturnsAsync(existingMethod);
+        mockRepository.Setup(r => r.UpdateAsync(It.IsAny<ShippingMethod>()))
+            .Returns(Task.CompletedTask);
+
+        var service = CreateService(mockRepository.Object);
+        var command = new UpdateShippingMethodCommand
+        {
+            Id = TestShippingMethodId,
+            StoreId = TestStoreId,
+            Name = "Updated Courier",
+            BaseCost = 25.50m,
+            EstimatedDeliveryMinDays = 1,
+            EstimatedDeliveryMaxDays = 2
+        };
+
+        // Act
+        var result = await service.UpdateAsync(command);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.Empty(result.Errors);
+        mockRepository.Verify(r => r.UpdateAsync(It.Is<ShippingMethod>(m =>
+            m.Name == "Updated Courier" &&
+            m.BaseCost == 25.50m &&
+            m.EstimatedDeliveryMinDays == 1 &&
+            m.EstimatedDeliveryMaxDays == 2)), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_WithDeliveryMinGreaterThanMax_ReturnsValidationError()
+    {
+        // Arrange
+        var existingMethod = CreateShippingMethod();
+        var mockRepository = new Mock<IShippingMethodRepository>(MockBehavior.Strict);
+        mockRepository.Setup(r => r.GetByIdAsync(TestShippingMethodId))
+            .ReturnsAsync(existingMethod);
+
+        var service = CreateService(mockRepository.Object);
+        var command = new UpdateShippingMethodCommand
+        {
+            Id = TestShippingMethodId,
+            StoreId = TestStoreId,
+            Name = "Updated Courier",
+            BaseCost = 25.50m,
+            EstimatedDeliveryMinDays = 10,
+            EstimatedDeliveryMaxDays = 5
+        };
+
+        // Act
+        var result = await service.UpdateAsync(command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains(result.Errors, e => e.Contains("Minimum delivery days cannot be greater than maximum delivery days"));
     }
 
     #endregion
