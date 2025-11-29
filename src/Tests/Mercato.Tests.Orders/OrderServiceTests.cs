@@ -2050,4 +2050,405 @@ public class OrderServiceTests
     }
 
     #endregion
+
+    #region Partial Fulfillment Tests
+
+    [Fact]
+    public async Task UpdateSubOrderItemStatusAsync_ValidCommand_UpdatesItemStatuses()
+    {
+        // Arrange
+        var subOrderId = Guid.NewGuid();
+        var itemId1 = Guid.NewGuid();
+        var itemId2 = Guid.NewGuid();
+        var subOrder = new SellerSubOrder
+        {
+            Id = subOrderId,
+            OrderId = TestOrderId,
+            StoreId = TestStoreId,
+            Status = SellerSubOrderStatus.Paid,
+            Items = new List<SellerSubOrderItem>
+            {
+                new() { Id = itemId1, ProductTitle = "Product 1", UnitPrice = 10, Quantity = 1, Status = SellerSubOrderItemStatus.New },
+                new() { Id = itemId2, ProductTitle = "Product 2", UnitPrice = 20, Quantity = 2, Status = SellerSubOrderItemStatus.New }
+            }
+        };
+
+        _mockSellerSubOrderRepository.Setup(r => r.GetByIdAsync(subOrderId))
+            .ReturnsAsync(subOrder);
+        _mockSellerSubOrderRepository.Setup(r => r.UpdateAsync(It.IsAny<SellerSubOrder>()))
+            .Returns(Task.CompletedTask);
+
+        var command = new UpdateSubOrderItemStatusCommand
+        {
+            ItemUpdates =
+            [
+                new ItemStatusUpdate { ItemId = itemId1, NewStatus = SellerSubOrderItemStatus.Shipped },
+                new ItemStatusUpdate { ItemId = itemId2, NewStatus = SellerSubOrderItemStatus.Cancelled }
+            ],
+            TrackingNumber = "TRACK123",
+            ShippingCarrier = "FedEx"
+        };
+
+        // Act
+        var result = await _service.UpdateSubOrderItemStatusAsync(subOrderId, TestStoreId, command);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.NotNull(result.SubOrder);
+        var updatedSubOrder = result.SubOrder;
+        
+        var item1 = updatedSubOrder.Items.First(i => i.Id == itemId1);
+        Assert.Equal(SellerSubOrderItemStatus.Shipped, item1.Status);
+        Assert.NotNull(item1.ShippedAt);
+        
+        var item2 = updatedSubOrder.Items.First(i => i.Id == itemId2);
+        Assert.Equal(SellerSubOrderItemStatus.Cancelled, item2.Status);
+        Assert.NotNull(item2.CancelledAt);
+    }
+
+    [Fact]
+    public async Task UpdateSubOrderItemStatusAsync_UnauthorizedStore_ReturnsNotAuthorized()
+    {
+        // Arrange
+        var subOrderId = Guid.NewGuid();
+        var differentStoreId = Guid.NewGuid();
+        var subOrder = new SellerSubOrder
+        {
+            Id = subOrderId,
+            OrderId = TestOrderId,
+            StoreId = TestStoreId, // Different from request
+            Status = SellerSubOrderStatus.Paid,
+            Items = new List<SellerSubOrderItem>()
+        };
+
+        _mockSellerSubOrderRepository.Setup(r => r.GetByIdAsync(subOrderId))
+            .ReturnsAsync(subOrder);
+
+        var command = new UpdateSubOrderItemStatusCommand
+        {
+            ItemUpdates =
+            [
+                new ItemStatusUpdate { ItemId = Guid.NewGuid(), NewStatus = SellerSubOrderItemStatus.Shipped }
+            ]
+        };
+
+        // Act
+        var result = await _service.UpdateSubOrderItemStatusAsync(subOrderId, differentStoreId, command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.True(result.IsNotAuthorized);
+    }
+
+    [Fact]
+    public async Task UpdateSubOrderItemStatusAsync_InvalidSubOrderStatus_ReturnsFailure()
+    {
+        // Arrange
+        var subOrderId = Guid.NewGuid();
+        var subOrder = new SellerSubOrder
+        {
+            Id = subOrderId,
+            OrderId = TestOrderId,
+            StoreId = TestStoreId,
+            Status = SellerSubOrderStatus.Delivered, // Cannot update items when delivered
+            Items = new List<SellerSubOrderItem>()
+        };
+
+        _mockSellerSubOrderRepository.Setup(r => r.GetByIdAsync(subOrderId))
+            .ReturnsAsync(subOrder);
+
+        var command = new UpdateSubOrderItemStatusCommand
+        {
+            ItemUpdates =
+            [
+                new ItemStatusUpdate { ItemId = Guid.NewGuid(), NewStatus = SellerSubOrderItemStatus.Shipped }
+            ]
+        };
+
+        // Act
+        var result = await _service.UpdateSubOrderItemStatusAsync(subOrderId, TestStoreId, command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains(result.Errors, e => e.Contains("Paid or Preparing status"));
+    }
+
+    [Fact]
+    public async Task UpdateSubOrderItemStatusAsync_ItemNotFound_ReturnsFailure()
+    {
+        // Arrange
+        var subOrderId = Guid.NewGuid();
+        var unknownItemId = Guid.NewGuid();
+        var subOrder = new SellerSubOrder
+        {
+            Id = subOrderId,
+            OrderId = TestOrderId,
+            StoreId = TestStoreId,
+            Status = SellerSubOrderStatus.Paid,
+            Items = new List<SellerSubOrderItem>
+            {
+                new() { Id = Guid.NewGuid(), ProductTitle = "Product 1", Status = SellerSubOrderItemStatus.New }
+            }
+        };
+
+        _mockSellerSubOrderRepository.Setup(r => r.GetByIdAsync(subOrderId))
+            .ReturnsAsync(subOrder);
+
+        var command = new UpdateSubOrderItemStatusCommand
+        {
+            ItemUpdates =
+            [
+                new ItemStatusUpdate { ItemId = unknownItemId, NewStatus = SellerSubOrderItemStatus.Shipped }
+            ]
+        };
+
+        // Act
+        var result = await _service.UpdateSubOrderItemStatusAsync(subOrderId, TestStoreId, command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains(result.Errors, e => e.Contains("not found in sub-order"));
+    }
+
+    [Fact]
+    public async Task UpdateSubOrderItemStatusAsync_InvalidStatusTransition_ReturnsFailure()
+    {
+        // Arrange
+        var subOrderId = Guid.NewGuid();
+        var itemId = Guid.NewGuid();
+        var subOrder = new SellerSubOrder
+        {
+            Id = subOrderId,
+            OrderId = TestOrderId,
+            StoreId = TestStoreId,
+            Status = SellerSubOrderStatus.Paid,
+            Items = new List<SellerSubOrderItem>
+            {
+                new() { Id = itemId, ProductTitle = "Product 1", Status = SellerSubOrderItemStatus.Cancelled }
+            }
+        };
+
+        _mockSellerSubOrderRepository.Setup(r => r.GetByIdAsync(subOrderId))
+            .ReturnsAsync(subOrder);
+
+        var command = new UpdateSubOrderItemStatusCommand
+        {
+            ItemUpdates =
+            [
+                new ItemStatusUpdate { ItemId = itemId, NewStatus = SellerSubOrderItemStatus.Shipped } // Invalid - can't ship cancelled item
+            ]
+        };
+
+        // Act
+        var result = await _service.UpdateSubOrderItemStatusAsync(subOrderId, TestStoreId, command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains(result.Errors, e => e.Contains("Cannot transition"));
+    }
+
+    [Fact]
+    public async Task UpdateSubOrderItemStatusAsync_AllItemsShipped_UpdatesSubOrderToShipped()
+    {
+        // Arrange
+        var subOrderId = Guid.NewGuid();
+        var itemId = Guid.NewGuid();
+        var subOrder = new SellerSubOrder
+        {
+            Id = subOrderId,
+            OrderId = TestOrderId,
+            StoreId = TestStoreId,
+            Status = SellerSubOrderStatus.Paid,
+            Items = new List<SellerSubOrderItem>
+            {
+                new() { Id = itemId, ProductTitle = "Product 1", Status = SellerSubOrderItemStatus.New, UnitPrice = 10, Quantity = 1 }
+            }
+        };
+
+        _mockSellerSubOrderRepository.Setup(r => r.GetByIdAsync(subOrderId))
+            .ReturnsAsync(subOrder);
+        _mockSellerSubOrderRepository.Setup(r => r.UpdateAsync(It.IsAny<SellerSubOrder>()))
+            .Returns(Task.CompletedTask);
+
+        var command = new UpdateSubOrderItemStatusCommand
+        {
+            ItemUpdates =
+            [
+                new ItemStatusUpdate { ItemId = itemId, NewStatus = SellerSubOrderItemStatus.Shipped }
+            ],
+            TrackingNumber = "TRACK123",
+            ShippingCarrier = "UPS"
+        };
+
+        // Act
+        var result = await _service.UpdateSubOrderItemStatusAsync(subOrderId, TestStoreId, command);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.Equal(SellerSubOrderStatus.Shipped, result.SubOrder!.Status);
+        Assert.Equal("TRACK123", result.SubOrder.TrackingNumber);
+        Assert.Equal("UPS", result.SubOrder.ShippingCarrier);
+    }
+
+    [Fact]
+    public async Task UpdateSubOrderItemStatusAsync_AllItemsCancelled_UpdatesSubOrderToCancelled()
+    {
+        // Arrange
+        var subOrderId = Guid.NewGuid();
+        var itemId = Guid.NewGuid();
+        var subOrder = new SellerSubOrder
+        {
+            Id = subOrderId,
+            OrderId = TestOrderId,
+            StoreId = TestStoreId,
+            Status = SellerSubOrderStatus.Paid,
+            Items = new List<SellerSubOrderItem>
+            {
+                new() { Id = itemId, ProductTitle = "Product 1", Status = SellerSubOrderItemStatus.New, UnitPrice = 10, Quantity = 1 }
+            }
+        };
+
+        _mockSellerSubOrderRepository.Setup(r => r.GetByIdAsync(subOrderId))
+            .ReturnsAsync(subOrder);
+        _mockSellerSubOrderRepository.Setup(r => r.UpdateAsync(It.IsAny<SellerSubOrder>()))
+            .Returns(Task.CompletedTask);
+
+        var command = new UpdateSubOrderItemStatusCommand
+        {
+            ItemUpdates =
+            [
+                new ItemStatusUpdate { ItemId = itemId, NewStatus = SellerSubOrderItemStatus.Cancelled }
+            ]
+        };
+
+        // Act
+        var result = await _service.UpdateSubOrderItemStatusAsync(subOrderId, TestStoreId, command);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.Equal(SellerSubOrderStatus.Cancelled, result.SubOrder!.Status);
+        Assert.NotNull(result.SubOrder.CancelledAt);
+    }
+
+    [Fact]
+    public async Task UpdateSubOrderItemStatusAsync_EmptyItemUpdates_ReturnsFailure()
+    {
+        // Arrange
+        var command = new UpdateSubOrderItemStatusCommand
+        {
+            ItemUpdates = []
+        };
+
+        // Act
+        var result = await _service.UpdateSubOrderItemStatusAsync(Guid.NewGuid(), TestStoreId, command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains(result.Errors, e => e.Contains("At least one item update is required"));
+    }
+
+    [Fact]
+    public async Task CalculateCancelledItemsRefundAsync_WithCancelledItems_ReturnsCorrectRefund()
+    {
+        // Arrange
+        var subOrderId = Guid.NewGuid();
+        var cancelledAt = DateTimeOffset.UtcNow;
+        var subOrder = new SellerSubOrder
+        {
+            Id = subOrderId,
+            OrderId = TestOrderId,
+            StoreId = TestStoreId,
+            Status = SellerSubOrderStatus.Preparing,
+            Items = new List<SellerSubOrderItem>
+            {
+                new() { Id = Guid.NewGuid(), ProductTitle = "Product 1", UnitPrice = 10, Quantity = 2, Status = SellerSubOrderItemStatus.Cancelled, CancelledAt = cancelledAt },
+                new() { Id = Guid.NewGuid(), ProductTitle = "Product 2", UnitPrice = 25, Quantity = 1, Status = SellerSubOrderItemStatus.Cancelled, CancelledAt = cancelledAt },
+                new() { Id = Guid.NewGuid(), ProductTitle = "Product 3", UnitPrice = 15, Quantity = 3, Status = SellerSubOrderItemStatus.Shipped } // Not cancelled
+            }
+        };
+
+        _mockSellerSubOrderRepository.Setup(r => r.GetByIdAsync(subOrderId))
+            .ReturnsAsync(subOrder);
+
+        // Act
+        var result = await _service.CalculateCancelledItemsRefundAsync(subOrderId, TestStoreId);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.Equal(45m, result.RefundAmount); // (10 * 2) + (25 * 1) = 45
+        Assert.Equal(2, result.CancelledItems.Count);
+    }
+
+    [Fact]
+    public async Task CalculateCancelledItemsRefundAsync_NoCancelledItems_ReturnsZeroRefund()
+    {
+        // Arrange
+        var subOrderId = Guid.NewGuid();
+        var subOrder = new SellerSubOrder
+        {
+            Id = subOrderId,
+            OrderId = TestOrderId,
+            StoreId = TestStoreId,
+            Status = SellerSubOrderStatus.Shipped,
+            Items = new List<SellerSubOrderItem>
+            {
+                new() { Id = Guid.NewGuid(), ProductTitle = "Product 1", UnitPrice = 10, Quantity = 2, Status = SellerSubOrderItemStatus.Shipped },
+                new() { Id = Guid.NewGuid(), ProductTitle = "Product 2", UnitPrice = 25, Quantity = 1, Status = SellerSubOrderItemStatus.Delivered }
+            }
+        };
+
+        _mockSellerSubOrderRepository.Setup(r => r.GetByIdAsync(subOrderId))
+            .ReturnsAsync(subOrder);
+
+        // Act
+        var result = await _service.CalculateCancelledItemsRefundAsync(subOrderId, TestStoreId);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.Equal(0m, result.RefundAmount);
+        Assert.Empty(result.CancelledItems);
+    }
+
+    [Fact]
+    public async Task CalculateCancelledItemsRefundAsync_UnauthorizedStore_ReturnsNotAuthorized()
+    {
+        // Arrange
+        var subOrderId = Guid.NewGuid();
+        var differentStoreId = Guid.NewGuid();
+        var subOrder = new SellerSubOrder
+        {
+            Id = subOrderId,
+            OrderId = TestOrderId,
+            StoreId = TestStoreId, // Different from request
+            Items = new List<SellerSubOrderItem>()
+        };
+
+        _mockSellerSubOrderRepository.Setup(r => r.GetByIdAsync(subOrderId))
+            .ReturnsAsync(subOrder);
+
+        // Act
+        var result = await _service.CalculateCancelledItemsRefundAsync(subOrderId, differentStoreId);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.True(result.IsNotAuthorized);
+    }
+
+    [Fact]
+    public async Task CalculateCancelledItemsRefundAsync_SubOrderNotFound_ReturnsFailure()
+    {
+        // Arrange
+        var subOrderId = Guid.NewGuid();
+        _mockSellerSubOrderRepository.Setup(r => r.GetByIdAsync(subOrderId))
+            .ReturnsAsync((SellerSubOrder?)null);
+
+        // Act
+        var result = await _service.CalculateCancelledItemsRefundAsync(subOrderId, TestStoreId);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains(result.Errors, e => e.Contains("Sub-order not found"));
+    }
+
+    #endregion
 }

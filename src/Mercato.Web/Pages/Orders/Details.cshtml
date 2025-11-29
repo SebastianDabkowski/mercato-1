@@ -57,6 +57,7 @@
                                             <tr>
                                                 <th>Product</th>
                                                 <th class="text-center">Quantity</th>
+                                                <th class="text-center">Status</th>
                                                 <th class="text-end">Unit Price</th>
                                                 <th class="text-end">Total</th>
                                             </tr>
@@ -64,27 +65,39 @@
                                         <tbody>
                                             @foreach (var item in subOrder.Items)
                                             {
-                                                <tr>
+                                                <tr class="@(item.Status == Mercato.Orders.Domain.Entities.SellerSubOrderItemStatus.Cancelled ? "table-danger" : "")">
                                                     <td>
                                                         <strong>@item.ProductTitle</strong>
                                                     </td>
                                                     <td class="text-center align-middle">@item.Quantity</td>
+                                                    <td class="text-center align-middle">
+                                                        <span class="badge @DetailsModel.GetItemStatusBadgeClass(item.Status)">
+                                                            @DetailsModel.GetItemStatusDisplayText(item.Status)
+                                                        </span>
+                                                    </td>
                                                     <td class="text-end align-middle">@item.UnitPrice.ToString("C")</td>
-                                                    <td class="text-end align-middle">@item.TotalPrice.ToString("C")</td>
+                                                    <td class="text-end align-middle @(item.Status == Mercato.Orders.Domain.Entities.SellerSubOrderItemStatus.Cancelled ? "text-decoration-line-through" : "")">@item.TotalPrice.ToString("C")</td>
                                                 </tr>
                                             }
                                         </tbody>
                                         <tfoot class="table-light">
                                             <tr>
-                                                <td colspan="3" class="text-end"><strong>Subtotal:</strong></td>
+                                                <td colspan="4" class="text-end"><strong>Subtotal:</strong></td>
                                                 <td class="text-end"><strong>@subOrder.ItemsSubtotal.ToString("C")</strong></td>
                                             </tr>
+                                            @if (subOrder.CancelledItemsTotal > 0)
+                                            {
+                                                <tr class="text-danger">
+                                                    <td colspan="4" class="text-end"><strong>Cancelled Items:</strong></td>
+                                                    <td class="text-end"><strong>-@subOrder.CancelledItemsTotal.ToString("C")</strong></td>
+                                                </tr>
+                                            }
                                             <tr>
-                                                <td colspan="3" class="text-end text-muted">Shipping:</td>
+                                                <td colspan="4" class="text-end text-muted">Shipping:</td>
                                                 <td class="text-end text-muted">@subOrder.ShippingCost.ToString("C")</td>
                                             </tr>
                                             <tr>
-                                                <td colspan="3" class="text-end"><strong>Sub-order Total:</strong></td>
+                                                <td colspan="4" class="text-end"><strong>Sub-order Total:</strong></td>
                                                 <td class="text-end"><strong class="text-primary">@subOrder.TotalAmount.ToString("C")</strong></td>
                                             </tr>
                                         </tfoot>

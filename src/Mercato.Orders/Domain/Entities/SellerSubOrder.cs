@@ -110,4 +110,25 @@ public class SellerSubOrder
     /// Navigation property to the items in this seller sub-order.
     /// </summary>
     public ICollection<SellerSubOrderItem> Items { get; set; } = new List<SellerSubOrderItem>();
+
+    /// <summary>
+    /// Gets the total price of cancelled items for refund calculation.
+    /// </summary>
+    public decimal CancelledItemsTotal => Items
+        .Where(i => i.Status == SellerSubOrderItemStatus.Cancelled)
+        .Sum(i => i.TotalPrice);
+
+    /// <summary>
+    /// Gets the total price of shipped items.
+    /// </summary>
+    public decimal ShippedItemsTotal => Items
+        .Where(i => i.Status == SellerSubOrderItemStatus.Shipped || i.Status == SellerSubOrderItemStatus.Delivered)
+        .Sum(i => i.TotalPrice);
+
+    /// <summary>
+    /// Gets a value indicating whether the sub-order is partially fulfilled.
+    /// </summary>
+    public bool IsPartiallyFulfilled => Items.Any() &&
+        Items.Any(i => i.Status == SellerSubOrderItemStatus.Shipped || i.Status == SellerSubOrderItemStatus.Delivered) &&
+        Items.Any(i => i.Status != SellerSubOrderItemStatus.Shipped && i.Status != SellerSubOrderItemStatus.Delivered);
 }

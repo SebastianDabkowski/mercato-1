@@ -96,6 +96,10 @@ public class OrderDbContext : DbContext
             entity.Property(e => e.ShippingCarrier).HasMaxLength(100);
             entity.Property(e => e.ShippingMethodName).HasMaxLength(100);
             entity.HasMany(e => e.Items).WithOne(i => i.SellerSubOrder).HasForeignKey(i => i.SellerSubOrderId);
+            // Ignore computed properties
+            entity.Ignore(e => e.CancelledItemsTotal);
+            entity.Ignore(e => e.ShippedItemsTotal);
+            entity.Ignore(e => e.IsPartiallyFulfilled);
         });
 
         modelBuilder.Entity<SellerSubOrderItem>(entity =>
@@ -106,6 +110,11 @@ public class OrderDbContext : DbContext
             entity.Property(e => e.ProductImageUrl).HasMaxLength(500);
             entity.HasIndex(e => e.SellerSubOrderId);
             entity.HasIndex(e => e.ProductId);
+            // Composite index for partial fulfillment status queries
+            entity.HasIndex(e => new { e.SellerSubOrderId, e.Status })
+                .HasDatabaseName("IX_SellerSubOrderItems_SubOrderId_Status");
+            // Ignore computed properties
+            entity.Ignore(e => e.TotalPrice);
         });
 
         modelBuilder.Entity<ReturnRequest>(entity =>

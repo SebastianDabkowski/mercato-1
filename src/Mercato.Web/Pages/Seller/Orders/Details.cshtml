@@ -53,10 +53,14 @@
         <div class="row">
             @* Left Column - Order Items and Actions *@
             <div class="col-lg-8">
-                @* Order Items *@
+                @* Order Items with Partial Fulfillment *@
                 <div class="card mb-4">
-                    <div class="card-header">
+                    <div class="card-header d-flex justify-content-between align-items-center">
                         <h5 class="mb-0"><i class="bi bi-box-seam me-2"></i>Items to Fulfill</h5>
+                        @if (subOrder.IsPartiallyFulfilled)
+                        {
+                            <span class="badge bg-info">Partially Fulfilled</span>
+                        }
                     </div>
                     <div class="card-body p-0">
                         <div class="table-responsive">
@@ -65,21 +69,25 @@
                                     <tr>
                                         <th>Product</th>
                                         <th class="text-center">Quantity</th>
+                                        <th class="text-center">Status</th>
                                         <th class="text-end">Unit Price</th>
-                                        <th class="text-end">Tax</th>
                                         <th class="text-end">Total</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     @foreach (var item in subOrder.Items)
                                     {
-                                        <tr>
+                                        <tr class="@(item.Status == Mercato.Orders.Domain.Entities.SellerSubOrderItemStatus.Cancelled ? "table-danger" : "")">
                                             <td>
                                                 <strong>@item.ProductTitle</strong>
                                             </td>
                                             <td class="text-center align-middle">@item.Quantity</td>
+                                            <td class="text-center align-middle">
+                                                <span class="badge @DetailsModel.GetItemStatusBadgeClass(item.Status)">
+                                                    @DetailsModel.GetItemStatusDisplayText(item.Status)
+                                                </span>
+                                            </td>
                                             <td class="text-end align-middle">@item.UnitPrice.ToString("C")</td>
-                                            <td class="text-end align-middle text-muted">N/A</td>
                                             <td class="text-end align-middle">@item.TotalPrice.ToString("C")</td>
                                         </tr>
                                     }
@@ -89,6 +97,13 @@
                                         <td colspan="4" class="text-end"><strong>Subtotal:</strong></td>
                                         <td class="text-end"><strong>@subOrder.ItemsSubtotal.ToString("C")</strong></td>
                                     </tr>
+                                    @if (subOrder.CancelledItemsTotal > 0)
+                                    {
+                                        <tr class="text-danger">
+                                            <td colspan="4" class="text-end"><strong>Cancelled Items:</strong></td>
+                                            <td class="text-end"><strong>-@subOrder.CancelledItemsTotal.ToString("C")</strong></td>
+                                        </tr>
+                                    }
                                     <tr>
                                         <td colspan="4" class="text-end text-muted">Shipping:</td>
                                         <td class="text-end text-muted">@subOrder.ShippingCost.ToString("C")</td>
@@ -193,6 +208,93 @@
                                         <i class="bi bi-check-circle me-1"></i>Mark as Delivered
                                     </button>
                                 }
+                            </form>
+                        </div>
+                    </div>
+                }
+
+                @* Partial Fulfillment - Update Individual Item Status *@
+                @if (Model.CanUpdateItemStatus)
+                {
+                    <div class="card mb-4 border-info">
+                        <div class="card-header bg-info bg-opacity-10">
+                            <h5 class="mb-0"><i class="bi bi-layers me-2"></i>Partial Fulfillment</h5>
+                        </div>
+                        <div class="card-body">
+                            <p class="text-muted mb-3">
+                                <i class="bi bi-info-circle me-1"></i>
+                                Select items to update their status individually. This allows you to ship available items while keeping others pending or cancelled.
+                            </p>
+                            <form method="post" asp-page-handler="UpdateItemStatus">
+                                <div class="table-responsive mb-3">
+                                    <table class="table table-bordered">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th style="width: 40px;"></th>
+                                                <th>Product</th>
+                                                <th class="text-center" style="width: 100px;">Current</th>
+                                                <th class="text-center" style="width: 160px;">New Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var item in subOrder.Items.Where(i => i.Status != Mercato.Orders.Domain.Entities.SellerSubOrderItemStatus.Delivered && i.Status != Mercato.Orders.Domain.Entities.SellerSubOrderItemStatus.Cancelled))
+                                            {
+                                                <tr>
+                                                    <td class="text-center align-middle">
+                                                        <input type="checkbox" class="form-check-input item-checkbox" 
+                                                               name="SelectedItemIds" value="@item.Id" />
+                                                    </td>
+                                                    <td>
+                                                        <strong>@item.ProductTitle</strong>
+                                                        <small class="text-muted d-block">Qty: @item.Quantity × @item.UnitPrice.ToString("C")</small>
+                                                    </td>
+                                                    <td class="text-center align-middle">
+                                                        <span class="badge @DetailsModel.GetItemStatusBadgeClass(item.Status)">
+                                                            @DetailsModel.GetItemStatusDisplayText(item.Status)
+                                                        </span>
+                                                    </td>
+                                                    <td class="text-center align-middle">
+                                                        <select class="form-select form-select-sm item-status-select" name="ItemStatuses[@item.Id]" disabled>
+                                                            <option value="">-- Select --</option>
+                                                            @if (item.Status == Mercato.Orders.Domain.Entities.SellerSubOrderItemStatus.New)
+                                                            {
+                                                                <option value="Preparing">Preparing</option>
+                                                                <option value="Shipped">Shipped</option>
+                                                                <option value="Cancelled">Cancelled</option>
+                                                            }
+                                                            else if (item.Status == Mercato.Orders.Domain.Entities.SellerSubOrderItemStatus.Preparing)
+                                                            {
+                                                                <option value="Shipped">Shipped</option>
+                                                                <option value="Cancelled">Cancelled</option>
+                                                            }
+                                                            else if (item.Status == Mercato.Orders.Domain.Entities.SellerSubOrderItemStatus.Shipped)
+                                                            {
+                                                                <option value="Delivered">Delivered</option>
+                                                            }
+                                                        </select>
+                                                    </td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div class="row g-3 mb-3">
+                                    <div class="col-md-6">
+                                        <label for="ItemShippingCarrier" class="form-label">Shipping Carrier (for shipped items)</label>
+                                        <input type="text" class="form-control" id="ItemShippingCarrier" name="ShippingCarrier" 
+                                               value="@subOrder.ShippingCarrier"
+                                               placeholder="e.g., FedEx, UPS, USPS" />
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="ItemTrackingNumber" class="form-label">Tracking Number (for shipped items)</label>
+                                        <input type="text" class="form-control" id="ItemTrackingNumber" name="TrackingNumber" 
+                                               value="@subOrder.TrackingNumber"
+                                               placeholder="Enter tracking number" />
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn btn-info" id="updateItemsBtn" disabled>
+                                    <i class="bi bi-arrow-repeat me-1"></i>Update Selected Items
+                                </button>
                             </form>
                         </div>
                     </div>
@@ -440,3 +542,31 @@
         </div>
     }
 </div>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const checkboxes = document.querySelectorAll('.item-checkbox');
+            const updateBtn = document.getElementById('updateItemsBtn');
+            
+            checkboxes.forEach(function(checkbox) {
+                checkbox.addEventListener('change', function() {
+                    // Find the corresponding select in the same row
+                    const row = this.closest('tr');
+                    const select = row.querySelector('.item-status-select');
+                    
+                    if (this.checked) {
+                        select.disabled = false;
+                    } else {
+                        select.disabled = true;
+                        select.value = '';
+                    }
+                    
+                    // Enable/disable the submit button based on any checkbox being checked
+                    const anyChecked = Array.from(checkboxes).some(cb => cb.checked);
+                    updateBtn.disabled = !anyChecked;
+                });
+            });
+        });
+    </script>
+}

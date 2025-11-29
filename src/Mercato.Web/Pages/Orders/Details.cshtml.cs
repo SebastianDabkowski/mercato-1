@@ -237,6 +237,36 @@ public class DetailsModel : PageModel
     };
 
     /// <summary>
+    /// Gets the CSS class for a seller sub-order item status badge.
+    /// </summary>
+    /// <param name="status">The item status.</param>
+    /// <returns>The CSS class name.</returns>
+    public static string GetItemStatusBadgeClass(SellerSubOrderItemStatus status) => status switch
+    {
+        SellerSubOrderItemStatus.New => "bg-secondary",
+        SellerSubOrderItemStatus.Preparing => "bg-primary",
+        SellerSubOrderItemStatus.Shipped => "bg-info",
+        SellerSubOrderItemStatus.Delivered => "bg-success",
+        SellerSubOrderItemStatus.Cancelled => "bg-danger",
+        _ => "bg-secondary"
+    };
+
+    /// <summary>
+    /// Gets the display text for a seller sub-order item status.
+    /// </summary>
+    /// <param name="status">The item status.</param>
+    /// <returns>The display text.</returns>
+    public static string GetItemStatusDisplayText(SellerSubOrderItemStatus status) => status switch
+    {
+        SellerSubOrderItemStatus.New => "New",
+        SellerSubOrderItemStatus.Preparing => "Preparing",
+        SellerSubOrderItemStatus.Shipped => "Shipped",
+        SellerSubOrderItemStatus.Delivered => "Delivered",
+        SellerSubOrderItemStatus.Cancelled => "Cancelled",
+        _ => status.ToString()
+    };
+
+    /// <summary>
     /// Gets the tracking URL for a shipping carrier and tracking number.
     /// </summary>
     /// <param name="carrier">The shipping carrier name.</param>
