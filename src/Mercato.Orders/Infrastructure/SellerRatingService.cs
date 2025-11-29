@@ -217,7 +217,8 @@ public class SellerRatingService : ISellerRatingService
         try
         {
             var averageRating = await _sellerRatingRepository.GetAverageRatingForStoreAsync(storeId);
-            return GetAverageRatingResult.Success(averageRating);
+            var ratingCount = await _sellerRatingRepository.GetRatingCountForStoreAsync(storeId);
+            return GetAverageRatingResult.Success(averageRating, ratingCount);
         }
         catch (Exception ex)
         {

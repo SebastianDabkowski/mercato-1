@@ -90,4 +90,12 @@ public class SellerRatingRepository : ISellerRatingRepository
             .Select(r => (double?)r.Rating)
             .AverageAsync();
     }
+
+    /// <inheritdoc />
+    public async Task<int> GetRatingCountForStoreAsync(Guid storeId)
+    {
+        return await _context.SellerRatings
+            .Where(r => r.StoreId == storeId)
+            .CountAsync();
+    }
 }
