@@ -125,13 +125,13 @@
                      caseItem.Status == ReturnStatus.Completed)
                 {
                     <div class="card mb-4">
-                        <div class="card-header @(caseItem.Status == ReturnStatus.Rejected ? "bg-danger bg-opacity-10" : caseItem.Status == ReturnStatus.Approved ? "bg-success bg-opacity-10" : "bg-dark bg-opacity-10")">
+                        <div class="card-header @(caseItem.Status == ReturnStatus.Rejected || caseItem.ResolutionType == CaseResolutionType.NoRefund ? "bg-danger bg-opacity-10" : caseItem.Status == ReturnStatus.Approved ? "bg-success bg-opacity-10" : "bg-dark bg-opacity-10")">
                             <h5 class="mb-0">
-                                @if (caseItem.Status == ReturnStatus.Approved)
+                                @if (caseItem.Status == ReturnStatus.Approved || (caseItem.Status == ReturnStatus.Completed && caseItem.ResolutionType != CaseResolutionType.NoRefund))
                                 {
                                     <i class="bi bi-check-circle text-success me-2"></i>
                                 }
-                                else if (caseItem.Status == ReturnStatus.Rejected)
+                                else if (caseItem.Status == ReturnStatus.Rejected || caseItem.ResolutionType == CaseResolutionType.NoRefund)
                                 {
                                     <i class="bi bi-x-circle text-danger me-2"></i>
                                 }
@@ -143,20 +143,48 @@
                             </h5>
                         </div>
                         <div class="card-body">
-                            <p class="mb-3">
-                                <strong>Decision:</strong>
-                                <span class="badge ms-2 @DetailsModel.GetStatusBadgeClass(caseItem.Status)">
-                                    @DetailsModel.GetStatusDisplayText(caseItem.Status)
-                                </span>
-                            </p>
-                            <p class="mb-0">@DetailsModel.GetResolutionSummary(caseItem.Status)</p>
-                            @if (!string.IsNullOrEmpty(caseItem.SellerNotes))
+                            @if (caseItem.ResolutionType.HasValue)
+                            {
+                                <p class="mb-3">
+                                    <strong>Resolution Type:</strong>
+                                    <span class="badge ms-2 @DetailsModel.GetResolutionTypeBadgeClass(caseItem.ResolutionType.Value)">
+                                        @DetailsModel.GetResolutionTypeDisplayText(caseItem.ResolutionType.Value)
+                                    </span>
+                                </p>
+                            }
+                            else
+                            {
+                                <p class="mb-3">
+                                    <strong>Decision:</strong>
+                                    <span class="badge ms-2 @DetailsModel.GetStatusBadgeClass(caseItem.Status)">
+                                        @DetailsModel.GetStatusDisplayText(caseItem.Status)
+                                    </span>
+                                </p>
+                            }
+                            <p class="mb-0">@DetailsModel.GetResolutionSummaryForType(caseItem.Status, caseItem.ResolutionType)</p>
+                            @if (!string.IsNullOrEmpty(caseItem.ResolutionReason))
+                            {
+                                <hr>
+                                <p class="mb-0">
+                                    <strong>Seller's Resolution Reason:</strong>
+                                </p>
+                                <p class="mt-2 mb-0 bg-light p-3 rounded">@caseItem.ResolutionReason</p>
+                            }
+                            else if (!string.IsNullOrEmpty(caseItem.SellerNotes))
                             {
                                 <hr>
                                 <p class="mb-0">
                                     <strong>Seller's Notes:</strong>
                                 </p>
                                 <p class="mt-2 mb-0 bg-light p-3 rounded">@caseItem.SellerNotes</p>
+                            }
+                            @if (caseItem.RefundAmount.HasValue)
+                            {
+                                <hr>
+                                <p class="mb-0">
+                                    <strong>Refund Amount:</strong>
+                                    <span class="text-success ms-2">@caseItem.RefundAmount.Value.ToString("C")</span>
+                                </p>
                             }
                         </div>
                     </div>

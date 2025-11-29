@@ -1,0 +1,352 @@
+@page "{id:guid}"
+@model Mercato.Web.Pages.Seller.Returns.ResolveModel
+@using Mercato.Orders.Domain.Entities
+@{
+    ViewData["Title"] = Model.Case != null ? $"Resolve Case {Model.Case.CaseNumber}" : "Resolve Case";
+}
+
+<div class="container py-4">
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-page="/Seller/Orders/Index">Orders</a></li>
+            @if (Model.Case?.SellerSubOrderId != null)
+            {
+                <li class="breadcrumb-item"><a asp-page="/Seller/Orders/Details" asp-route-id="@Model.Case.SellerSubOrderId">Order Details</a></li>
+            }
+            <li class="breadcrumb-item active" aria-current="page">Resolve Case</li>
+        </ol>
+    </nav>
+
+    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+    {
+        <div class="alert alert-danger">@Model.ErrorMessage</div>
+    }
+
+    @if (Model.Case != null)
+    {
+        var caseItem = Model.Case;
+        
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1 class="mb-1">Resolve Case @caseItem.CaseNumber</h1>
+                <p class="text-muted mb-0">Submitted on @caseItem.CreatedAt.ToString("MMMM dd, yyyy 'at' h:mm tt")</p>
+            </div>
+            <span class="badge fs-6 @ResolveModel.GetStatusBadgeClass(caseItem.Status)">
+                @ResolveModel.GetStatusDisplayText(caseItem.Status)
+            </span>
+        </div>
+
+        <div class="row">
+            @* Left Column - Resolution Form *@
+            <div class="col-lg-8">
+                @* Case Summary *@
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-file-text me-2"></i>Case Details</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <strong>Case Type:</strong>
+                            <span class="badge bg-light text-dark border ms-2">@caseItem.CaseType</span>
+                        </div>
+                        <div class="mb-3">
+                            <strong>Buyer's Reason:</strong>
+                            <p class="mt-2 mb-0 bg-light p-3 rounded">@caseItem.Reason</p>
+                        </div>
+                        @if (caseItem.SellerSubOrder?.Items?.Any() == true)
+                        {
+                            <hr>
+                            <strong>Items:</strong>
+                            <ul class="list-unstyled mt-2">
+                                @foreach (var item in caseItem.SellerSubOrder.Items)
+                                {
+                                    <li class="d-flex justify-content-between py-1">
+                                        <span>@item.ProductTitle (x@item.Quantity)</span>
+                                        <span>@item.TotalPrice.ToString("C")</span>
+                                    </li>
+                                }
+                            </ul>
+                            <div class="d-flex justify-content-between border-top pt-2">
+                                <strong>Total:</strong>
+                                <strong class="text-primary">@Model.MaxRefundableAmount.ToString("C")</strong>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                @* Resolution Form *@
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-check-circle me-2"></i>Resolution Options</h5>
+                    </div>
+                    <div class="card-body">
+                        <form method="post">
+                            @* Resolution Type Selection *@
+                            <div class="mb-4">
+                                <label class="form-label fw-bold">Resolution Type <span class="text-danger">*</span></label>
+                                <div class="row row-cols-1 row-cols-md-2 g-3">
+                                    <div class="col">
+                                        <div class="form-check card p-3 h-100">
+                                            <input class="form-check-input" type="radio" name="ResolutionType" id="resFullRefund" 
+                                                   value="@CaseResolutionType.FullRefund" 
+                                                   @(Model.ResolutionType == CaseResolutionType.FullRefund ? "checked" : "")
+                                                   onchange="toggleRefundOptions()">
+                                            <label class="form-check-label" for="resFullRefund">
+                                                <strong><i class="bi bi-cash-coin me-1"></i>Full Refund</strong>
+                                                <small class="d-block text-muted">Refund the full amount (@Model.MaxRefundableAmount.ToString("C"))</small>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="col">
+                                        <div class="form-check card p-3 h-100">
+                                            <input class="form-check-input" type="radio" name="ResolutionType" id="resPartialRefund" 
+                                                   value="@CaseResolutionType.PartialRefund" 
+                                                   @(Model.ResolutionType == CaseResolutionType.PartialRefund ? "checked" : "")
+                                                   onchange="toggleRefundOptions()">
+                                            <label class="form-check-label" for="resPartialRefund">
+                                                <strong><i class="bi bi-cash me-1"></i>Partial Refund</strong>
+                                                <small class="d-block text-muted">Refund a specific amount</small>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="col">
+                                        <div class="form-check card p-3 h-100">
+                                            <input class="form-check-input" type="radio" name="ResolutionType" id="resReplacement" 
+                                                   value="@CaseResolutionType.Replacement"
+                                                   @(Model.ResolutionType == CaseResolutionType.Replacement ? "checked" : "")
+                                                   onchange="toggleRefundOptions()">
+                                            <label class="form-check-label" for="resReplacement">
+                                                <strong><i class="bi bi-arrow-repeat me-1"></i>Replacement</strong>
+                                                <small class="d-block text-muted">Send a replacement item</small>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="col">
+                                        <div class="form-check card p-3 h-100">
+                                            <input class="form-check-input" type="radio" name="ResolutionType" id="resRepair" 
+                                                   value="@CaseResolutionType.Repair"
+                                                   @(Model.ResolutionType == CaseResolutionType.Repair ? "checked" : "")
+                                                   onchange="toggleRefundOptions()">
+                                            <label class="form-check-label" for="resRepair">
+                                                <strong><i class="bi bi-tools me-1"></i>Repair</strong>
+                                                <small class="d-block text-muted">Repair and return the item</small>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="col">
+                                        <div class="form-check card p-3 h-100">
+                                            <input class="form-check-input" type="radio" name="ResolutionType" id="resNoRefund" 
+                                                   value="@CaseResolutionType.NoRefund"
+                                                   @(Model.ResolutionType == CaseResolutionType.NoRefund ? "checked" : "")
+                                                   onchange="toggleRefundOptions()">
+                                            <label class="form-check-label" for="resNoRefund">
+                                                <strong><i class="bi bi-x-circle me-1"></i>No Refund</strong>
+                                                <small class="d-block text-muted">Reject the request (reason required)</small>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            @* Refund Options - shown for Full/Partial Refund *@
+                            <div id="refundOptions" class="mb-4" style="display: none;">
+                                <div class="card bg-light">
+                                    <div class="card-body">
+                                        <h6 class="card-title"><i class="bi bi-credit-card me-1"></i>Refund Processing</h6>
+                                        
+                                        @* Partial Refund Amount *@
+                                        <div id="partialRefundAmount" class="mb-3" style="display: none;">
+                                            <label for="RefundAmount" class="form-label">Refund Amount <span class="text-danger">*</span></label>
+                                            <div class="input-group">
+                                                <span class="input-group-text">$</span>
+                                                <input type="number" class="form-control" id="RefundAmount" name="RefundAmount" 
+                                                       step="0.01" min="0.01" max="@Model.MaxRefundableAmount"
+                                                       value="@Model.RefundAmount"
+                                                       placeholder="Enter refund amount">
+                                            </div>
+                                            <small class="text-muted">Maximum: @Model.MaxRefundableAmount.ToString("C")</small>
+                                        </div>
+
+                                        @* Refund Action *@
+                                        <div class="form-check mb-2">
+                                            <input class="form-check-input" type="checkbox" id="InitiateNewRefund" name="InitiateNewRefund" 
+                                                   value="true" @(Model.InitiateNewRefund ? "checked" : "")>
+                                            <label class="form-check-label" for="InitiateNewRefund">
+                                                <strong>Initiate new refund</strong>
+                                                <small class="d-block text-muted">Process a new refund through the payment system</small>
+                                            </label>
+                                        </div>
+
+                                        <div class="mb-3">
+                                            <label for="ExistingRefundId" class="form-label">Or link existing refund ID (optional)</label>
+                                            <input type="text" class="form-control" id="ExistingRefundId" name="ExistingRefundId" 
+                                                   value="@Model.ExistingRefundId"
+                                                   placeholder="Enter existing refund GUID">
+                                            <small class="text-muted">If a refund was already processed, enter its ID here</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            @* Resolution Reason *@
+                            <div class="mb-4">
+                                <label for="ResolutionReason" class="form-label">
+                                    Resolution Reason / Notes 
+                                    <span id="reasonRequired" class="text-danger" style="display: none;">*</span>
+                                </label>
+                                <textarea class="form-control" id="ResolutionReason" name="ResolutionReason" rows="4"
+                                          placeholder="Provide a reason or notes for this resolution...">@Model.ResolutionReason</textarea>
+                                <small class="text-muted">Required for "No Refund" resolution. The buyer will see this explanation.</small>
+                            </div>
+
+                            @* Submit *@
+                            <div class="d-flex gap-2">
+                                <button type="submit" class="btn btn-primary btn-lg">
+                                    <i class="bi bi-check-circle me-1"></i>Confirm Resolution
+                                </button>
+                                <a asp-page="/Seller/Orders/Details" asp-route-id="@caseItem.SellerSubOrderId" class="btn btn-outline-secondary btn-lg">
+                                    Cancel
+                                </a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            @* Right Column - Summary *@
+            <div class="col-lg-4">
+                @* Case Summary *@
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-info-circle me-2"></i>Case Summary</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted">Case Number:</span>
+                            <span class="font-monospace">@caseItem.CaseNumber</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted">Type:</span>
+                            <span>@caseItem.CaseType</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted">Status:</span>
+                            <span class="badge @ResolveModel.GetStatusBadgeClass(caseItem.Status)">
+                                @ResolveModel.GetStatusDisplayText(caseItem.Status)
+                            </span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted">Submitted:</span>
+                            <span>@caseItem.CreatedAt.ToString("MMM dd, yyyy")</span>
+                        </div>
+                        @if (caseItem.SellerSubOrder != null)
+                        {
+                            <hr>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="text-muted">Sub-Order:</span>
+                                <span class="font-monospace">@caseItem.SellerSubOrder.SubOrderNumber</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-0">
+                                <span class="text-muted">Amount:</span>
+                                <span class="text-primary fw-bold">@caseItem.SellerSubOrder.TotalAmount.ToString("C")</span>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                @* Linked Refund Info *@
+                @if (Model.LinkedRefund != null)
+                {
+                    <div class="card mb-4 border-success">
+                        <div class="card-header bg-success bg-opacity-10">
+                            <h5 class="mb-0"><i class="bi bi-cash-coin me-2"></i>Linked Refund</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="text-muted">Refund ID:</span>
+                                <span class="font-monospace">@Model.LinkedRefund.RefundId.ToString()[..8].ToUpperInvariant()</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="text-muted">Amount:</span>
+                                <span>@Model.LinkedRefund.Amount.ToString("C")</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-0">
+                                <span class="text-muted">Status:</span>
+                                <span class="badge bg-success">@Model.LinkedRefund.Status</span>
+                            </div>
+                        </div>
+                    </div>
+                }
+
+                @* Help *@
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-question-circle me-2"></i>Resolution Guide</h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="small text-muted mb-2">
+                            <strong>Full Refund:</strong> The buyer receives a complete refund for all items.
+                        </p>
+                        <p class="small text-muted mb-2">
+                            <strong>Partial Refund:</strong> The buyer receives a partial amount (e.g., for damaged items).
+                        </p>
+                        <p class="small text-muted mb-2">
+                            <strong>Replacement:</strong> A new item is sent without any refund.
+                        </p>
+                        <p class="small text-muted mb-2">
+                            <strong>Repair:</strong> The item is repaired and returned to the buyer.
+                        </p>
+                        <p class="small text-muted mb-0">
+                            <strong>No Refund:</strong> The case is rejected. A reason must be provided.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="alert alert-warning">
+            <h5>Case Not Found</h5>
+            <p>We couldn't find the case you're looking for.</p>
+            <a asp-page="/Seller/Orders/Index" class="btn btn-primary">Back to Orders</a>
+        </div>
+    }
+</div>
+
+@section Scripts {
+    <script>
+        function toggleRefundOptions() {
+            const fullRefund = document.getElementById('resFullRefund');
+            const partialRefund = document.getElementById('resPartialRefund');
+            const noRefund = document.getElementById('resNoRefund');
+            const refundOptions = document.getElementById('refundOptions');
+            const partialRefundAmount = document.getElementById('partialRefundAmount');
+            const reasonRequired = document.getElementById('reasonRequired');
+
+            // Show refund options for full or partial refund
+            if (fullRefund.checked || partialRefund.checked) {
+                refundOptions.style.display = 'block';
+            } else {
+                refundOptions.style.display = 'none';
+            }
+
+            // Show amount field for partial refund
+            if (partialRefund.checked) {
+                partialRefundAmount.style.display = 'block';
+            } else {
+                partialRefundAmount.style.display = 'none';
+            }
+
+            // Show required indicator for no refund reason
+            if (noRefund.checked) {
+                reasonRequired.style.display = 'inline';
+            } else {
+                reasonRequired.style.display = 'none';
+            }
+        }
+
+        // Run on page load
+        document.addEventListener('DOMContentLoaded', toggleRefundOptions);
+    </script>
+}

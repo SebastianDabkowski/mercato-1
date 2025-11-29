@@ -3,6 +3,7 @@ using Mercato.Orders.Application.Services;
 using Mercato.Orders.Domain.Entities;
 using Mercato.Orders.Domain.Interfaces;
 using Mercato.Orders.Infrastructure;
+using Mercato.Payments.Application.Services;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
@@ -25,6 +26,7 @@ public class ReturnRequestServiceTests
     private readonly Mock<IShippingStatusHistoryRepository> _mockShippingStatusHistoryRepository;
     private readonly Mock<IOrderConfirmationEmailService> _mockEmailService;
     private readonly Mock<IShippingNotificationService> _mockShippingNotificationService;
+    private readonly Mock<IRefundService> _mockRefundService;
     private readonly Mock<ILogger<OrderService>> _mockLogger;
     private readonly ReturnSettings _returnSettings;
     private readonly OrderService _service;
@@ -37,6 +39,7 @@ public class ReturnRequestServiceTests
         _mockShippingStatusHistoryRepository = new Mock<IShippingStatusHistoryRepository>(MockBehavior.Strict);
         _mockEmailService = new Mock<IOrderConfirmationEmailService>(MockBehavior.Strict);
         _mockShippingNotificationService = new Mock<IShippingNotificationService>(MockBehavior.Strict);
+        _mockRefundService = new Mock<IRefundService>(MockBehavior.Strict);
         _mockLogger = new Mock<ILogger<OrderService>>();
         _returnSettings = new ReturnSettings { ReturnWindowDays = 30 };
 
@@ -47,6 +50,7 @@ public class ReturnRequestServiceTests
             _mockShippingStatusHistoryRepository.Object,
             _mockEmailService.Object,
             _mockShippingNotificationService.Object,
+            _mockRefundService.Object,
             Options.Create(_returnSettings),
             _mockLogger.Object);
     }
@@ -923,6 +927,296 @@ public class ReturnRequestServiceTests
             LastUpdatedAt = DateTimeOffset.UtcNow,
             CaseItems = []
         };
+    }
+
+    private static ReturnRequest CreateTestReturnRequestWithSubOrder(Guid sellerSubOrderId, SellerSubOrder subOrder)
+    {
+        var returnRequest = CreateTestReturnRequest(sellerSubOrderId);
+        returnRequest.SellerSubOrder = subOrder;
+        return returnRequest;
+    }
+
+    #endregion
+
+    #region ResolveCaseAsync Tests
+
+    [Fact]
+    public async Task ResolveCaseAsync_NoRefundResolution_UpdatesCaseToCompleted()
+    {
+        // Arrange
+        var subOrder = CreateTestDeliveredSubOrder();
+        var returnRequest = CreateTestReturnRequestWithSubOrder(subOrder.Id, subOrder);
+        returnRequest.Id = TestReturnRequestId;
+        returnRequest.Status = ReturnStatus.Requested;
+
+        var command = new ResolveCaseCommand
+        {
+            ResolutionType = CaseResolutionType.NoRefund,
+            ResolutionReason = "Product was used beyond return policy guidelines.",
+            SellerUserId = "test-seller-id"
+        };
+
+        _mockReturnRequestRepository.Setup(r => r.GetByIdAsync(TestReturnRequestId))
+            .ReturnsAsync(returnRequest);
+        _mockReturnRequestRepository.Setup(r => r.UpdateAsync(It.IsAny<ReturnRequest>()))
+            .Returns(Task.CompletedTask);
+
+        // Act
+        var result = await _service.ResolveCaseAsync(TestReturnRequestId, TestStoreId, command);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.Null(result.LinkedRefundId);
+        Assert.False(result.RefundInitiated);
+        _mockReturnRequestRepository.Verify(r => r.UpdateAsync(It.Is<ReturnRequest>(rr =>
+            rr.Status == ReturnStatus.Completed &&
+            rr.ResolutionType == CaseResolutionType.NoRefund &&
+            rr.ResolutionReason == "Product was used beyond return policy guidelines." &&
+            rr.ResolvedAt.HasValue)), Times.Once);
+    }
+
+    [Fact]
+    public async Task ResolveCaseAsync_ReplacementResolution_UpdatesCaseWithoutRefund()
+    {
+        // Arrange
+        var subOrder = CreateTestDeliveredSubOrder();
+        var returnRequest = CreateTestReturnRequestWithSubOrder(subOrder.Id, subOrder);
+        returnRequest.Id = TestReturnRequestId;
+        returnRequest.Status = ReturnStatus.Approved;
+
+        var command = new ResolveCaseCommand
+        {
+            ResolutionType = CaseResolutionType.Replacement,
+            ResolutionReason = "Replacement item will be shipped.",
+            SellerUserId = "test-seller-id"
+        };
+
+        _mockReturnRequestRepository.Setup(r => r.GetByIdAsync(TestReturnRequestId))
+            .ReturnsAsync(returnRequest);
+        _mockReturnRequestRepository.Setup(r => r.UpdateAsync(It.IsAny<ReturnRequest>()))
+            .Returns(Task.CompletedTask);
+
+        // Act
+        var result = await _service.ResolveCaseAsync(TestReturnRequestId, TestStoreId, command);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.Null(result.LinkedRefundId);
+        Assert.False(result.RefundInitiated);
+        _mockReturnRequestRepository.Verify(r => r.UpdateAsync(It.Is<ReturnRequest>(rr =>
+            rr.Status == ReturnStatus.Completed &&
+            rr.ResolutionType == CaseResolutionType.Replacement)), Times.Once);
+    }
+
+    [Fact]
+    public async Task ResolveCaseAsync_NotFound_ReturnsFailure()
+    {
+        // Arrange
+        var command = new ResolveCaseCommand
+        {
+            ResolutionType = CaseResolutionType.NoRefund,
+            ResolutionReason = "Test reason",
+            SellerUserId = "test-seller-id"
+        };
+
+        _mockReturnRequestRepository.Setup(r => r.GetByIdAsync(TestReturnRequestId))
+            .ReturnsAsync((ReturnRequest?)null);
+
+        // Act
+        var result = await _service.ResolveCaseAsync(TestReturnRequestId, TestStoreId, command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains("Return request not found.", result.Errors);
+    }
+
+    [Fact]
+    public async Task ResolveCaseAsync_DifferentStore_ReturnsNotAuthorized()
+    {
+        // Arrange
+        var subOrder = CreateTestDeliveredSubOrder();
+        subOrder.StoreId = Guid.NewGuid(); // Different store
+        var returnRequest = CreateTestReturnRequestWithSubOrder(subOrder.Id, subOrder);
+        returnRequest.Id = TestReturnRequestId;
+
+        var command = new ResolveCaseCommand
+        {
+            ResolutionType = CaseResolutionType.NoRefund,
+            ResolutionReason = "Test reason",
+            SellerUserId = "test-seller-id"
+        };
+
+        _mockReturnRequestRepository.Setup(r => r.GetByIdAsync(TestReturnRequestId))
+            .ReturnsAsync(returnRequest);
+
+        // Act
+        var result = await _service.ResolveCaseAsync(TestReturnRequestId, TestStoreId, command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.True(result.IsNotAuthorized);
+    }
+
+    [Fact]
+    public async Task ResolveCaseAsync_AlreadyCompleted_ReturnsFailure()
+    {
+        // Arrange
+        var subOrder = CreateTestDeliveredSubOrder();
+        var returnRequest = CreateTestReturnRequestWithSubOrder(subOrder.Id, subOrder);
+        returnRequest.Id = TestReturnRequestId;
+        returnRequest.Status = ReturnStatus.Completed;
+
+        var command = new ResolveCaseCommand
+        {
+            ResolutionType = CaseResolutionType.NoRefund,
+            ResolutionReason = "Test reason",
+            SellerUserId = "test-seller-id"
+        };
+
+        _mockReturnRequestRepository.Setup(r => r.GetByIdAsync(TestReturnRequestId))
+            .ReturnsAsync(returnRequest);
+
+        // Act
+        var result = await _service.ResolveCaseAsync(TestReturnRequestId, TestStoreId, command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains("This case has already been resolved.", result.Errors);
+    }
+
+    [Fact]
+    public async Task ResolveCaseAsync_NoRefundWithoutReason_ReturnsValidationFailure()
+    {
+        // Arrange
+        var command = new ResolveCaseCommand
+        {
+            ResolutionType = CaseResolutionType.NoRefund,
+            ResolutionReason = null, // Required for NoRefund
+            SellerUserId = "test-seller-id"
+        };
+
+        // Act
+        var result = await _service.ResolveCaseAsync(TestReturnRequestId, TestStoreId, command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains("Resolution reason is required when choosing 'No Refund'.", result.Errors);
+    }
+
+    [Fact]
+    public async Task ResolveCaseAsync_EmptyStoreId_ReturnsFailure()
+    {
+        // Arrange
+        var command = new ResolveCaseCommand
+        {
+            ResolutionType = CaseResolutionType.Replacement,
+            SellerUserId = "test-seller-id"
+        };
+
+        // Act
+        var result = await _service.ResolveCaseAsync(TestReturnRequestId, Guid.Empty, command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains("Store ID is required.", result.Errors);
+    }
+
+    [Fact]
+    public async Task ResolveCaseAsync_PartialRefundWithoutAmount_ReturnsValidationFailure()
+    {
+        // Arrange
+        var command = new ResolveCaseCommand
+        {
+            ResolutionType = CaseResolutionType.PartialRefund,
+            InitiateNewRefund = true,
+            RefundAmount = null, // Required for partial refund
+            PaymentTransactionId = Guid.NewGuid(),
+            SellerUserId = "test-seller-id"
+        };
+
+        // Act
+        var result = await _service.ResolveCaseAsync(TestReturnRequestId, TestStoreId, command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains("Refund amount is required for partial refund.", result.Errors);
+    }
+
+    [Fact]
+    public async Task ResolveCaseAsync_LinkExistingRefund_LinksRefundToCase()
+    {
+        // Arrange
+        var subOrder = CreateTestDeliveredSubOrder();
+        var returnRequest = CreateTestReturnRequestWithSubOrder(subOrder.Id, subOrder);
+        returnRequest.Id = TestReturnRequestId;
+        returnRequest.Status = ReturnStatus.Approved;
+
+        var existingRefundId = Guid.NewGuid();
+        var command = new ResolveCaseCommand
+        {
+            ResolutionType = CaseResolutionType.FullRefund,
+            ExistingRefundId = existingRefundId,
+            InitiateNewRefund = false,
+            SellerUserId = "test-seller-id"
+        };
+
+        var existingRefund = new Mercato.Payments.Domain.Entities.Refund
+        {
+            Id = existingRefundId,
+            Amount = 100.00m,
+            Status = Mercato.Payments.Domain.Entities.RefundStatus.Completed
+        };
+
+        _mockReturnRequestRepository.Setup(r => r.GetByIdAsync(TestReturnRequestId))
+            .ReturnsAsync(returnRequest);
+        _mockRefundService.Setup(r => r.GetRefundAsync(existingRefundId))
+            .ReturnsAsync(GetRefundResult.Success(existingRefund));
+        _mockReturnRequestRepository.Setup(r => r.UpdateAsync(It.IsAny<ReturnRequest>()))
+            .Returns(Task.CompletedTask);
+
+        // Act
+        var result = await _service.ResolveCaseAsync(TestReturnRequestId, TestStoreId, command);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.Equal(existingRefundId, result.LinkedRefundId);
+        Assert.False(result.RefundInitiated);
+        _mockReturnRequestRepository.Verify(r => r.UpdateAsync(It.Is<ReturnRequest>(rr =>
+            rr.LinkedRefundId == existingRefundId &&
+            rr.RefundAmount == 100.00m)), Times.Once);
+    }
+
+    [Fact]
+    public async Task ResolveCaseAsync_RepairResolution_UpdatesCaseWithoutRefund()
+    {
+        // Arrange
+        var subOrder = CreateTestDeliveredSubOrder();
+        var returnRequest = CreateTestReturnRequestWithSubOrder(subOrder.Id, subOrder);
+        returnRequest.Id = TestReturnRequestId;
+        returnRequest.Status = ReturnStatus.Approved;
+
+        var command = new ResolveCaseCommand
+        {
+            ResolutionType = CaseResolutionType.Repair,
+            ResolutionReason = "Item will be repaired and returned within 5 business days.",
+            SellerUserId = "test-seller-id"
+        };
+
+        _mockReturnRequestRepository.Setup(r => r.GetByIdAsync(TestReturnRequestId))
+            .ReturnsAsync(returnRequest);
+        _mockReturnRequestRepository.Setup(r => r.UpdateAsync(It.IsAny<ReturnRequest>()))
+            .Returns(Task.CompletedTask);
+
+        // Act
+        var result = await _service.ResolveCaseAsync(TestReturnRequestId, TestStoreId, command);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.Null(result.LinkedRefundId);
+        Assert.False(result.RefundInitiated);
+        _mockReturnRequestRepository.Verify(r => r.UpdateAsync(It.Is<ReturnRequest>(rr =>
+            rr.Status == ReturnStatus.Completed &&
+            rr.ResolutionType == CaseResolutionType.Repair)), Times.Once);
     }
 
     #endregion

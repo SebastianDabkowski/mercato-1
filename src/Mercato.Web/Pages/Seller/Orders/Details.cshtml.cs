@@ -554,6 +554,21 @@ public class DetailsModel : PageModel
     };
 
     /// <summary>
+    /// Gets display text for a case resolution type.
+    /// </summary>
+    /// <param name="type">The resolution type.</param>
+    /// <returns>The display text.</returns>
+    public static string GetResolutionTypeDisplayText(CaseResolutionType type) => type switch
+    {
+        CaseResolutionType.FullRefund => "Full Refund",
+        CaseResolutionType.PartialRefund => "Partial Refund",
+        CaseResolutionType.Replacement => "Replacement",
+        CaseResolutionType.Repair => "Repair",
+        CaseResolutionType.NoRefund => "No Refund",
+        _ => type.ToString()
+    };
+
+    /// <summary>
     /// Handles POST requests to generate a shipping label.
     /// </summary>
     /// <param name="id">The seller sub-order ID.</param>

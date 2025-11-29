@@ -220,4 +220,20 @@ public interface IOrderService
     /// <param name="sellerSubOrderId">The seller sub-order ID.</param>
     /// <returns>The result containing the shipping status history.</returns>
     Task<GetShippingStatusHistoryResult> GetShippingStatusHistoryAsync(Guid sellerSubOrderId);
+
+    /// <summary>
+    /// Resolves a return/complaint case with the specified resolution.
+    /// </summary>
+    /// <param name="returnRequestId">The return request ID.</param>
+    /// <param name="storeId">The store ID for authorization.</param>
+    /// <param name="command">The resolve case command.</param>
+    /// <returns>The result of the resolve operation.</returns>
+    Task<ResolveCaseResult> ResolveCaseAsync(Guid returnRequestId, Guid storeId, ResolveCaseCommand command);
+
+    /// <summary>
+    /// Gets the linked refund information for a case.
+    /// </summary>
+    /// <param name="returnRequestId">The return request ID.</param>
+    /// <returns>The refund information if linked; otherwise, null.</returns>
+    Task<CaseRefundInfo?> GetLinkedRefundInfoAsync(Guid returnRequestId);
 }

@@ -15,4 +15,8 @@
     <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="9.*" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\Mercato.Payments\Mercato.Payments.csproj" />
+  </ItemGroup>
+
 </Project>

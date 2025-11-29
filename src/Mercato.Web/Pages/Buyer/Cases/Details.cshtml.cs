@@ -147,6 +147,60 @@ public class DetailsModel : PageModel
     };
 
     /// <summary>
+    /// Gets a user-friendly resolution summary based on the case status and resolution type.
+    /// </summary>
+    /// <param name="status">The return status.</param>
+    /// <param name="resolutionType">The resolution type.</param>
+    /// <returns>The resolution summary.</returns>
+    public static string GetResolutionSummaryForType(ReturnStatus status, CaseResolutionType? resolutionType)
+    {
+        if (!resolutionType.HasValue)
+        {
+            return GetResolutionSummary(status);
+        }
+
+        return resolutionType.Value switch
+        {
+            CaseResolutionType.FullRefund => "A full refund has been issued for your order.",
+            CaseResolutionType.PartialRefund => "A partial refund has been issued for your order.",
+            CaseResolutionType.Replacement => "A replacement item will be sent to you.",
+            CaseResolutionType.Repair => "Your item will be repaired and returned to you.",
+            CaseResolutionType.NoRefund => "Your return request has been declined.",
+            _ => GetResolutionSummary(status)
+        };
+    }
+
+    /// <summary>
+    /// Gets display text for a case resolution type.
+    /// </summary>
+    /// <param name="type">The resolution type.</param>
+    /// <returns>The display text.</returns>
+    public static string GetResolutionTypeDisplayText(CaseResolutionType type) => type switch
+    {
+        CaseResolutionType.FullRefund => "Full Refund",
+        CaseResolutionType.PartialRefund => "Partial Refund",
+        CaseResolutionType.Replacement => "Replacement",
+        CaseResolutionType.Repair => "Repair",
+        CaseResolutionType.NoRefund => "No Refund",
+        _ => type.ToString()
+    };
+
+    /// <summary>
+    /// Gets the CSS class for a resolution type badge.
+    /// </summary>
+    /// <param name="type">The resolution type.</param>
+    /// <returns>The CSS class name.</returns>
+    public static string GetResolutionTypeBadgeClass(CaseResolutionType type) => type switch
+    {
+        CaseResolutionType.FullRefund => "bg-success",
+        CaseResolutionType.PartialRefund => "bg-info",
+        CaseResolutionType.Replacement => "bg-primary",
+        CaseResolutionType.Repair => "bg-primary",
+        CaseResolutionType.NoRefund => "bg-danger",
+        _ => "bg-secondary"
+    };
+
+    /// <summary>
     /// Gets the CSS class for a refund status badge.
     /// </summary>
     /// <param name="status">The refund status.</param>

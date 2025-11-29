@@ -4,6 +4,7 @@ using Mercato.Orders.Application.Services;
 using Mercato.Orders.Domain.Entities;
 using Mercato.Orders.Domain.Interfaces;
 using Mercato.Orders.Infrastructure;
+using Mercato.Payments.Application.Services;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
@@ -24,6 +25,7 @@ public class OrderServiceTests
     private readonly Mock<IShippingStatusHistoryRepository> _mockShippingStatusHistoryRepository;
     private readonly Mock<IOrderConfirmationEmailService> _mockEmailService;
     private readonly Mock<IShippingNotificationService> _mockShippingNotificationService;
+    private readonly Mock<IRefundService> _mockRefundService;
     private readonly Mock<ILogger<OrderService>> _mockLogger;
     private readonly OrderService _service;
 
@@ -35,6 +37,7 @@ public class OrderServiceTests
         _mockShippingStatusHistoryRepository = new Mock<IShippingStatusHistoryRepository>(MockBehavior.Strict);
         _mockEmailService = new Mock<IOrderConfirmationEmailService>(MockBehavior.Strict);
         _mockShippingNotificationService = new Mock<IShippingNotificationService>(MockBehavior.Strict);
+        _mockRefundService = new Mock<IRefundService>(MockBehavior.Strict);
         _mockLogger = new Mock<ILogger<OrderService>>();
         var returnSettings = Options.Create(new ReturnSettings { ReturnWindowDays = 30 });
         _service = new OrderService(
@@ -44,6 +47,7 @@ public class OrderServiceTests
             _mockShippingStatusHistoryRepository.Object,
             _mockEmailService.Object,
             _mockShippingNotificationService.Object,
+            _mockRefundService.Object,
             returnSettings,
             _mockLogger.Object);
     }

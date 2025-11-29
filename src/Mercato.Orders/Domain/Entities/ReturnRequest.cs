@@ -70,4 +70,29 @@ public class ReturnRequest
     /// Gets a value indicating whether this case applies to specific items or the entire sub-order.
     /// </summary>
     public bool HasSelectedItems => CaseItems.Count > 0;
+
+    /// <summary>
+    /// Gets or sets the type of resolution chosen by the seller.
+    /// </summary>
+    public CaseResolutionType? ResolutionType { get; set; }
+
+    /// <summary>
+    /// Gets or sets the reason provided by the seller for the resolution (especially for NoRefund).
+    /// </summary>
+    public string? ResolutionReason { get; set; }
+
+    /// <summary>
+    /// Gets or sets the linked refund ID in the Payments module (nullable).
+    /// </summary>
+    public Guid? LinkedRefundId { get; set; }
+
+    /// <summary>
+    /// Gets or sets the amount refunded (for display purposes).
+    /// </summary>
+    public decimal? RefundAmount { get; set; }
+
+    /// <summary>
+    /// Gets or sets when the case was resolved.
+    /// </summary>
+    public DateTimeOffset? ResolvedAt { get; set; }
 }
