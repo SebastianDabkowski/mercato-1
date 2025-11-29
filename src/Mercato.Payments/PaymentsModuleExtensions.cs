@@ -35,13 +35,19 @@ public static class PaymentsModuleExtensions
         // Register EscrowSettings from configuration
         services.Configure<EscrowSettings>(configuration.GetSection("Escrow"));
 
+        // Register CommissionSettings from configuration
+        services.Configure<CommissionSettings>(configuration.GetSection("Commission"));
+
         // Register repositories
         services.AddScoped<IEscrowRepository, EscrowRepository>();
+        services.AddScoped<ICommissionRuleRepository, CommissionRuleRepository>();
+        services.AddScoped<ICommissionRecordRepository, CommissionRecordRepository>();
 
         // Register services
         services.AddScoped<IPaymentStatusMapper, PaymentStatusMapper>();
         services.AddScoped<IPaymentService, PaymentService>();
         services.AddScoped<IEscrowService, EscrowService>();
+        services.AddScoped<ICommissionService, CommissionService>();
 
         return services;
     }
