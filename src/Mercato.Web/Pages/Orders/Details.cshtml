@@ -95,7 +95,9 @@
                                                 </tr>
                                             }
                                             <tr>
-                                                <td colspan="4" class="text-end text-muted">Shipping:</td>
+                                                <td colspan="4" class="text-end text-muted">
+                                                    @DetailsModel.FormatShippingLabel(subOrder.ShippingMethodName)
+                                                </td>
                                                 <td class="text-end text-muted">@subOrder.ShippingCost.ToString("C")</td>
                                             </tr>
                                             <tr>

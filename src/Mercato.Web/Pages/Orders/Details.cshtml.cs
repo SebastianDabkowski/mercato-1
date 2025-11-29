@@ -288,6 +288,20 @@ public class DetailsModel : PageModel
     };
 
     /// <summary>
+    /// Formats the shipping label with optional method name.
+    /// </summary>
+    /// <param name="shippingMethodName">The shipping method name, or null.</param>
+    /// <returns>The formatted shipping label.</returns>
+    public static string FormatShippingLabel(string? shippingMethodName)
+    {
+        if (string.IsNullOrEmpty(shippingMethodName))
+        {
+            return "Shipping:";
+        }
+        return $"Shipping ({shippingMethodName}):";
+    }
+
+    /// <summary>
     /// Gets the tracking URL for a shipping carrier and tracking number.
     /// </summary>
     /// <param name="carrier">The shipping carrier name.</param>

@@ -183,6 +183,18 @@ public class PaymentCallbackModel : PageModel
             return CreateOrderResult.Failure("No validated items found. Please try again.");
         }
 
+        // Set shipping method names on items based on store
+        if (ShippingData?.ShippingMethodNames != null)
+        {
+            foreach (var item in items)
+            {
+                if (ShippingData.ShippingMethodNames.TryGetValue(item.StoreId, out var methodName))
+                {
+                    item.ShippingMethodName = methodName;
+                }
+            }
+        }
+
         var deliveryAddress = new DeliveryAddressInfo();
         if (DeliveryAddress != null)
         {
