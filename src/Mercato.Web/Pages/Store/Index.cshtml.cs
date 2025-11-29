@@ -102,6 +102,14 @@ public class IndexModel : PageModel
                     AverageRating = ratingResult.AverageRating;
                     RatingCount = ratingResult.RatingCount;
                 }
+                else
+                {
+                    // Rating data unavailable - defaults to null/0
+                    _logger.LogWarning("Failed to load rating for store {StoreId}: {Errors}", 
+                        Store.Id, string.Join(", ", ratingResult.Errors));
+                    AverageRating = null;
+                    RatingCount = 0;
+                }
             }
 
             return Page();
