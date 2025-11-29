@@ -236,4 +236,47 @@ public interface IOrderService
     /// <param name="returnRequestId">The return request ID.</param>
     /// <returns>The refund information if linked; otherwise, null.</returns>
     Task<CaseRefundInfo?> GetLinkedRefundInfoAsync(Guid returnRequestId);
+
+    /// <summary>
+    /// Gets the messaging thread for a case.
+    /// </summary>
+    /// <param name="returnRequestId">The return request ID.</param>
+    /// <param name="userId">The user ID requesting the messages.</param>
+    /// <param name="userRole">The role of the user (Buyer, Seller, Admin).</param>
+    /// <param name="storeId">The store ID (required for Seller role).</param>
+    /// <returns>The result containing the case messages.</returns>
+    Task<GetCaseMessagesResult> GetCaseMessagesAsync(Guid returnRequestId, string userId, string userRole, Guid? storeId = null);
+
+    /// <summary>
+    /// Adds a message to a case's messaging thread.
+    /// </summary>
+    /// <param name="command">The add message command.</param>
+    /// <param name="storeId">The store ID (required for Seller role).</param>
+    /// <returns>The result of the add message operation.</returns>
+    Task<AddCaseMessageResult> AddCaseMessageAsync(AddCaseMessageCommand command, Guid? storeId = null);
+
+    /// <summary>
+    /// Marks the new activity on a case as viewed by the user.
+    /// </summary>
+    /// <param name="returnRequestId">The return request ID.</param>
+    /// <param name="userId">The user ID marking the activity as viewed.</param>
+    /// <param name="userRole">The role of the user (Buyer, Seller, Admin).</param>
+    /// <param name="storeId">The store ID (required for Seller role).</param>
+    /// <returns>The result of the mark activity viewed operation.</returns>
+    Task<MarkCaseActivityViewedResult> MarkCaseActivityViewedAsync(Guid returnRequestId, string userId, string userRole, Guid? storeId = null);
+
+    /// <summary>
+    /// Gets a return request by ID for a seller.
+    /// </summary>
+    /// <param name="returnRequestId">The return request ID.</param>
+    /// <param name="storeId">The store ID for authorization.</param>
+    /// <returns>The return request if found and authorized.</returns>
+    Task<GetReturnRequestResult> GetReturnRequestForSellerAsync(Guid returnRequestId, Guid storeId);
+
+    /// <summary>
+    /// Gets a return request by ID for admin (no authorization required).
+    /// </summary>
+    /// <param name="returnRequestId">The return request ID.</param>
+    /// <returns>The return request if found.</returns>
+    Task<GetReturnRequestResult> GetReturnRequestForAdminAsync(Guid returnRequestId);
 }

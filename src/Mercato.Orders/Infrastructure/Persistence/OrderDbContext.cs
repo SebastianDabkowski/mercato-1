@@ -44,6 +44,11 @@ public class OrderDbContext : DbContext
     public DbSet<CaseItem> CaseItems { get; set; }
 
     /// <summary>
+    /// Gets or sets the case messages DbSet.
+    /// </summary>
+    public DbSet<CaseMessage> CaseMessages { get; set; }
+
+    /// <summary>
     /// Gets or sets the shipping status histories DbSet.
     /// </summary>
     public DbSet<ShippingStatusHistory> ShippingStatusHistories { get; set; }
@@ -137,6 +142,7 @@ public class OrderDbContext : DbContext
             entity.Property(e => e.SellerNotes).HasMaxLength(2000);
             entity.Property(e => e.ResolutionReason).HasMaxLength(2000);
             entity.Property(e => e.RefundAmount).HasPrecision(18, 2);
+            entity.Property(e => e.LastActivityByUserId).HasMaxLength(450);
             entity.HasIndex(e => e.SellerSubOrderId);
             entity.HasIndex(e => e.BuyerId);
             entity.HasIndex(e => e.LinkedRefundId);
@@ -146,6 +152,9 @@ public class OrderDbContext : DbContext
             entity.HasMany(e => e.CaseItems)
                 .WithOne(ci => ci.ReturnRequest)
                 .HasForeignKey(ci => ci.ReturnRequestId);
+            entity.HasMany(e => e.Messages)
+                .WithOne(m => m.ReturnRequest)
+                .HasForeignKey(m => m.ReturnRequestId);
             // Ignore computed properties
             entity.Ignore(e => e.HasSelectedItems);
         });
@@ -161,6 +170,17 @@ public class OrderDbContext : DbContext
             entity.HasOne(e => e.SellerSubOrderItem)
                 .WithMany()
                 .HasForeignKey(e => e.SellerSubOrderItemId);
+        });
+
+        modelBuilder.Entity<CaseMessage>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.SenderUserId).IsRequired().HasMaxLength(450);
+            entity.Property(e => e.SenderRole).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.Content).IsRequired().HasMaxLength(2000);
+            entity.HasIndex(e => e.ReturnRequestId);
+            entity.HasIndex(e => new { e.ReturnRequestId, e.CreatedAt })
+                .HasDatabaseName("IX_CaseMessages_RequestId_CreatedAt");
         });
 
         modelBuilder.Entity<ShippingStatusHistory>(entity =>

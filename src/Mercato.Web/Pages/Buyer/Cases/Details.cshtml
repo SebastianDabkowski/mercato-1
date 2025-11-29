@@ -1,5 +1,6 @@
 @page "{id:guid}"
 @model Mercato.Web.Pages.Buyer.Cases.DetailsModel
+@using Mercato.Orders.Application.Queries
 @using Mercato.Orders.Domain.Entities
 @using Mercato.Payments.Domain.Entities
 @{
@@ -237,6 +238,94 @@
                         </div>
                     </div>
                 }
+
+                @* Messaging Thread *@
+                <div class="card mb-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="bi bi-chat-dots me-2"></i>Messages</h5>
+                        <span class="badge bg-secondary">@Model.Messages.Count message(s)</span>
+                    </div>
+                    <div class="card-body">
+                        @if (!string.IsNullOrEmpty(Model.SuccessMessage))
+                        {
+                            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                                <i class="bi bi-check-circle me-2"></i>@Model.SuccessMessage
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        }
+
+                        @* Messages List *@
+                        <div class="messaging-thread mb-4" style="max-height: 400px; overflow-y: auto;">
+                            @if (Model.Messages.Count == 0)
+                            {
+                                <div class="text-center text-muted py-4">
+                                    <i class="bi bi-chat-square-text fs-1 d-block mb-2"></i>
+                                    <p class="mb-0">No messages yet. Start the conversation by sending a message below.</p>
+                                </div>
+                            }
+                            else
+                            {
+                                @foreach (var message in Model.Messages)
+                                {
+                                    var isCurrentUser = message.SenderRole == "Buyer";
+                                    var alignClass = isCurrentUser ? "justify-content-end" : "justify-content-start";
+                                    var bgClass = message.SenderRole switch
+                                    {
+                                        "Buyer" => "bg-primary text-white",
+                                        "Seller" => "bg-light border",
+                                        "Admin" => "bg-warning text-dark",
+                                        _ => "bg-secondary text-white"
+                                    };
+                                    var roleIcon = message.SenderRole switch
+                                    {
+                                        "Buyer" => "bi-person",
+                                        "Seller" => "bi-shop",
+                                        "Admin" => "bi-shield-check",
+                                        _ => "bi-person"
+                                    };
+                                    
+                                    <div class="d-flex @alignClass mb-3">
+                                        <div class="message-bubble @bgClass rounded-3 p-3" style="max-width: 75%;">
+                                            <div class="d-flex align-items-center mb-1">
+                                                <i class="bi @roleIcon me-1"></i>
+                                                <small class="fw-bold">@message.SenderRole</small>
+                                            </div>
+                                            <p class="mb-1">@message.Content</p>
+                                            <small class="@(isCurrentUser ? "text-white-50" : "text-muted")">
+                                                @message.CreatedAt.ToString("MMM dd, yyyy 'at' h:mm tt")
+                                            </small>
+                                        </div>
+                                    </div>
+                                }
+                            }
+                        </div>
+
+                        @* New Message Form *@
+                        @if (caseItem.Status != ReturnStatus.Completed && caseItem.Status != ReturnStatus.Rejected)
+                        {
+                            <form method="post" asp-route-id="@caseItem.Id">
+                                <div class="mb-3">
+                                    <label for="NewMessageContent" class="form-label">Send a Message</label>
+                                    <textarea class="form-control" id="NewMessageContent" name="NewMessageContent" 
+                                              rows="3" maxlength="2000" placeholder="Type your message here..."
+                                              asp-for="NewMessageContent"></textarea>
+                                    <span asp-validation-for="NewMessageContent" class="text-danger"></span>
+                                    <small class="text-muted">Maximum 2000 characters</small>
+                                </div>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-send me-1"></i>Send Message
+                                </button>
+                            </form>
+                        }
+                        else
+                        {
+                            <div class="alert alert-info mb-0">
+                                <i class="bi bi-info-circle me-2"></i>
+                                This case has been @(caseItem.Status == ReturnStatus.Completed ? "resolved" : "closed"). No more messages can be sent.
+                            </div>
+                        }
+                    </div>
+                </div>
 
                 @* Case Timeline / Messaging Thread Placeholder *@
                 <div class="card mb-4">

@@ -19,6 +19,7 @@ public class OrderService : IOrderService
     private readonly ISellerSubOrderRepository _sellerSubOrderRepository;
     private readonly IReturnRequestRepository _returnRequestRepository;
     private readonly IShippingStatusHistoryRepository _shippingStatusHistoryRepository;
+    private readonly ICaseMessageRepository _caseMessageRepository;
     private readonly IOrderConfirmationEmailService _emailService;
     private readonly IShippingNotificationService _shippingNotificationService;
     private readonly IRefundService _refundService;
@@ -32,6 +33,7 @@ public class OrderService : IOrderService
     /// <param name="sellerSubOrderRepository">The seller sub-order repository.</param>
     /// <param name="returnRequestRepository">The return request repository.</param>
     /// <param name="shippingStatusHistoryRepository">The shipping status history repository.</param>
+    /// <param name="caseMessageRepository">The case message repository.</param>
     /// <param name="emailService">The email service.</param>
     /// <param name="shippingNotificationService">The shipping notification service.</param>
     /// <param name="refundService">The refund service.</param>
@@ -42,6 +44,7 @@ public class OrderService : IOrderService
         ISellerSubOrderRepository sellerSubOrderRepository,
         IReturnRequestRepository returnRequestRepository,
         IShippingStatusHistoryRepository shippingStatusHistoryRepository,
+        ICaseMessageRepository caseMessageRepository,
         IOrderConfirmationEmailService emailService,
         IShippingNotificationService shippingNotificationService,
         IRefundService refundService,
@@ -52,6 +55,7 @@ public class OrderService : IOrderService
         _sellerSubOrderRepository = sellerSubOrderRepository;
         _returnRequestRepository = returnRequestRepository;
         _shippingStatusHistoryRepository = shippingStatusHistoryRepository;
+        _caseMessageRepository = caseMessageRepository;
         _emailService = emailService;
         _shippingNotificationService = shippingNotificationService;
         _refundService = refundService;
@@ -1886,5 +1890,268 @@ public class OrderService : IOrderService
         }
 
         return errors;
+    }
+
+    /// <inheritdoc />
+    public async Task<GetCaseMessagesResult> GetCaseMessagesAsync(Guid returnRequestId, string userId, string userRole, Guid? storeId = null)
+    {
+        if (string.IsNullOrEmpty(userId))
+        {
+            return GetCaseMessagesResult.Failure("User ID is required.");
+        }
+
+        if (string.IsNullOrEmpty(userRole))
+        {
+            return GetCaseMessagesResult.Failure("User role is required.");
+        }
+
+        try
+        {
+            var returnRequest = await _returnRequestRepository.GetByIdAsync(returnRequestId);
+            if (returnRequest == null)
+            {
+                return GetCaseMessagesResult.Failure("Case not found.");
+            }
+
+            // Authorization check based on role
+            var authResult = AuthorizeCaseAccess(returnRequest, userId, userRole, storeId);
+            if (!authResult.IsAuthorized)
+            {
+                return GetCaseMessagesResult.NotAuthorized();
+            }
+
+            var messages = await _caseMessageRepository.GetByReturnRequestIdAsync(returnRequestId);
+            var messageDtos = messages.Select(m => new CaseMessageDto
+            {
+                Id = m.Id,
+                SenderUserId = m.SenderUserId,
+                SenderRole = m.SenderRole,
+                Content = m.Content,
+                CreatedAt = m.CreatedAt
+            }).ToList();
+
+            return GetCaseMessagesResult.Success(messageDtos, returnRequest);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting messages for case {ReturnRequestId}", returnRequestId);
+            return GetCaseMessagesResult.Failure("An error occurred while getting the case messages.");
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<AddCaseMessageResult> AddCaseMessageAsync(AddCaseMessageCommand command, Guid? storeId = null)
+    {
+        var validationErrors = ValidateAddCaseMessageCommand(command);
+        if (validationErrors.Count > 0)
+        {
+            return AddCaseMessageResult.Failure(validationErrors);
+        }
+
+        try
+        {
+            var returnRequest = await _returnRequestRepository.GetByIdAsync(command.ReturnRequestId);
+            if (returnRequest == null)
+            {
+                return AddCaseMessageResult.Failure("Case not found.");
+            }
+
+            // Authorization check based on role
+            var authResult = AuthorizeCaseAccess(returnRequest, command.SenderUserId, command.SenderRole, storeId);
+            if (!authResult.IsAuthorized)
+            {
+                return AddCaseMessageResult.NotAuthorized();
+            }
+
+            var now = DateTimeOffset.UtcNow;
+            var message = new CaseMessage
+            {
+                Id = Guid.NewGuid(),
+                ReturnRequestId = command.ReturnRequestId,
+                SenderUserId = command.SenderUserId,
+                SenderRole = command.SenderRole,
+                Content = command.Content,
+                CreatedAt = now
+            };
+
+            await _caseMessageRepository.AddAsync(message);
+
+            // Update the case to mark new activity
+            returnRequest.HasNewActivity = true;
+            returnRequest.LastActivityByUserId = command.SenderUserId;
+            returnRequest.LastUpdatedAt = now;
+            await _returnRequestRepository.UpdateAsync(returnRequest);
+
+            _logger.LogInformation(
+                "Added message to case {CaseNumber} by {SenderRole} user {SenderUserId}",
+                returnRequest.CaseNumber, command.SenderRole, command.SenderUserId);
+
+            return AddCaseMessageResult.Success(message.Id);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error adding message to case {ReturnRequestId}", command.ReturnRequestId);
+            return AddCaseMessageResult.Failure("An error occurred while adding the message.");
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<MarkCaseActivityViewedResult> MarkCaseActivityViewedAsync(Guid returnRequestId, string userId, string userRole, Guid? storeId = null)
+    {
+        if (string.IsNullOrEmpty(userId))
+        {
+            return MarkCaseActivityViewedResult.Failure("User ID is required.");
+        }
+
+        if (string.IsNullOrEmpty(userRole))
+        {
+            return MarkCaseActivityViewedResult.Failure("User role is required.");
+        }
+
+        try
+        {
+            var returnRequest = await _returnRequestRepository.GetByIdAsync(returnRequestId);
+            if (returnRequest == null)
+            {
+                return MarkCaseActivityViewedResult.Failure("Case not found.");
+            }
+
+            // Authorization check based on role
+            var authResult = AuthorizeCaseAccess(returnRequest, userId, userRole, storeId);
+            if (!authResult.IsAuthorized)
+            {
+                return MarkCaseActivityViewedResult.NotAuthorized();
+            }
+
+            // Only clear the new activity flag if the viewer is not the one who caused the activity
+            if (returnRequest.HasNewActivity && returnRequest.LastActivityByUserId != userId)
+            {
+                returnRequest.HasNewActivity = false;
+                await _returnRequestRepository.UpdateAsync(returnRequest);
+
+                _logger.LogDebug(
+                    "Marked case {CaseNumber} activity as viewed by {UserRole} user {UserId}",
+                    returnRequest.CaseNumber, userRole, userId);
+            }
+
+            return MarkCaseActivityViewedResult.Success();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error marking case {ReturnRequestId} activity as viewed", returnRequestId);
+            return MarkCaseActivityViewedResult.Failure("An error occurred while marking the activity as viewed.");
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<GetReturnRequestResult> GetReturnRequestForSellerAsync(Guid returnRequestId, Guid storeId)
+    {
+        if (storeId == Guid.Empty)
+        {
+            return GetReturnRequestResult.Failure("Store ID is required.");
+        }
+
+        try
+        {
+            var returnRequest = await _returnRequestRepository.GetByIdAsync(returnRequestId);
+            if (returnRequest == null)
+            {
+                return GetReturnRequestResult.Failure("Return request not found.");
+            }
+
+            // Check authorization - store must own the sub-order
+            if (returnRequest.SellerSubOrder == null || returnRequest.SellerSubOrder.StoreId != storeId)
+            {
+                return GetReturnRequestResult.NotAuthorized();
+            }
+
+            return GetReturnRequestResult.Success(returnRequest);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting return request {ReturnRequestId} for seller", returnRequestId);
+            return GetReturnRequestResult.Failure("An error occurred while getting the return request.");
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<GetReturnRequestResult> GetReturnRequestForAdminAsync(Guid returnRequestId)
+    {
+        if (returnRequestId == Guid.Empty)
+        {
+            return GetReturnRequestResult.Failure("Return request ID is required.");
+        }
+
+        try
+        {
+            var returnRequest = await _returnRequestRepository.GetByIdAsync(returnRequestId);
+            if (returnRequest == null)
+            {
+                return GetReturnRequestResult.Failure("Return request not found.");
+            }
+
+            return GetReturnRequestResult.Success(returnRequest);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting return request {ReturnRequestId} for admin", returnRequestId);
+            return GetReturnRequestResult.Failure("An error occurred while getting the return request.");
+        }
+    }
+
+    private static List<string> ValidateAddCaseMessageCommand(AddCaseMessageCommand command)
+    {
+        var errors = new List<string>();
+
+        if (command.ReturnRequestId == Guid.Empty)
+        {
+            errors.Add("Return request ID is required.");
+        }
+
+        if (string.IsNullOrEmpty(command.SenderUserId))
+        {
+            errors.Add("Sender user ID is required.");
+        }
+
+        if (string.IsNullOrEmpty(command.SenderRole))
+        {
+            errors.Add("Sender role is required.");
+        }
+        else if (command.SenderRole != "Buyer" && command.SenderRole != "Seller" && command.SenderRole != "Admin")
+        {
+            errors.Add("Sender role must be Buyer, Seller, or Admin.");
+        }
+
+        if (string.IsNullOrEmpty(command.Content))
+        {
+            errors.Add("Message content is required.");
+        }
+        else if (command.Content.Length > 2000)
+        {
+            errors.Add("Message content must not exceed 2000 characters.");
+        }
+
+        return errors;
+    }
+
+    private static (bool IsAuthorized, string? Reason) AuthorizeCaseAccess(
+        ReturnRequest returnRequest,
+        string userId,
+        string userRole,
+        Guid? storeId)
+    {
+        return userRole switch
+        {
+            "Buyer" => returnRequest.BuyerId == userId
+                ? (true, null)
+                : (false, "Not authorized to access this case."),
+            "Seller" => storeId.HasValue && 
+                        returnRequest.SellerSubOrder != null && 
+                        returnRequest.SellerSubOrder.StoreId == storeId.Value
+                ? (true, null)
+                : (false, "Not authorized to access this case."),
+            "Admin" => (true, null), // Admins can access all cases
+            _ => (false, "Invalid user role.")
+        };
     }
 }
