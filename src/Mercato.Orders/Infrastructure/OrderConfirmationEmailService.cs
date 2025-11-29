@@ -168,4 +168,41 @@ Thank you for shopping with Mercato!
     /// Gets or sets the estimated delivery days message.
     /// </summary>
     public string EstimatedDeliveryDays { get; set; } = "5-7";
+
+    /// <summary>
+    /// Gets or sets the shipping notification email subject template.
+    /// {0} = Sub-Order Number
+    /// </summary>
+    public string ShippingNotificationSubjectTemplate { get; set; } = "Your Order Has Shipped - {0}";
+
+    /// <summary>
+    /// Gets or sets the shipping notification email body template.
+    /// {0} = Sub-Order Number
+    /// {1} = Store Name
+    /// {2} = Shipped Date
+    /// {3} = Items List
+    /// {4} = Tracking Information
+    /// {5} = Delivery Address
+    /// {6} = Estimated Delivery Days
+    /// </summary>
+    public string ShippingNotificationBodyTemplate { get; set; } = @"
+Great news! Your order has shipped!
+
+Order Number: {0}
+Seller: {1}
+Shipped On: {2}
+
+Items Shipped:
+{3}
+
+Tracking Information:
+{4}
+
+Delivery Address:
+{5}
+
+Estimated Delivery: {6} business days from shipment date
+
+Thank you for shopping with Mercato!
+";
 }

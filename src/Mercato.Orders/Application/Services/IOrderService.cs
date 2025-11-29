@@ -199,4 +199,25 @@ public interface IOrderService
     /// <param name="storeId">The store ID for authorization.</param>
     /// <returns>The result containing the refund amount and cancelled item details.</returns>
     Task<CalculateItemRefundResult> CalculateCancelledItemsRefundAsync(Guid subOrderId, Guid storeId);
+
+    /// <summary>
+    /// Gets all orders for admin view with optional filtering.
+    /// </summary>
+    /// <param name="query">The filter query parameters.</param>
+    /// <returns>The result containing the filtered and paginated orders.</returns>
+    Task<GetAdminOrdersResult> GetAdminOrdersAsync(AdminOrderFilterQuery query);
+
+    /// <summary>
+    /// Gets an order by ID for admin view (no buyer authorization required).
+    /// </summary>
+    /// <param name="orderId">The order ID.</param>
+    /// <returns>The result containing the order.</returns>
+    Task<GetOrderResult> GetOrderForAdminAsync(Guid orderId);
+
+    /// <summary>
+    /// Gets the shipping status history for a seller sub-order (for admin support).
+    /// </summary>
+    /// <param name="sellerSubOrderId">The seller sub-order ID.</param>
+    /// <returns>The result containing the shipping status history.</returns>
+    Task<GetShippingStatusHistoryResult> GetShippingStatusHistoryAsync(Guid sellerSubOrderId);
 }

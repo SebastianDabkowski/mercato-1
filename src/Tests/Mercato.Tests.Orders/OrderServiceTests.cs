@@ -21,7 +21,9 @@ public class OrderServiceTests
     private readonly Mock<IOrderRepository> _mockOrderRepository;
     private readonly Mock<ISellerSubOrderRepository> _mockSellerSubOrderRepository;
     private readonly Mock<IReturnRequestRepository> _mockReturnRequestRepository;
+    private readonly Mock<IShippingStatusHistoryRepository> _mockShippingStatusHistoryRepository;
     private readonly Mock<IOrderConfirmationEmailService> _mockEmailService;
+    private readonly Mock<IShippingNotificationService> _mockShippingNotificationService;
     private readonly Mock<ILogger<OrderService>> _mockLogger;
     private readonly OrderService _service;
 
@@ -30,14 +32,18 @@ public class OrderServiceTests
         _mockOrderRepository = new Mock<IOrderRepository>(MockBehavior.Strict);
         _mockSellerSubOrderRepository = new Mock<ISellerSubOrderRepository>(MockBehavior.Strict);
         _mockReturnRequestRepository = new Mock<IReturnRequestRepository>(MockBehavior.Strict);
+        _mockShippingStatusHistoryRepository = new Mock<IShippingStatusHistoryRepository>(MockBehavior.Strict);
         _mockEmailService = new Mock<IOrderConfirmationEmailService>(MockBehavior.Strict);
+        _mockShippingNotificationService = new Mock<IShippingNotificationService>(MockBehavior.Strict);
         _mockLogger = new Mock<ILogger<OrderService>>();
         var returnSettings = Options.Create(new ReturnSettings { ReturnWindowDays = 30 });
         _service = new OrderService(
             _mockOrderRepository.Object,
             _mockSellerSubOrderRepository.Object,
             _mockReturnRequestRepository.Object,
+            _mockShippingStatusHistoryRepository.Object,
             _mockEmailService.Object,
+            _mockShippingNotificationService.Object,
             returnSettings,
             _mockLogger.Object);
     }
@@ -2448,6 +2454,289 @@ public class OrderServiceTests
         // Assert
         Assert.False(result.Succeeded);
         Assert.Contains(result.Errors, e => e.Contains("Sub-order not found"));
+    }
+
+    #endregion
+
+    #region GetAdminOrdersAsync Tests
+
+    [Fact]
+    public async Task GetAdminOrdersAsync_ValidQuery_ReturnsOrders()
+    {
+        // Arrange
+        var orders = new List<Order> { CreateTestOrder() };
+        var query = new AdminOrderFilterQuery
+        {
+            Page = 1,
+            PageSize = 20
+        };
+
+        _mockOrderRepository.Setup(r => r.GetFilteredForAdminAsync(
+                null, null, null, null, 1, 20))
+            .ReturnsAsync((orders, 1));
+
+        // Act
+        var result = await _service.GetAdminOrdersAsync(query);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.Single(result.Orders);
+        Assert.Equal(1, result.TotalCount);
+    }
+
+    [Fact]
+    public async Task GetAdminOrdersAsync_WithSearchTerm_ReturnsFilteredOrders()
+    {
+        // Arrange
+        var orders = new List<Order> { CreateTestOrder() };
+        var query = new AdminOrderFilterQuery
+        {
+            SearchTerm = "ORD-",
+            Page = 1,
+            PageSize = 20
+        };
+
+        _mockOrderRepository.Setup(r => r.GetFilteredForAdminAsync(
+                null, null, null, "ORD-", 1, 20))
+            .ReturnsAsync((orders, 1));
+
+        // Act
+        var result = await _service.GetAdminOrdersAsync(query);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.Single(result.Orders);
+    }
+
+    [Fact]
+    public async Task GetAdminOrdersAsync_InvalidPage_ReturnsFailure()
+    {
+        // Arrange
+        var query = new AdminOrderFilterQuery
+        {
+            Page = 0,
+            PageSize = 20
+        };
+
+        // Act
+        var result = await _service.GetAdminOrdersAsync(query);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains(result.Errors, e => e.Contains("Page number must be at least 1"));
+    }
+
+    [Fact]
+    public async Task GetOrderForAdminAsync_ValidOrderId_ReturnsOrder()
+    {
+        // Arrange
+        var order = CreateTestOrder();
+        _mockOrderRepository.Setup(r => r.GetByIdAsync(order.Id))
+            .ReturnsAsync(order);
+
+        // Act
+        var result = await _service.GetOrderForAdminAsync(order.Id);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.NotNull(result.Order);
+        Assert.Equal(order.Id, result.Order.Id);
+    }
+
+    [Fact]
+    public async Task GetOrderForAdminAsync_EmptyOrderId_ReturnsFailure()
+    {
+        // Act
+        var result = await _service.GetOrderForAdminAsync(Guid.Empty);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains(result.Errors, e => e.Contains("Order ID is required"));
+    }
+
+    [Fact]
+    public async Task GetOrderForAdminAsync_OrderNotFound_ReturnsFailure()
+    {
+        // Arrange
+        var orderId = Guid.NewGuid();
+        _mockOrderRepository.Setup(r => r.GetByIdAsync(orderId))
+            .ReturnsAsync((Order?)null);
+
+        // Act
+        var result = await _service.GetOrderForAdminAsync(orderId);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains(result.Errors, e => e.Contains("Order not found"));
+    }
+
+    #endregion
+
+    #region GetShippingStatusHistoryAsync Tests
+
+    [Fact]
+    public async Task GetShippingStatusHistoryAsync_ValidSubOrderId_ReturnsHistory()
+    {
+        // Arrange
+        var subOrderId = Guid.NewGuid();
+        var history = new List<ShippingStatusHistory>
+        {
+            new ShippingStatusHistory
+            {
+                Id = Guid.NewGuid(),
+                SellerSubOrderId = subOrderId,
+                PreviousStatus = SellerSubOrderStatus.Paid,
+                NewStatus = SellerSubOrderStatus.Preparing,
+                ChangedAt = DateTimeOffset.UtcNow.AddDays(-2)
+            },
+            new ShippingStatusHistory
+            {
+                Id = Guid.NewGuid(),
+                SellerSubOrderId = subOrderId,
+                PreviousStatus = SellerSubOrderStatus.Preparing,
+                NewStatus = SellerSubOrderStatus.Shipped,
+                ChangedAt = DateTimeOffset.UtcNow.AddDays(-1),
+                TrackingNumber = "1234567890",
+                ShippingCarrier = "FedEx"
+            }
+        };
+
+        _mockShippingStatusHistoryRepository.Setup(r => r.GetBySellerSubOrderIdAsync(subOrderId))
+            .ReturnsAsync(history);
+
+        // Act
+        var result = await _service.GetShippingStatusHistoryAsync(subOrderId);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.Equal(2, result.History.Count);
+    }
+
+    [Fact]
+    public async Task GetShippingStatusHistoryAsync_EmptySubOrderId_ReturnsFailure()
+    {
+        // Act
+        var result = await _service.GetShippingStatusHistoryAsync(Guid.Empty);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains(result.Errors, e => e.Contains("Seller sub-order ID is required"));
+    }
+
+    #endregion
+
+    #region UpdateSellerSubOrderStatusAsync with Shipping Notification Tests
+
+    [Fact]
+    public async Task UpdateSellerSubOrderStatusAsync_ToShipped_RecordsHistoryAndSendsNotification()
+    {
+        // Arrange
+        var parentOrder = CreateTestOrder();
+        var subOrder = new SellerSubOrder
+        {
+            Id = Guid.NewGuid(),
+            OrderId = parentOrder.Id,
+            StoreId = TestStoreId,
+            StoreName = "Test Store",
+            SubOrderNumber = "ORD-123-S1",
+            Status = SellerSubOrderStatus.Preparing,
+            Items = new List<SellerSubOrderItem>
+            {
+                new SellerSubOrderItem
+                {
+                    Id = Guid.NewGuid(),
+                    ProductId = TestProductId,
+                    ProductTitle = "Test Product",
+                    UnitPrice = 10.00m,
+                    Quantity = 1,
+                    Status = SellerSubOrderItemStatus.Preparing
+                }
+            },
+            Order = parentOrder
+        };
+
+        var command = new UpdateSellerSubOrderStatusCommand
+        {
+            NewStatus = SellerSubOrderStatus.Shipped,
+            TrackingNumber = "1234567890",
+            ShippingCarrier = "UPS"
+        };
+
+        _mockSellerSubOrderRepository.Setup(r => r.GetByIdAsync(subOrder.Id))
+            .ReturnsAsync(subOrder);
+        _mockSellerSubOrderRepository.Setup(r => r.UpdateAsync(It.IsAny<SellerSubOrder>()))
+            .Returns(Task.CompletedTask);
+        _mockShippingStatusHistoryRepository.Setup(r => r.AddAsync(It.IsAny<ShippingStatusHistory>()))
+            .ReturnsAsync((ShippingStatusHistory h) => h);
+        _mockShippingNotificationService.Setup(s => s.SendShippingNotificationAsync(It.IsAny<SellerSubOrder>(), It.IsAny<Order>()))
+            .ReturnsAsync(SendEmailResult.Success());
+
+        // Act
+        var result = await _service.UpdateSellerSubOrderStatusAsync(subOrder.Id, TestStoreId, command);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        _mockShippingStatusHistoryRepository.Verify(r => r.AddAsync(It.Is<ShippingStatusHistory>(h =>
+            h.PreviousStatus == SellerSubOrderStatus.Preparing &&
+            h.NewStatus == SellerSubOrderStatus.Shipped &&
+            h.TrackingNumber == "1234567890" &&
+            h.ShippingCarrier == "UPS")), Times.Once);
+        _mockShippingNotificationService.Verify(s => s.SendShippingNotificationAsync(
+            It.IsAny<SellerSubOrder>(), It.IsAny<Order>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateSellerSubOrderStatusAsync_ToDelivered_RecordsHistoryButNoNotification()
+    {
+        // Arrange
+        var parentOrder = CreateTestOrder();
+        var subOrder = new SellerSubOrder
+        {
+            Id = Guid.NewGuid(),
+            OrderId = parentOrder.Id,
+            StoreId = TestStoreId,
+            StoreName = "Test Store",
+            SubOrderNumber = "ORD-123-S1",
+            Status = SellerSubOrderStatus.Shipped,
+            ShippedAt = DateTimeOffset.UtcNow.AddDays(-2),
+            Items = new List<SellerSubOrderItem>
+            {
+                new SellerSubOrderItem
+                {
+                    Id = Guid.NewGuid(),
+                    ProductId = TestProductId,
+                    ProductTitle = "Test Product",
+                    UnitPrice = 10.00m,
+                    Quantity = 1,
+                    Status = SellerSubOrderItemStatus.Shipped
+                }
+            },
+            Order = parentOrder
+        };
+
+        var command = new UpdateSellerSubOrderStatusCommand
+        {
+            NewStatus = SellerSubOrderStatus.Delivered
+        };
+
+        _mockSellerSubOrderRepository.Setup(r => r.GetByIdAsync(subOrder.Id))
+            .ReturnsAsync(subOrder);
+        _mockSellerSubOrderRepository.Setup(r => r.UpdateAsync(It.IsAny<SellerSubOrder>()))
+            .Returns(Task.CompletedTask);
+        _mockShippingStatusHistoryRepository.Setup(r => r.AddAsync(It.IsAny<ShippingStatusHistory>()))
+            .ReturnsAsync((ShippingStatusHistory h) => h);
+
+        // Act
+        var result = await _service.UpdateSellerSubOrderStatusAsync(subOrder.Id, TestStoreId, command);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        _mockShippingStatusHistoryRepository.Verify(r => r.AddAsync(It.Is<ShippingStatusHistory>(h =>
+            h.PreviousStatus == SellerSubOrderStatus.Shipped &&
+            h.NewStatus == SellerSubOrderStatus.Delivered)), Times.Once);
+        // No shipping notification for delivered status
+        _mockShippingNotificationService.Verify(s => s.SendShippingNotificationAsync(
+            It.IsAny<SellerSubOrder>(), It.IsAny<Order>()), Times.Never);
     }
 
     #endregion

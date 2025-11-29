@@ -130,6 +130,63 @@ public class OrderRepository : IOrderRepository
     }
 
     /// <inheritdoc />
+    public async Task<(IReadOnlyList<Order> Orders, int TotalCount)> GetFilteredForAdminAsync(
+        IReadOnlyList<OrderStatus>? statuses,
+        DateTimeOffset? fromDate,
+        DateTimeOffset? toDate,
+        string? searchTerm,
+        int page,
+        int pageSize)
+    {
+        // Build the base query for filtering
+        var baseQuery = _context.Orders.AsQueryable();
+
+        // Apply status filter
+        if (statuses != null && statuses.Count > 0)
+        {
+            baseQuery = baseQuery.Where(o => statuses.Contains(o.Status));
+        }
+
+        // Apply date range filter
+        if (fromDate.HasValue)
+        {
+            baseQuery = baseQuery.Where(o => o.CreatedAt >= fromDate.Value);
+        }
+
+        if (toDate.HasValue)
+        {
+            var endOfDay = toDate.Value.Date.AddDays(1);
+            baseQuery = baseQuery.Where(o => o.CreatedAt < endOfDay);
+        }
+
+        // Apply search term filter (order number, buyer email, or store name)
+        // Using EF.Functions.Like for efficient case-insensitive search
+        if (!string.IsNullOrEmpty(searchTerm))
+        {
+            var searchPattern = $"%{searchTerm}%";
+            baseQuery = baseQuery.Where(o =>
+                EF.Functions.Like(o.OrderNumber, searchPattern) ||
+                (o.BuyerEmail != null && EF.Functions.Like(o.BuyerEmail, searchPattern)) ||
+                o.SellerSubOrders.Any(s => EF.Functions.Like(s.StoreName, searchPattern)));
+        }
+
+        // Get total count
+        var totalCount = await baseQuery.CountAsync();
+
+        // Apply includes, sorting, and pagination
+        var orders = await baseQuery
+            .Include(o => o.Items)
+            .Include(o => o.SellerSubOrders)
+                .ThenInclude(s => s.Items)
+            .OrderByDescending(o => o.CreatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        return (orders, totalCount);
+    }
+
+    /// <inheritdoc />
     public async Task<Order> AddAsync(Order order)
     {
         await _context.Orders.AddAsync(order);

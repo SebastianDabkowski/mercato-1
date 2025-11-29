@@ -20,7 +20,9 @@ public class ReturnRequestServiceTests
     private readonly Mock<IOrderRepository> _mockOrderRepository;
     private readonly Mock<ISellerSubOrderRepository> _mockSellerSubOrderRepository;
     private readonly Mock<IReturnRequestRepository> _mockReturnRequestRepository;
+    private readonly Mock<IShippingStatusHistoryRepository> _mockShippingStatusHistoryRepository;
     private readonly Mock<IOrderConfirmationEmailService> _mockEmailService;
+    private readonly Mock<IShippingNotificationService> _mockShippingNotificationService;
     private readonly Mock<ILogger<OrderService>> _mockLogger;
     private readonly ReturnSettings _returnSettings;
     private readonly OrderService _service;
@@ -30,7 +32,9 @@ public class ReturnRequestServiceTests
         _mockOrderRepository = new Mock<IOrderRepository>(MockBehavior.Strict);
         _mockSellerSubOrderRepository = new Mock<ISellerSubOrderRepository>(MockBehavior.Strict);
         _mockReturnRequestRepository = new Mock<IReturnRequestRepository>(MockBehavior.Strict);
+        _mockShippingStatusHistoryRepository = new Mock<IShippingStatusHistoryRepository>(MockBehavior.Strict);
         _mockEmailService = new Mock<IOrderConfirmationEmailService>(MockBehavior.Strict);
+        _mockShippingNotificationService = new Mock<IShippingNotificationService>(MockBehavior.Strict);
         _mockLogger = new Mock<ILogger<OrderService>>();
         _returnSettings = new ReturnSettings { ReturnWindowDays = 30 };
 
@@ -38,7 +42,9 @@ public class ReturnRequestServiceTests
             _mockOrderRepository.Object,
             _mockSellerSubOrderRepository.Object,
             _mockReturnRequestRepository.Object,
+            _mockShippingStatusHistoryRepository.Object,
             _mockEmailService.Object,
+            _mockShippingNotificationService.Object,
             Options.Create(_returnSettings),
             _mockLogger.Object);
     }

@@ -17,7 +17,9 @@ public class OrderService : IOrderService
     private readonly IOrderRepository _orderRepository;
     private readonly ISellerSubOrderRepository _sellerSubOrderRepository;
     private readonly IReturnRequestRepository _returnRequestRepository;
+    private readonly IShippingStatusHistoryRepository _shippingStatusHistoryRepository;
     private readonly IOrderConfirmationEmailService _emailService;
+    private readonly IShippingNotificationService _shippingNotificationService;
     private readonly ReturnSettings _returnSettings;
     private readonly ILogger<OrderService> _logger;
 
@@ -27,21 +29,27 @@ public class OrderService : IOrderService
     /// <param name="orderRepository">The order repository.</param>
     /// <param name="sellerSubOrderRepository">The seller sub-order repository.</param>
     /// <param name="returnRequestRepository">The return request repository.</param>
+    /// <param name="shippingStatusHistoryRepository">The shipping status history repository.</param>
     /// <param name="emailService">The email service.</param>
+    /// <param name="shippingNotificationService">The shipping notification service.</param>
     /// <param name="returnSettings">The return settings.</param>
     /// <param name="logger">The logger.</param>
     public OrderService(
         IOrderRepository orderRepository,
         ISellerSubOrderRepository sellerSubOrderRepository,
         IReturnRequestRepository returnRequestRepository,
+        IShippingStatusHistoryRepository shippingStatusHistoryRepository,
         IOrderConfirmationEmailService emailService,
+        IShippingNotificationService shippingNotificationService,
         IOptions<ReturnSettings> returnSettings,
         ILogger<OrderService> logger)
     {
         _orderRepository = orderRepository;
         _sellerSubOrderRepository = sellerSubOrderRepository;
         _returnRequestRepository = returnRequestRepository;
+        _shippingStatusHistoryRepository = shippingStatusHistoryRepository;
         _emailService = emailService;
+        _shippingNotificationService = shippingNotificationService;
         _returnSettings = returnSettings.Value;
         _logger = logger;
     }
@@ -459,6 +467,7 @@ public class OrderService : IOrderService
                 return UpdateSellerSubOrderStatusResult.Failure(validationErrors);
             }
 
+            var previousStatus = subOrder.Status;
             var now = DateTimeOffset.UtcNow;
             subOrder.Status = command.NewStatus;
             subOrder.LastUpdatedAt = now;
@@ -488,9 +497,31 @@ public class OrderService : IOrderService
 
             await _sellerSubOrderRepository.UpdateAsync(subOrder);
 
+            // Record shipping status history for audit purposes
+            await RecordShippingStatusHistoryAsync(
+                subOrder.Id,
+                previousStatus,
+                command.NewStatus,
+                now,
+                command.TrackingNumber,
+                command.ShippingCarrier,
+                null);
+
+            // Send shipping notification email when status changes to Shipped
+            if (command.NewStatus == SellerSubOrderStatus.Shipped && subOrder.Order != null)
+            {
+                var emailResult = await _shippingNotificationService.SendShippingNotificationAsync(subOrder, subOrder.Order);
+                if (!emailResult.Succeeded)
+                {
+                    _logger.LogWarning(
+                        "Failed to send shipping notification for sub-order {SubOrderNumber}: {Errors}",
+                        subOrder.SubOrderNumber, string.Join(", ", emailResult.Errors));
+                }
+            }
+
             _logger.LogInformation(
-                "Updated seller sub-order {SubOrderNumber} status to {Status}",
-                subOrder.SubOrderNumber, command.NewStatus);
+                "Updated seller sub-order {SubOrderNumber} status from {PreviousStatus} to {Status}",
+                subOrder.SubOrderNumber, previousStatus, command.NewStatus);
 
             return UpdateSellerSubOrderStatusResult.Success();
         }
@@ -576,6 +607,47 @@ public class OrderService : IOrderService
             await _orderRepository.UpdateAsync(order);
 
             _logger.LogInformation("Order {OrderNumber} fully refunded", order.OrderNumber);
+        }
+    }
+
+    /// <summary>
+    /// Records a shipping status change in the history for audit purposes.
+    /// </summary>
+    private async Task RecordShippingStatusHistoryAsync(
+        Guid sellerSubOrderId,
+        SellerSubOrderStatus? previousStatus,
+        SellerSubOrderStatus newStatus,
+        DateTimeOffset changedAt,
+        string? trackingNumber,
+        string? shippingCarrier,
+        string? notes)
+    {
+        try
+        {
+            var history = new ShippingStatusHistory
+            {
+                Id = Guid.NewGuid(),
+                SellerSubOrderId = sellerSubOrderId,
+                PreviousStatus = previousStatus,
+                NewStatus = newStatus,
+                ChangedAt = changedAt,
+                TrackingNumber = trackingNumber,
+                ShippingCarrier = shippingCarrier,
+                Notes = notes
+            };
+
+            await _shippingStatusHistoryRepository.AddAsync(history);
+
+            _logger.LogDebug(
+                "Recorded shipping status history for sub-order {SubOrderId}: {PreviousStatus} -> {NewStatus}",
+                sellerSubOrderId, previousStatus, newStatus);
+        }
+        catch (Exception ex)
+        {
+            // Log but don't fail the main operation if history recording fails
+            _logger.LogWarning(ex,
+                "Failed to record shipping status history for sub-order {SubOrderId}",
+                sellerSubOrderId);
         }
     }
 
@@ -1396,6 +1468,101 @@ public class OrderService : IOrderService
             !allowedStatuses.Contains(newStatus))
         {
             errors.Add($"Cannot transition from {currentStatus} to {newStatus}.");
+        }
+
+        return errors;
+    }
+
+    /// <inheritdoc />
+    public async Task<GetAdminOrdersResult> GetAdminOrdersAsync(AdminOrderFilterQuery query)
+    {
+        var validationErrors = ValidateAdminOrderFilterQuery(query);
+        if (validationErrors.Count > 0)
+        {
+            return GetAdminOrdersResult.Failure(validationErrors);
+        }
+
+        try
+        {
+            var (orders, totalCount) = await _orderRepository.GetFilteredForAdminAsync(
+                query.Statuses.Count > 0 ? query.Statuses : null,
+                query.FromDate,
+                query.ToDate,
+                query.SearchTerm,
+                query.Page,
+                query.PageSize);
+
+            return GetAdminOrdersResult.Success(orders, totalCount, query.Page, query.PageSize);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting admin orders");
+            return GetAdminOrdersResult.Failure("An error occurred while getting the orders.");
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<GetOrderResult> GetOrderForAdminAsync(Guid orderId)
+    {
+        if (orderId == Guid.Empty)
+        {
+            return GetOrderResult.Failure("Order ID is required.");
+        }
+
+        try
+        {
+            var order = await _orderRepository.GetByIdAsync(orderId);
+            if (order == null)
+            {
+                return GetOrderResult.Failure("Order not found.");
+            }
+
+            return GetOrderResult.Success(order);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting order {OrderId} for admin", orderId);
+            return GetOrderResult.Failure("An error occurred while getting the order.");
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<GetShippingStatusHistoryResult> GetShippingStatusHistoryAsync(Guid sellerSubOrderId)
+    {
+        if (sellerSubOrderId == Guid.Empty)
+        {
+            return GetShippingStatusHistoryResult.Failure("Seller sub-order ID is required.");
+        }
+
+        try
+        {
+            var history = await _shippingStatusHistoryRepository.GetBySellerSubOrderIdAsync(sellerSubOrderId);
+            return GetShippingStatusHistoryResult.Success(history);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting shipping status history for sub-order {SubOrderId}", sellerSubOrderId);
+            return GetShippingStatusHistoryResult.Failure("An error occurred while getting the shipping status history.");
+        }
+    }
+
+    private static List<string> ValidateAdminOrderFilterQuery(AdminOrderFilterQuery query)
+    {
+        var errors = new List<string>();
+
+        if (query.Page < 1)
+        {
+            errors.Add("Page number must be at least 1.");
+        }
+
+        if (query.PageSize < 1 || query.PageSize > 100)
+        {
+            errors.Add("Page size must be between 1 and 100.");
+        }
+
+        if (query.FromDate.HasValue && query.ToDate.HasValue && query.FromDate > query.ToDate)
+        {
+            errors.Add("From date cannot be after to date.");
         }
 
         return errors;
