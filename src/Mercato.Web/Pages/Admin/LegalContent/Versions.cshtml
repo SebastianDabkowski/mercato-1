@@ -61,6 +61,7 @@ else
                             var isActive = version.Id == Model.ActiveVersionId;
                             var isFuture = version.IsPublished && version.EffectiveDate > DateTimeOffset.UtcNow;
                             var isPast = version.IsPublished && version.EffectiveDate <= DateTimeOffset.UtcNow && !isActive;
+                            var daysUntilEffective = isFuture ? Math.Max(0, (version.EffectiveDate - DateTimeOffset.UtcNow).Days) : 0;
                             
                             <tr class="@(isActive ? "table-success" : isFuture ? "table-info" : isPast ? "table-secondary" : "")">
                                 <td>
@@ -90,7 +91,7 @@ else
                                     {
                                         <br />
                                         <small class="text-muted">
-                                            in @((version.EffectiveDate - DateTimeOffset.UtcNow).Days) days
+                                            in @daysUntilEffective day@(daysUntilEffective == 1 ? "" : "s")
                                         </small>
                                     }
                                 </td>

@@ -124,6 +124,8 @@
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
     <script>
+        // Preview is for admin use only - HTML content preview
+        // Note: Content will be sanitized server-side before public display
         document.getElementById('Input_Content').addEventListener('input', function() {
             var preview = document.getElementById('contentPreview');
             if (this.value) {
