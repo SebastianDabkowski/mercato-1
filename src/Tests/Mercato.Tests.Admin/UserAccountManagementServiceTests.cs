@@ -898,6 +898,28 @@ public class UserAccountManagementServiceTests
     }
 
     [Fact]
+    public async Task GetBlockHistoryAsync_WithWhitespaceUserId_ReturnsEmptyList()
+    {
+        // Arrange
+        var mockUserManager = CreateMockUserManager();
+        var mockAuthEventRepo = new Mock<IAuthenticationEventRepository>();
+        var mockUserBlockRepo = CreateMockUserBlockRepository();
+        var mockLogger = new Mock<ILogger<UserAccountManagementService>>();
+
+        var service = new UserAccountManagementService(
+            mockUserManager.Object,
+            mockAuthEventRepo.Object,
+            mockUserBlockRepo.Object,
+            mockLogger.Object);
+
+        // Act
+        var result = await service.GetBlockHistoryAsync("   ");
+
+        // Assert
+        Assert.Empty(result);
+    }
+
+    [Fact]
     public async Task GetUserDetailAsync_WithBlockHistory_IncludesBlockHistory()
     {
         // Arrange

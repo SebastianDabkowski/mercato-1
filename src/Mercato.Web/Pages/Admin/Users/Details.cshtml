@@ -293,7 +293,7 @@ else
                     <h5 class="mb-0">Block/Reactivate History</h5>
                 </div>
                 <div class="card-body">
-                    @if (Model.UserDetail.BlockHistory.Count == 0)
+                    @if (!Model.UserDetail.BlockHistory.Any())
                     {
                         <div class="alert alert-info mb-0">
                             No block/reactivate history recorded.

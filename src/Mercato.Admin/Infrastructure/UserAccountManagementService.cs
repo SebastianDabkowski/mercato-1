@@ -382,7 +382,7 @@ public class UserAccountManagementService : IUserAccountManagementService
         string userId,
         CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrEmpty(userId))
+        if (string.IsNullOrWhiteSpace(userId))
         {
             return [];
         }
