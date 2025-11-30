@@ -40,6 +40,39 @@
                     <li>At least one special character</li>
                 </ul>
             </div>
+
+            @if (Model.AvailableConsents.Any())
+            {
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h5 class="mb-0">Privacy & Communication Preferences</h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted small mb-3">Please review and select your preferences below. You can change these settings at any time in your account.</p>
+                        
+                        @for (int i = 0; i < Model.AvailableConsents.Count; i++)
+                        {
+                            var consent = Model.AvailableConsents[i];
+                            <div class="form-check mb-3">
+                                <input type="hidden" name="ConsentSelections[@i].ConsentTypeCode" value="@consent.Code" />
+                                <input type="hidden" name="ConsentSelections[@i].ConsentVersionId" value="@consent.CurrentVersionId" />
+                                <input class="form-check-input" type="checkbox" name="ConsentSelections[@i].IsGranted" value="true" id="consent_@consent.Code">
+                                <label class="form-check-label" for="consent_@consent.Code">
+                                    <strong>@consent.Name</strong>
+                                    @if (consent.IsMandatory)
+                                    {
+                                        <span class="badge bg-warning text-dark ms-1">Required</span>
+                                    }
+                                </label>
+                                <div class="text-muted small mt-1">@consent.Description</div>
+                                <div class="text-muted smaller mt-1" style="font-size: 0.75rem;">
+                                    <i class="bi bi-info-circle"></i> Version @consent.CurrentVersionNumber
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
             
             <button type="submit" class="w-100 btn btn-lg btn-primary">Register</button>
         </form>
