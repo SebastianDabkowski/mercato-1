@@ -1,0 +1,181 @@
+@page "{id:guid}"
+@model Mercato.Web.Pages.Admin.Integrations.EditModel
+@{
+    ViewData["Title"] = "Edit Integration";
+}
+
+<h1>Edit Integration</h1>
+
+<div class="alert alert-info">
+    <strong>Update integration</strong> - Modify integration settings. API keys are masked for security.
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Integration Details</h5>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    <input type="hidden" asp-for="Input.Id" />
+                    <div asp-validation-summary="All" class="text-danger mb-3"></div>
+
+                    <div class="mb-3">
+                        <label asp-for="Input.Name" class="form-label"></label>
+                        <input asp-for="Input.Name" class="form-control" />
+                        <span asp-validation-for="Input.Name" class="text-danger"></span>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="Input.IntegrationType" class="form-label"></label>
+                            <select asp-for="Input.IntegrationType" asp-items="Model.IntegrationTypes" class="form-select"></select>
+                            <span asp-validation-for="Input.IntegrationType" class="text-danger"></span>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="Input.Environment" class="form-label"></label>
+                            <select asp-for="Input.Environment" asp-items="Model.Environments" class="form-select"></select>
+                            <span asp-validation-for="Input.Environment" class="text-danger"></span>
+                        </div>
+                    </div>
+
+                    <hr class="my-4">
+                    <h6>Connection Settings</h6>
+
+                    <div class="mb-3">
+                        <label asp-for="Input.ApiEndpoint" class="form-label"></label>
+                        <input asp-for="Input.ApiEndpoint" class="form-control" />
+                        <span asp-validation-for="Input.ApiEndpoint" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Input.ApiKey" class="form-label"></label>
+                        <input asp-for="Input.ApiKey" type="password" class="form-control" placeholder="Enter new API key to update" autocomplete="new-password" />
+                        <span asp-validation-for="Input.ApiKey" class="text-danger"></span>
+                        @if (!string.IsNullOrEmpty(Model.CurrentApiKeyMasked))
+                        {
+                            <small class="form-text text-muted">Current API key: <code>@Model.CurrentApiKeyMasked</code> - Leave empty to keep existing key.</small>
+                        }
+                        else
+                        {
+                            <small class="form-text text-muted">No API key configured. Enter a new key to set one.</small>
+                        }
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Input.MerchantId" class="form-label"></label>
+                        <input asp-for="Input.MerchantId" class="form-control" />
+                        <span asp-validation-for="Input.MerchantId" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Input.CallbackUrl" class="form-label"></label>
+                        <input asp-for="Input.CallbackUrl" class="form-control" />
+                        <span asp-validation-for="Input.CallbackUrl" class="text-danger"></span>
+                    </div>
+
+                    <hr class="my-4">
+
+                    <div class="d-flex justify-content-between">
+                        <a asp-page="Index" class="btn btn-outline-secondary">Cancel</a>
+                        <button type="submit" class="btn btn-primary">Save Changes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">Integration Status</h6>
+            </div>
+            <div class="card-body">
+                <dl class="row mb-0 small">
+                    <dt class="col-sm-5">Status:</dt>
+                    <dd class="col-sm-7">
+                        @switch (Model.CurrentStatus)
+                        {
+                            case Mercato.Admin.Domain.Entities.IntegrationStatus.Active:
+                                <span class="badge bg-success">Active</span>
+                                break;
+                            case Mercato.Admin.Domain.Entities.IntegrationStatus.Inactive:
+                                <span class="badge bg-secondary">Inactive</span>
+                                break;
+                            case Mercato.Admin.Domain.Entities.IntegrationStatus.Error:
+                                <span class="badge bg-danger">Error</span>
+                                break;
+                        }
+                    </dd>
+
+                    <dt class="col-sm-5">Enabled:</dt>
+                    <dd class="col-sm-7">
+                        @if (Model.CurrentIsEnabled)
+                        {
+                            <span class="badge bg-success">Yes</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-danger">No</span>
+                        }
+                    </dd>
+                </dl>
+            </div>
+        </div>
+
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6 class="mb-0">Audit Information</h6>
+            </div>
+            <div class="card-body">
+                <dl class="row mb-0 small">
+                    <dt class="col-sm-5">Created:</dt>
+                    <dd class="col-sm-7">@Model.CreatedAt.ToString("yyyy-MM-dd HH:mm")</dd>
+
+                    <dt class="col-sm-5">Created By:</dt>
+                    <dd class="col-sm-7">@(Model.CreatedByUserId ?? "Unknown")</dd>
+
+                    @if (Model.UpdatedAt.HasValue)
+                    {
+                        <dt class="col-sm-5">Updated:</dt>
+                        <dd class="col-sm-7">@Model.UpdatedAt.Value.ToString("yyyy-MM-dd HH:mm")</dd>
+
+                        <dt class="col-sm-5">Updated By:</dt>
+                        <dd class="col-sm-7">@(Model.UpdatedByUserId ?? "Unknown")</dd>
+                    }
+                </dl>
+            </div>
+        </div>
+
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6 class="mb-0">Quick Actions</h6>
+            </div>
+            <div class="card-body">
+                <a asp-page="Details" asp-route-id="@Model.Input.Id" class="btn btn-outline-info btn-sm w-100 mb-2">
+                    View Details
+                </a>
+                <a asp-page="HealthCheck" asp-route-id="@Model.Input.Id" class="btn btn-outline-secondary btn-sm w-100">
+                    Run Health Check
+                </a>
+            </div>
+        </div>
+
+        <div class="card mt-3 border-warning">
+            <div class="card-header bg-warning text-dark">
+                <h6 class="mb-0">Security Note</h6>
+            </div>
+            <div class="card-body">
+                <p class="small text-muted mb-0">
+                    API keys are stored securely. The masked value shows only the last 4 characters. To update the API key, enter a new value in the field above.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

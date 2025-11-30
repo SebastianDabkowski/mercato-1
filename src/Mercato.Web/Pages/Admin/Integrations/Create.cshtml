@@ -1,0 +1,133 @@
+@page
+@model Mercato.Web.Pages.Admin.Integrations.CreateModel
+@{
+    ViewData["Title"] = "Add Integration";
+}
+
+<h1>Add Integration</h1>
+
+<div class="alert alert-info">
+    <strong>Configure a new integration</strong> - Connect an external service like a payment provider, shipping system, or ERP
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Integration Details</h5>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    <div asp-validation-summary="All" class="text-danger mb-3"></div>
+
+                    <div class="mb-3">
+                        <label asp-for="Input.Name" class="form-label"></label>
+                        <input asp-for="Input.Name" class="form-control" placeholder="e.g., Stripe Payment Gateway" />
+                        <span asp-validation-for="Input.Name" class="text-danger"></span>
+                        <small class="form-text text-muted">A descriptive name for this integration.</small>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="Input.IntegrationType" class="form-label"></label>
+                            <select asp-for="Input.IntegrationType" asp-items="Model.IntegrationTypes" class="form-select"></select>
+                            <span asp-validation-for="Input.IntegrationType" class="text-danger"></span>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="Input.Environment" class="form-label"></label>
+                            <select asp-for="Input.Environment" asp-items="Model.Environments" class="form-select"></select>
+                            <span asp-validation-for="Input.Environment" class="text-danger"></span>
+                        </div>
+                    </div>
+
+                    <hr class="my-4">
+                    <h6>Connection Settings</h6>
+
+                    <div class="mb-3">
+                        <label asp-for="Input.ApiEndpoint" class="form-label"></label>
+                        <input asp-for="Input.ApiEndpoint" class="form-control" placeholder="https://api.example.com/v1" />
+                        <span asp-validation-for="Input.ApiEndpoint" class="text-danger"></span>
+                        <small class="form-text text-muted">The base URL for API calls.</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Input.ApiKey" class="form-label"></label>
+                        <input asp-for="Input.ApiKey" type="password" class="form-control" placeholder="Enter API key" autocomplete="new-password" />
+                        <span asp-validation-for="Input.ApiKey" class="text-danger"></span>
+                        <small class="form-text text-muted">The API key will be stored securely. Only the last 4 characters will be visible after saving.</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Input.MerchantId" class="form-label"></label>
+                        <input asp-for="Input.MerchantId" class="form-control" placeholder="e.g., MERCH-12345" />
+                        <span asp-validation-for="Input.MerchantId" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Input.CallbackUrl" class="form-label"></label>
+                        <input asp-for="Input.CallbackUrl" class="form-control" placeholder="https://yoursite.com/callback" />
+                        <span asp-validation-for="Input.CallbackUrl" class="text-danger"></span>
+                        <small class="form-text text-muted">The URL where the integration will send notifications/webhooks.</small>
+                    </div>
+
+                    <hr class="my-4">
+
+                    <div class="form-check mb-3">
+                        <input asp-for="Input.IsEnabled" class="form-check-input" />
+                        <label asp-for="Input.IsEnabled" class="form-check-label">Enable this integration</label>
+                        <small class="d-block text-muted">When disabled, all calls to this integration are blocked gracefully.</small>
+                    </div>
+
+                    <hr class="my-4">
+
+                    <div class="d-flex justify-content-between">
+                        <a asp-page="Index" class="btn btn-outline-secondary">Cancel</a>
+                        <button type="submit" class="btn btn-primary">Create Integration</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card border-info">
+            <div class="card-header bg-info text-white">
+                <h6 class="mb-0">Tips</h6>
+            </div>
+            <div class="card-body">
+                <p class="small text-muted mb-2">
+                    <strong>Integration Types:</strong>
+                </p>
+                <ul class="small text-muted">
+                    <li><strong>Payment:</strong> Payment gateways like Stripe, PayPal</li>
+                    <li><strong>Shipping:</strong> Carriers like FedEx, UPS, DHL</li>
+                    <li><strong>ERP:</strong> Enterprise systems like SAP, Oracle</li>
+                    <li><strong>Other:</strong> Any other external service</li>
+                </ul>
+                <p class="small text-muted mb-2">
+                    <strong>Environments:</strong>
+                </p>
+                <ul class="small text-muted mb-0">
+                    <li><strong>Sandbox:</strong> For testing and development</li>
+                    <li><strong>Production:</strong> For live operations</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="card mt-3 border-warning">
+            <div class="card-header bg-warning text-dark">
+                <h6 class="mb-0">Security Note</h6>
+            </div>
+            <div class="card-body">
+                <p class="small text-muted mb-0">
+                    API keys and other secrets are stored securely. Once saved, you will only see the last 4 characters of the API key. To update the API key, enter a new value in the edit form.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

@@ -1,0 +1,223 @@
+@page "{id:guid}"
+@model Mercato.Web.Pages.Admin.Integrations.DetailsModel
+@{
+    ViewData["Title"] = "Integration Details";
+}
+
+<h1>Integration Details</h1>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">@Model.Integration.Name</h5>
+                <div>
+                    <span class="badge @DetailsModel.GetTypeBadgeClass(Model.Integration.IntegrationType)">
+                        @DetailsModel.GetTypeDisplayText(Model.Integration.IntegrationType)
+                    </span>
+                    <span class="badge @DetailsModel.GetEnvironmentBadgeClass(Model.Integration.Environment)">
+                        @DetailsModel.GetEnvironmentDisplayText(Model.Integration.Environment)
+                    </span>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <h6>Status</h6>
+                        <p>
+                            <span class="badge @DetailsModel.GetStatusBadgeClass(Model.Integration.Status) fs-6">
+                                @Model.Integration.Status
+                            </span>
+                            @if (!Model.Integration.IsEnabled)
+                            {
+                                <span class="badge bg-dark ms-2">Disabled</span>
+                            }
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Enabled</h6>
+                        <p>
+                            @if (Model.Integration.IsEnabled)
+                            {
+                                <span class="badge bg-success fs-6">Yes</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-danger fs-6">No</span>
+                            }
+                        </p>
+                    </div>
+                </div>
+
+                <hr>
+
+                <h6>Connection Settings</h6>
+                <dl class="row">
+                    <dt class="col-sm-3">API Endpoint:</dt>
+                    <dd class="col-sm-9">
+                        @if (!string.IsNullOrEmpty(Model.Integration.ApiEndpoint))
+                        {
+                            <code>@Model.Integration.ApiEndpoint</code>
+                        }
+                        else
+                        {
+                            <span class="text-muted">Not configured</span>
+                        }
+                    </dd>
+
+                    <dt class="col-sm-3">API Key:</dt>
+                    <dd class="col-sm-9">
+                        @if (!string.IsNullOrEmpty(Model.Integration.ApiKeyMasked))
+                        {
+                            <code>@Model.Integration.ApiKeyMasked</code>
+                            <small class="text-muted">(masked)</small>
+                        }
+                        else
+                        {
+                            <span class="text-muted">Not configured</span>
+                        }
+                    </dd>
+
+                    <dt class="col-sm-3">Merchant ID:</dt>
+                    <dd class="col-sm-9">
+                        @if (!string.IsNullOrEmpty(Model.Integration.MerchantId))
+                        {
+                            <code>@Model.Integration.MerchantId</code>
+                        }
+                        else
+                        {
+                            <span class="text-muted">Not configured</span>
+                        }
+                    </dd>
+
+                    <dt class="col-sm-3">Callback URL:</dt>
+                    <dd class="col-sm-9">
+                        @if (!string.IsNullOrEmpty(Model.Integration.CallbackUrl))
+                        {
+                            <code>@Model.Integration.CallbackUrl</code>
+                        }
+                        else
+                        {
+                            <span class="text-muted">Not configured</span>
+                        }
+                    </dd>
+                </dl>
+
+                <hr>
+
+                <h6>Last Health Check</h6>
+                @if (Model.Integration.LastHealthCheckAt.HasValue)
+                {
+                    <dl class="row">
+                        <dt class="col-sm-3">Time:</dt>
+                        <dd class="col-sm-9">@Model.Integration.LastHealthCheckAt.Value.ToString("yyyy-MM-dd HH:mm:ss")</dd>
+
+                        <dt class="col-sm-3">Result:</dt>
+                        <dd class="col-sm-9">
+                            @if (Model.Integration.LastHealthCheckStatus == true)
+                            {
+                                <span class="badge bg-success">Healthy</span>
+                            }
+                            else if (Model.Integration.LastHealthCheckStatus == false)
+                            {
+                                <span class="badge bg-danger">Unhealthy</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary">Unknown</span>
+                            }
+                        </dd>
+
+                        <dt class="col-sm-3">Message:</dt>
+                        <dd class="col-sm-9">
+                            @if (!string.IsNullOrEmpty(Model.Integration.LastHealthCheckMessage))
+                            {
+                                <span>@Model.Integration.LastHealthCheckMessage</span>
+                            }
+                            else
+                            {
+                                <span class="text-muted">No message</span>
+                            }
+                        </dd>
+                    </dl>
+                }
+                else
+                {
+                    <p class="text-muted">No health check has been performed yet.</p>
+                }
+            </div>
+        </div>
+
+        <div class="card mt-4">
+            <div class="card-header">
+                <h6 class="mb-0">Audit Information</h6>
+            </div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-3">Created:</dt>
+                    <dd class="col-sm-9">@Model.Integration.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss")</dd>
+
+                    <dt class="col-sm-3">Created By:</dt>
+                    <dd class="col-sm-9">@(Model.Integration.CreatedByUserId ?? "Unknown")</dd>
+
+                    @if (Model.Integration.UpdatedAt.HasValue)
+                    {
+                        <dt class="col-sm-3">Updated:</dt>
+                        <dd class="col-sm-9">@Model.Integration.UpdatedAt.Value.ToString("yyyy-MM-dd HH:mm:ss")</dd>
+
+                        <dt class="col-sm-3">Updated By:</dt>
+                        <dd class="col-sm-9">@(Model.Integration.UpdatedByUserId ?? "Unknown")</dd>
+                    }
+                </dl>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">Actions</h6>
+            </div>
+            <div class="card-body">
+                <a asp-page="Edit" asp-route-id="@Model.Integration.Id" class="btn btn-primary w-100 mb-2">
+                    Edit Integration
+                </a>
+                <a asp-page="HealthCheck" asp-route-id="@Model.Integration.Id" class="btn btn-outline-secondary w-100 mb-2">
+                    Run Health Check
+                </a>
+                <a asp-page="Index" class="btn btn-outline-secondary w-100">
+                    Back to List
+                </a>
+            </div>
+        </div>
+
+        @if (!Model.Integration.IsEnabled)
+        {
+            <div class="card mt-3 border-warning">
+                <div class="card-header bg-warning text-dark">
+                    <h6 class="mb-0">Integration Disabled</h6>
+                </div>
+                <div class="card-body">
+                    <p class="small text-muted mb-0">
+                        This integration is currently disabled. All calls to this integration are blocked gracefully.
+                        Enable it from the integration list page.
+                    </p>
+                </div>
+            </div>
+        }
+
+        @if (Model.Integration.Status == Mercato.Admin.Domain.Entities.IntegrationStatus.Error)
+        {
+            <div class="card mt-3 border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h6 class="mb-0">Error Status</h6>
+                </div>
+                <div class="card-body">
+                    <p class="small text-muted mb-0">
+                        This integration is in an error state. Run a health check to diagnose the issue.
+                    </p>
+                </div>
+            </div>
+        }
+    </div>
+</div>
