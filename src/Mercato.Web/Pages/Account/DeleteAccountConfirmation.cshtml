@@ -1,0 +1,45 @@
+@page
+@model Mercato.Web.Pages.Account.DeleteAccountConfirmationModel
+@{
+    ViewData["Title"] = "Account Deleted";
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-8 text-center">
+        <div class="mb-4">
+            <i class="bi bi-check-circle-fill text-success" style="font-size: 5rem;"></i>
+        </div>
+        
+        <h1>Your Account Has Been Deleted</h1>
+        
+        <p class="lead mt-4">
+            Your account has been permanently deleted and your personal data has been removed or anonymized.
+        </p>
+
+        <div class="card mt-4 mb-4">
+            <div class="card-body">
+                <h5 class="card-title">What happens now?</h5>
+                <ul class="text-start">
+                    <li>You can no longer sign in to your account</li>
+                    <li>Your personal data has been removed from our systems</li>
+                    <li>Order history and financial records have been anonymized for legal compliance</li>
+                    <li>You will receive a confirmation email if an email was associated with your account</li>
+                </ul>
+            </div>
+        </div>
+
+        <p class="text-muted">
+            Thank you for using Mercato. We hope to see you again in the future.
+        </p>
+
+        <div class="mt-4">
+            <a asp-page="/Index" class="btn btn-primary btn-lg">Return to Home Page</a>
+        </div>
+
+        <div class="mt-4">
+            <p class="small text-muted">
+                If you have any questions about your account deletion, please contact our support team.
+            </p>
+        </div>
+    </div>
+</div>

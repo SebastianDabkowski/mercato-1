@@ -120,6 +120,9 @@ builder.Services.AddAnalyticsModule(builder.Configuration);
 // Register user data provider for GDPR data export
 builder.Services.AddScoped<IUserDataProvider, UserDataProvider>();
 
+// Register account deletion data provider for GDPR account deletion
+builder.Services.AddScoped<IAccountDeletionDataProvider, AccountDeletionDataProvider>();
+
 var app = builder.Build();
 
 // TODO: FIX it: RoleSeeder runs before ensuring database exists or is migrated.
