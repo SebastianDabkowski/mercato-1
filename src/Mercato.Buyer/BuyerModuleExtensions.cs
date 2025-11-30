@@ -31,6 +31,7 @@ public static class BuyerModuleExtensions
 
         // Register repositories
         services.AddScoped<IDeliveryAddressRepository, DeliveryAddressRepository>();
+        services.AddScoped<IConsentRepository, ConsentRepository>();
 
         // Configure buyer email settings
         services.Configure<BuyerEmailSettings>(configuration.GetSection("BuyerEmail"));
@@ -39,6 +40,7 @@ public static class BuyerModuleExtensions
         services.AddScoped<IRecentlyViewedService, RecentlyViewedService>();
         services.AddScoped<IDeliveryAddressService, DeliveryAddressService>();
         services.AddScoped<IBuyerEmailNotificationService, BuyerEmailNotificationService>();
+        services.AddScoped<IConsentService, ConsentService>();
 
         return services;
     }
