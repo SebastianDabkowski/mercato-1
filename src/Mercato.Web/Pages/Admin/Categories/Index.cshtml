@@ -73,9 +73,11 @@
                             {
                                 indent = "└─ ";
                             }
-                            var truncatedDescription = !string.IsNullOrEmpty(category.Description) && category.Description.Length > 50 
-                                ? category.Description.Substring(0, 50) + "..." 
-                                : category.Description ?? "";
+                            var truncatedDescription = string.IsNullOrEmpty(category.Description) 
+                                ? "" 
+                                : category.Description.Length > 50 
+                                    ? category.Description[..50] + "..." 
+                                    : category.Description;
                             <tr class="@(category.IsActive ? "" : "text-muted")">
                                 <td>
                                     @if (category.ParentId.HasValue)

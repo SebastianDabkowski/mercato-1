@@ -463,7 +463,7 @@ public class CategoryService : ICategoryService
             // Safety check to prevent infinite loops
             if (counter > 100)
             {
-                slug = $"{baseSlug}-{Guid.NewGuid().ToString("N").Substring(0, 8)}";
+                slug = $"{baseSlug}-{Guid.NewGuid().ToString("N")[..8]}";
                 break;
             }
         }
