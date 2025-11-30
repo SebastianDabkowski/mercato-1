@@ -58,6 +58,7 @@ public static class AdminModuleExtensions
         // Note: UserAnalyticsRepository requires AdminDbContext, OrderDbContext, and SellerDbContext
         // which are registered by their respective modules (Orders, Seller) in Program.cs.
         services.AddScoped<IUserAnalyticsRepository, UserAnalyticsRepository>();
+        services.AddScoped<ISecurityIncidentRepository, SecurityIncidentRepository>();
 
         // Register services
         services.AddScoped<IUserRoleManagementService, UserRoleManagementService>();
@@ -88,6 +89,8 @@ public static class AdminModuleExtensions
         services.AddScoped<IFeatureFlagManagementService, FeatureFlagManagementService>();
         services.AddScoped<IDataProcessingRegistryService, DataProcessingRegistryService>();
         services.AddScoped<ISensitiveAccessAuditService, SensitiveAccessAuditService>();
+        // Note: SecurityIncidentService requires INotificationService from Notifications module.
+        services.AddScoped<ISecurityIncidentService, SecurityIncidentService>();
 
         return services;
     }
