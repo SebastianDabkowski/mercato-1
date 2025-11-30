@@ -67,7 +67,7 @@
                             @if (Model.AnalyticsResult.HasBuyerRegistrationData)
                             {
                                 <h2 class="display-4 text-primary">@Model.AnalyticsResult.NewBuyerAccounts.ToString("N0")</h2>
-                                <small class="text-muted">Buyers registered in period *</small>
+                                <small class="text-muted">Buyers registered in period<sup>†</sup></small>
                             }
                             else
                             {
@@ -210,7 +210,7 @@
             <hr />
             <h6>Metric Definitions:</h6>
             <ul class="mb-0">
-                <li><strong>New Buyer Accounts*:</strong> Approximate count based on first login events. For accurate registration counts, user registration tracking must be implemented.</li>
+                <li><strong>New Buyer Accounts<sup>†</sup>:</strong> Approximate count based on first login events. For accurate registration counts, user registration tracking must be implemented.</li>
                 <li><strong>New Seller Accounts:</strong> Stores created during the selected period.</li>
                 <li><strong>Total Active Users:</strong> Users who logged in at least once during the period (engagement metric).</li>
                 <li><strong>Users Placed Orders:</strong> Unique buyers who placed at least one order during the period.</li>

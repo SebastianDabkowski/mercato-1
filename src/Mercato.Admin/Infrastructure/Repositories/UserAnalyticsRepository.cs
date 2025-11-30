@@ -90,42 +90,31 @@ public class UserAnalyticsRepository : IUserAnalyticsRepository
         DateTimeOffset endDate,
         CancellationToken cancellationToken = default)
     {
-        // Count first-time login events for Buyer role within the period
-        // This uses the first login as a proxy for registration since we don't have registration date
-        // This approach counts unique users who logged in as Buyer for the first time in the period
-        // Note: This is an approximation. For accurate registration counts, 
-        // consider extending IdentityUser with a RegistrationDate property.
+        // Count approximate new buyer registrations using first login as a proxy.
+        // This uses a subquery approach to avoid loading user IDs into memory.
+        // For accurate registration counts, consider extending IdentityUser with a RegistrationDate property.
         
-        // Get users who logged in as Buyer during this period
-        var buyerLoginsInPeriod = await _adminDbContext.AuthenticationEvents
-            .Where(e => e.OccurredAt >= startDate && e.OccurredAt <= endDate)
-            .Where(e => e.EventType == AuthenticationEventType.Login)
-            .Where(e => e.IsSuccessful)
-            .Where(e => e.UserRole == "Buyer")
-            .Where(e => e.UserId != null)
-            .Select(e => e.UserId)
-            .Distinct()
-            .ToListAsync(cancellationToken);
-
-        if (!buyerLoginsInPeriod.Any())
-        {
-            return 0;
-        }
-
-        // Get users who had logged in as Buyer before this period
-        var usersWithPriorLogins = await _adminDbContext.AuthenticationEvents
+        // Subquery: users who logged in as Buyer before the start date
+        var usersWithPriorLogins = _adminDbContext.AuthenticationEvents
             .Where(e => e.OccurredAt < startDate)
             .Where(e => e.EventType == AuthenticationEventType.Login)
             .Where(e => e.IsSuccessful)
             .Where(e => e.UserRole == "Buyer")
             .Where(e => e.UserId != null)
-            .Where(e => buyerLoginsInPeriod.Contains(e.UserId))
+            .Select(e => e.UserId)
+            .Distinct();
+
+        // Count users who logged in as Buyer during the period but not before
+        return await _adminDbContext.AuthenticationEvents
+            .Where(e => e.OccurredAt >= startDate && e.OccurredAt <= endDate)
+            .Where(e => e.EventType == AuthenticationEventType.Login)
+            .Where(e => e.IsSuccessful)
+            .Where(e => e.UserRole == "Buyer")
+            .Where(e => e.UserId != null)
+            .Where(e => !usersWithPriorLogins.Contains(e.UserId))
             .Select(e => e.UserId)
             .Distinct()
-            .ToListAsync(cancellationToken);
-
-        // New buyers are those who logged in during the period but not before
-        return buyerLoginsInPeriod.Count - usersWithPriorLogins.Count;
+            .CountAsync(cancellationToken);
     }
 
     /// <inheritdoc/>
