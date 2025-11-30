@@ -40,19 +40,7 @@
                     </select>
                 </div>
             }
-            @if (Model.DashboardResult?.AvailableCategories.Count > 0)
-            {
-                <div class="col-md-2">
-                    <label for="Category" class="form-label">Category</label>
-                    <select asp-for="Category" class="form-select" id="Category">
-                        <option value="">All Categories</option>
-                        @foreach (var category in Model.DashboardResult.AvailableCategories)
-                        {
-                            <option value="@category">@category</option>
-                        }
-                    </select>
-                </div>
-            }
+
             <div class="col-md-2">
                 <button type="submit" class="btn btn-primary w-100">Apply</button>
             </div>
@@ -142,22 +130,17 @@
                     <p><strong>End Date:</strong> @Model.DashboardResult.EndDate.ToString("yyyy-MM-dd HH:mm:ss") UTC</p>
                 </div>
             </div>
-            @if (Model.ProductId.HasValue || !string.IsNullOrEmpty(Model.Category))
+            @if (Model.ProductId.HasValue)
             {
                 <div class="row">
                     <div class="col-12">
                         <p class="text-muted mb-0">
                             <small>
                                 <i class="bi bi-funnel me-1"></i>Filters applied:
-                                @if (Model.ProductId.HasValue)
-                                {
+                                @{
                                     var productName = Model.DashboardResult.AvailableProducts.FirstOrDefault(p => p.Id == Model.ProductId)?.Title ?? "Unknown";
-                                    <span class="badge bg-secondary me-1">Product: @productName</span>
                                 }
-                                @if (!string.IsNullOrEmpty(Model.Category))
-                                {
-                                    <span class="badge bg-secondary">Category: @Model.Category</span>
-                                }
+                                <span class="badge bg-secondary me-1">Product: @productName</span>
                             </small>
                         </p>
                     </div>
@@ -177,7 +160,7 @@
 </div>
 
 @section Scripts {
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" integrity="sha384-DnYxf5BFh4TqG7c2W6UF8xWTLVLXD2Dm1Zg/dLF9rK9c7DaNT+T6g2jLvKzOk4n0" crossorigin="anonymous"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             var ctx = document.getElementById('salesChart');
