@@ -41,6 +41,9 @@ public static class AdminModuleExtensions
         // Note: CommissionSummaryRepository requires PaymentDbContext and SellerDbContext
         // which are registered by their respective modules (Payments, Seller) in Program.cs.
         services.AddScoped<ICommissionSummaryRepository, CommissionSummaryRepository>();
+        // Note: UserAnalyticsRepository requires AdminDbContext, OrderDbContext, and SellerDbContext
+        // which are registered by their respective modules (Orders, Seller) in Program.cs.
+        services.AddScoped<IUserAnalyticsRepository, UserAnalyticsRepository>();
 
         // Register services
         services.AddScoped<IUserRoleManagementService, UserRoleManagementService>();
@@ -51,6 +54,7 @@ public static class AdminModuleExtensions
         services.AddScoped<IMarketplaceDashboardService, MarketplaceDashboardService>();
         services.AddScoped<IOrderRevenueReportService, OrderRevenueReportService>();
         services.AddScoped<ICommissionSummaryService, CommissionSummaryService>();
+        services.AddScoped<IUserAnalyticsService, UserAnalyticsService>();
 
         return services;
     }
