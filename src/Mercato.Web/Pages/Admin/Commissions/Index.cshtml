@@ -79,14 +79,14 @@ else
                                     {
                                         <span class="badge bg-info">Seller + Category</span>
                                         <small class="d-block text-muted mt-1">
-                                            Seller: @rule.SellerId.ToString()![..8]...<br />
+                                            Seller: @rule.SellerId.Value.ToString()[..8]...<br />
                                             Category: @rule.CategoryId
                                         </small>
                                     }
                                     else if (rule.SellerId != null)
                                     {
                                         <span class="badge bg-warning text-dark">Seller-specific</span>
-                                        <small class="d-block text-muted mt-1">@rule.SellerId.ToString()![..8]...</small>
+                                        <small class="d-block text-muted mt-1">@rule.SellerId.Value.ToString()[..8]...</small>
                                     }
                                     else
                                     {

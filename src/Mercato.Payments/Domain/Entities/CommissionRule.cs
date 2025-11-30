@@ -117,9 +117,10 @@ public class CommissionRule
 
     /// <summary>
     /// Checks if two rules have overlapping applicability that could cause conflicts.
+    /// Two rules overlap if they have the exact same seller and category scope.
     /// </summary>
     /// <param name="other">The other rule to check against.</param>
-    /// <returns>True if the rules overlap; otherwise, false.</returns>
+    /// <returns>True if the rules have the same scope; otherwise, false.</returns>
     public bool OverlapsWith(CommissionRule other)
     {
         if (other == null || other.Id == Id)
@@ -127,23 +128,8 @@ public class CommissionRule
             return false;
         }
 
-        // Check seller scope overlap
-        var sellerOverlaps = (SellerId == null && other.SellerId == null) ||
-                             (SellerId != null && other.SellerId != null && SellerId == other.SellerId) ||
-                             (SellerId == null && other.SellerId != null) ||
-                             (SellerId != null && other.SellerId == null);
-
-        // Check category scope overlap
-        var categoryOverlaps = (CategoryId == null && other.CategoryId == null) ||
-                               (CategoryId != null && other.CategoryId != null && 
-                                string.Equals(CategoryId, other.CategoryId, StringComparison.OrdinalIgnoreCase)) ||
-                               (CategoryId == null && other.CategoryId != null) ||
-                               (CategoryId != null && other.CategoryId == null);
-
         // Exact match on both seller and category scope creates a conflict
-        var exactScopeMatch = SellerId == other.SellerId && 
-                              string.Equals(CategoryId, other.CategoryId, StringComparison.OrdinalIgnoreCase);
-
-        return exactScopeMatch;
+        return SellerId == other.SellerId && 
+               string.Equals(CategoryId, other.CategoryId, StringComparison.OrdinalIgnoreCase);
     }
 }

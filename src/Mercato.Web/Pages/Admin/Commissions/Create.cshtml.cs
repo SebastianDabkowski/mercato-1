@@ -36,11 +36,6 @@ public class CreateModel : PageModel
     public InputModel Input { get; set; } = new();
 
     /// <summary>
-    /// Gets or sets the list of validation errors.
-    /// </summary>
-    public IReadOnlyList<string> Errors { get; set; } = [];
-
-    /// <summary>
     /// Input model for creating a commission rule.
     /// </summary>
     public class InputModel
@@ -184,7 +179,6 @@ public class CreateModel : PageModel
             }
             else
             {
-                Errors = result.Errors;
                 foreach (var error in result.Errors)
                 {
                     ModelState.AddModelError(string.Empty, error);

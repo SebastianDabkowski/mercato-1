@@ -9,6 +9,9 @@ namespace Mercato.Tests.Admin;
 
 public class CommissionRuleManagementServiceTests
 {
+    private const int MaxNameLength = 200;
+    private const int ExceedsMaxNameLength = MaxNameLength + 50;
+
     private readonly Mock<ICommissionRuleRepository> _mockRuleRepository;
     private readonly Mock<ILogger<CommissionRuleManagementService>> _mockLogger;
 
@@ -524,7 +527,7 @@ public class CommissionRuleManagementServiceTests
         var command = new UpdateCommissionRuleCommand
         {
             Id = Guid.NewGuid(),
-            Name = new string('A', 250), // Over 200 characters
+            Name = new string('A', ExceedsMaxNameLength),
             CommissionRate = 10.0m,
             ModifiedByUserId = "admin-user-1"
         };
