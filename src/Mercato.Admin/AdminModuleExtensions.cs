@@ -47,6 +47,7 @@ public static class AdminModuleExtensions
 
         // Register services
         services.AddScoped<IUserRoleManagementService, UserRoleManagementService>();
+        services.AddScoped<IUserAccountManagementService, UserAccountManagementService>();
         services.AddScoped<IAuthenticationEventService, AuthenticationEventService>();
         services.AddScoped<ISlaTrackingService, SlaTrackingService>();
         services.AddScoped<IAdminCaseService, AdminCaseService>();
