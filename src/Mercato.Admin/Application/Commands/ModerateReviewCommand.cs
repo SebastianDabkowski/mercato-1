@@ -1,3 +1,4 @@
+using Mercato.Admin.Domain.Entities;
 using Mercato.Orders.Domain.Entities;
 
 namespace Mercato.Admin.Application.Commands;
@@ -26,6 +27,12 @@ public class ModerateReviewCommand
     /// Gets or sets the reason for the moderation decision.
     /// </summary>
     public string ModerationReason { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the removal reason category when hiding or removing a review.
+    /// Required when NewStatus is Hidden, optional otherwise.
+    /// </summary>
+    public ReviewRemovalReason? RemovalReason { get; set; }
 }
 
 /// <summary>

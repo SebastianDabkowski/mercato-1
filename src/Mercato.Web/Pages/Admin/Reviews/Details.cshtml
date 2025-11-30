@@ -113,13 +113,24 @@
                         <form method="post" asp-page-handler="Moderate" asp-route-id="@Model.ReviewDetails.Id">
                             <div class="mb-3">
                                 <label class="form-label">New Status</label>
-                                <select asp-for="NewStatus" class="form-select" required>
+                                <select asp-for="NewStatus" class="form-select" required id="statusSelect">
                                     <option value="">Select status...</option>
                                     @foreach (var status in DetailsModel.AllStatuses)
                                     {
                                         <option value="@status">@DetailsModel.GetStatusDisplayText(status)</option>
                                     }
                                 </select>
+                            </div>
+                            <div class="mb-3" id="removalReasonContainer" style="display: none;">
+                                <label class="form-label">Removal Reason Category</label>
+                                <select asp-for="RemovalReason" class="form-select" id="removalReasonSelect">
+                                    <option value="">Select removal reason...</option>
+                                    @foreach (var reason in DetailsModel.AllRemovalReasons)
+                                    {
+                                        <option value="@reason">@DetailsModel.GetRemovalReasonDisplayText(reason)</option>
+                                    }
+                                </select>
+                                <small class="text-muted">Required when hiding a review</small>
                             </div>
                             <div class="mb-3">
                                 <label class="form-label">Reason</label>
@@ -154,6 +165,7 @@
                         {
                             <form method="post" asp-page-handler="Moderate" asp-route-id="@Model.ReviewDetails.Id" class="mb-2">
                                 <input type="hidden" name="NewStatus" value="Hidden" />
+                                <input type="hidden" name="RemovalReason" value="TermsViolation" />
                                 <input type="hidden" name="ModerationReason" value="Rejected - violates content guidelines" />
                                 <button type="submit" class="btn btn-danger w-100">
                                     <i class="bi bi-x-lg me-1"></i>Reject (Hide)
@@ -195,3 +207,25 @@
         </div>
     }
 </div>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var statusSelect = document.getElementById('statusSelect');
+            var removalReasonContainer = document.getElementById('removalReasonContainer');
+            var removalReasonSelect = document.getElementById('removalReasonSelect');
+
+            if (statusSelect && removalReasonContainer) {
+                statusSelect.addEventListener('change', function() {
+                    if (this.value === 'Hidden') {
+                        removalReasonContainer.style.display = 'block';
+                        removalReasonSelect.setAttribute('required', 'required');
+                    } else {
+                        removalReasonContainer.style.display = 'none';
+                        removalReasonSelect.removeAttribute('required');
+                    }
+                });
+            }
+        });
+    </script>
+}

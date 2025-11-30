@@ -146,6 +146,13 @@ public class ReviewModerationService : IReviewModerationService
 
             await _productReviewRepository.UpdateAsync(review);
 
+            // Build audit log details including removal reason if applicable
+            var auditDetails = $"Changed review status from {oldStatus} to {command.NewStatus}. Reason: {command.ModerationReason}";
+            if (command.NewStatus == ReviewStatus.Hidden && command.RemovalReason.HasValue)
+            {
+                auditDetails += $" Removal category: {command.RemovalReason.Value}";
+            }
+
             // Create audit log entry
             await _adminAuditRepository.AddAsync(new AdminAuditLog
             {
@@ -154,7 +161,7 @@ public class ReviewModerationService : IReviewModerationService
                 Action = "ModerateReview",
                 EntityType = "ProductReview",
                 EntityId = review.Id.ToString(),
-                Details = $"Changed review status from {oldStatus} to {command.NewStatus}. Reason: {command.ModerationReason}",
+                Details = auditDetails,
                 Timestamp = DateTimeOffset.UtcNow
             });
 
@@ -242,6 +249,13 @@ public class ReviewModerationService : IReviewModerationService
         if (string.IsNullOrWhiteSpace(command.ModerationReason))
         {
             errors.Add("Moderation reason is required.");
+        }
+
+        // Require removal reason when hiding a review
+        if (command.NewStatus == ReviewStatus.Hidden && 
+            (!command.RemovalReason.HasValue || command.RemovalReason.Value == ReviewRemovalReason.None))
+        {
+            errors.Add("Removal reason category is required when hiding a review.");
         }
 
         return errors;
