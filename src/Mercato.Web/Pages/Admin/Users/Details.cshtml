@@ -287,6 +287,69 @@ else
                     </div>
                 </div>
             }
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Block/Reactivate History</h5>
+                </div>
+                <div class="card-body">
+                    @if (!Model.UserDetail.BlockHistory.Any())
+                    {
+                        <div class="alert alert-info mb-0">
+                            No block/reactivate history recorded.
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Action</th>
+                                        <th>Timestamp</th>
+                                        <th>Admin</th>
+                                        <th>Reason</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var record in Model.UserDetail.BlockHistory)
+                                    {
+                                        <tr>
+                                            <td>
+                                                <span class="badge bg-danger">Blocked</span>
+                                            </td>
+                                            <td>
+                                                <small>@record.BlockedAt.ToString("yyyy-MM-dd HH:mm:ss UTC")</small>
+                                            </td>
+                                            <td>@record.BlockedByAdminEmail</td>
+                                            <td>
+                                                @record.Reason
+                                                @if (!string.IsNullOrEmpty(record.ReasonDetails))
+                                                {
+                                                    <br /><small class="text-muted">@record.ReasonDetails</small>
+                                                }
+                                            </td>
+                                        </tr>
+                                        @if (record.UnblockedAt.HasValue)
+                                        {
+                                            <tr>
+                                                <td>
+                                                    <span class="badge bg-success">Reactivated</span>
+                                                </td>
+                                                <td>
+                                                    <small>@record.UnblockedAt.Value.ToString("yyyy-MM-dd HH:mm:ss UTC")</small>
+                                                </td>
+                                                <td>@record.UnblockedByAdminEmail</td>
+                                                <td>-</td>
+                                            </tr>
+                                        }
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+            </div>
         </div>
     </div>
 
