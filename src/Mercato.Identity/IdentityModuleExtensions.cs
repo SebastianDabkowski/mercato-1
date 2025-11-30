@@ -44,6 +44,9 @@ public static class IdentityModuleExtensions
         // Register RBAC configuration service
         services.AddScoped<IRbacConfigurationService, RbacConfigurationService>();
         
+        // Register user data export service for GDPR compliance
+        services.AddScoped<IUserDataExportService, UserDataExportService>();
+        
         return services;
     }
 }

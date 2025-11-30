@@ -1,6 +1,7 @@
 using Mercato.Web.Data;
 using Mercato.Web.Filters;
 using Mercato.Web.Middleware;
+using Mercato.Web.Services;
 using Mercato.Admin;
 using Mercato.Analytics;
 using Mercato.Buyer;
@@ -8,6 +9,7 @@ using Mercato.Buyer.Infrastructure;
 using Mercato.Buyer.Infrastructure.Persistence;
 using Mercato.Cart;
 using Mercato.Identity;
+using Mercato.Identity.Application.Services;
 using Mercato.Notifications;
 using Mercato.Orders;
 using Mercato.Payments;
@@ -114,6 +116,9 @@ builder.Services.AddNotificationsModule(builder.Configuration);
 builder.Services.AddIdentityModule();
 builder.Services.AddAdminModule(builder.Configuration);
 builder.Services.AddAnalyticsModule(builder.Configuration);
+
+// Register user data provider for GDPR data export
+builder.Services.AddScoped<IUserDataProvider, UserDataProvider>();
 
 var app = builder.Build();
 

@@ -1,0 +1,74 @@
+@page
+@model Mercato.Web.Pages.Account.DataExportModel
+@{
+    ViewData["Title"] = "Export My Data";
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <h1>Export My Data</h1>
+        <p class="lead">Request a copy of your personal data stored in Mercato.</p>
+
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Your Rights Under GDPR</h5>
+                <p class="card-text">
+                    Under the General Data Protection Regulation (GDPR), you have the right to access your personal data.
+                    You can request a copy of all personal information we store about you.
+                </p>
+            </div>
+        </div>
+
+        @if (!string.IsNullOrEmpty(Model.StatusMessage))
+        {
+            <div class="alert @(Model.IsError ? "alert-danger" : "alert-success")" role="alert">
+                @Model.StatusMessage
+            </div>
+        }
+
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Data Export</h5>
+            </div>
+            <div class="card-body">
+                <p>When you request a data export, we will compile the following information:</p>
+                <ul>
+                    <li><strong>Account Information:</strong> Your email, roles, and account settings</li>
+                    <li><strong>Delivery Addresses:</strong> Any saved shipping addresses</li>
+                    <li><strong>Order History:</strong> Your purchase history and order details</li>
+                    @if (User.IsInRole("Seller"))
+                    {
+                        <li><strong>Store Information:</strong> Your store profile and settings</li>
+                    }
+                    <li><strong>Consent Records:</strong> Your privacy consent history</li>
+                </ul>
+
+                <div class="alert alert-info mt-3" role="alert">
+                    <i class="bi bi-info-circle"></i>
+                    <strong>Note:</strong> The export will be generated immediately and downloaded as a JSON file.
+                </div>
+
+                <form method="post" class="mt-4">
+                    <button type="submit" class="btn btn-primary btn-lg">
+                        <i class="bi bi-download"></i> Download My Data
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <div class="mt-4">
+            @if (User.IsInRole("Buyer"))
+            {
+                <a asp-page="/Buyer/Index" class="btn btn-outline-secondary">Back to Buyer Portal</a>
+            }
+            else if (User.IsInRole("Seller"))
+            {
+                <a asp-page="/Seller/Index" class="btn btn-outline-secondary">Back to Seller Dashboard</a>
+            }
+            else
+            {
+                <a asp-page="/Index" class="btn btn-outline-secondary">Back to Home</a>
+            }
+        </div>
+    </div>
+</div>
