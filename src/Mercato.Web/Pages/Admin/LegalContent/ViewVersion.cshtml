@@ -1,0 +1,171 @@
+@page
+@model Mercato.Web.Pages.Admin.LegalContent.ViewVersionModel
+@{
+    ViewData["Title"] = $"View Version - {Model.Document?.Title ?? Model.DocumentType.ToString()}";
+    var isFuture = Model.Version?.IsPublished == true && Model.Version?.EffectiveDate > DateTimeOffset.UtcNow;
+    var daysUntilEffective = isFuture ? Math.Max(0, (Model.Version!.EffectiveDate - DateTimeOffset.UtcNow).Days) : 0;
+}
+
+<div class="d-flex justify-content-between align-items-start mb-4">
+    <div>
+        <h1>@(Model.Document?.Title ?? Model.DocumentType.ToString())</h1>
+        <h5 class="text-muted">Version @Model.Version?.VersionNumber</h5>
+    </div>
+    <div>
+        @if (Model.IsActiveVersion)
+        {
+            <span class="badge bg-success fs-6">Active Version</span>
+        }
+        else if (isFuture)
+        {
+            <span class="badge bg-info fs-6">Upcoming Version</span>
+        }
+        else if (Model.Version?.IsPublished == true)
+        {
+            <span class="badge bg-secondary fs-6">Published</span>
+        }
+        else
+        {
+            <span class="badge bg-warning text-dark fs-6">Draft</span>
+        }
+    </div>
+</div>
+
+@if (isFuture)
+{
+    <div class="alert alert-info">
+        <strong>Upcoming Version:</strong> This version is scheduled to take effect on 
+        @Model.Version?.EffectiveDate.ToString("yyyy-MM-dd HH:mm") UTC 
+        (in @daysUntilEffective day@(daysUntilEffective == 1 ? "" : "s")).
+    </div>
+}
+
+@if (Model.UpcomingVersion != null && Model.IsActiveVersion)
+{
+    <div class="alert alert-warning">
+        <strong>Notice:</strong> Version @Model.UpcomingVersion.VersionNumber is scheduled to replace this version 
+        on @Model.UpcomingVersion.EffectiveDate.ToString("yyyy-MM-dd HH:mm") UTC.
+    </div>
+}
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Document Content</h5>
+            </div>
+            <div class="card-body">
+                <div class="legal-content">
+                    @Html.Raw(Model.Version?.Content ?? "<em class='text-muted'>No content</em>")
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">Version Details</h6>
+            </div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-5">Version:</dt>
+                    <dd class="col-sm-7">@Model.Version?.VersionNumber</dd>
+                    
+                    <dt class="col-sm-5">Status:</dt>
+                    <dd class="col-sm-7">
+                        @if (Model.Version?.IsPublished == true)
+                        {
+                            <span class="badge bg-success">Published</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-warning text-dark">Draft</span>
+                        }
+                    </dd>
+                    
+                    <dt class="col-sm-5">Effective Date:</dt>
+                    <dd class="col-sm-7">@Model.Version?.EffectiveDate.ToString("yyyy-MM-dd HH:mm") UTC</dd>
+                    
+                    <dt class="col-sm-5">Created:</dt>
+                    <dd class="col-sm-7">@Model.Version?.CreatedAt.ToString("yyyy-MM-dd HH:mm")</dd>
+                    
+                    <dt class="col-sm-5">Created By:</dt>
+                    <dd class="col-sm-7">@Model.Version?.CreatedByUserId</dd>
+                    
+                    @if (Model.Version?.UpdatedAt.HasValue == true)
+                    {
+                        <dt class="col-sm-5">Updated:</dt>
+                        <dd class="col-sm-7">@Model.Version.UpdatedAt.Value.ToString("yyyy-MM-dd HH:mm")</dd>
+                        
+                        <dt class="col-sm-5">Updated By:</dt>
+                        <dd class="col-sm-7">@Model.Version.UpdatedByUserId</dd>
+                    }
+                </dl>
+            </div>
+        </div>
+        
+        @if (!string.IsNullOrEmpty(Model.Version?.ChangeSummary))
+        {
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h6 class="mb-0">Change Summary</h6>
+                </div>
+                <div class="card-body">
+                    <p class="mb-0">@Model.Version.ChangeSummary</p>
+                </div>
+            </div>
+        }
+        
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6 class="mb-0">Actions</h6>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    @if (Model.Version?.IsPublished != true)
+                    {
+                        <a asp-page="EditVersion" asp-route-id="@Model.Version?.Id" 
+                           class="btn btn-outline-primary">
+                            <i class="bi bi-pencil"></i> Edit Version
+                        </a>
+                    }
+                    else if (Model.Version?.EffectiveDate > DateTimeOffset.UtcNow)
+                    {
+                        <a asp-page="EditVersion" asp-route-id="@Model.Version?.Id" 
+                           class="btn btn-outline-primary">
+                            <i class="bi bi-pencil"></i> Edit Version
+                        </a>
+                    }
+                    <a asp-page="Versions" asp-route-documentType="@((int)Model.DocumentType)" 
+                       class="btn btn-outline-secondary">
+                        <i class="bi bi-list-ul"></i> All Versions
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="mt-4">
+    <a asp-page="Versions" asp-route-documentType="@((int)Model.DocumentType)" class="btn btn-outline-secondary">
+        &laquo; Back to Versions
+    </a>
+</div>
+
+<style>
+    .legal-content {
+        line-height: 1.6;
+    }
+    .legal-content h1, .legal-content h2, .legal-content h3, 
+    .legal-content h4, .legal-content h5, .legal-content h6 {
+        margin-top: 1.5rem;
+        margin-bottom: 0.75rem;
+    }
+    .legal-content p {
+        margin-bottom: 1rem;
+    }
+    .legal-content ul, .legal-content ol {
+        margin-bottom: 1rem;
+        padding-left: 2rem;
+    }
+</style>

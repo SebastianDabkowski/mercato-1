@@ -1,0 +1,186 @@
+@page
+@model Mercato.Web.Pages.Admin.LegalContent.VersionsModel
+@{
+    ViewData["Title"] = $"{Model.Document?.Title ?? Model.DocumentType.ToString()} - Versions";
+}
+
+<h1>@(Model.Document?.Title ?? Model.DocumentType.ToString())</h1>
+<p class="text-muted">@Model.Document?.Description</p>
+
+@if (!string.IsNullOrEmpty(Model.SuccessMessage))
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @Model.SuccessMessage
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+@if (!string.IsNullOrEmpty(Model.ErrorMessage))
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        @Model.ErrorMessage
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<div class="mb-4">
+    <a asp-page="CreateVersion" asp-route-documentType="@((int)Model.DocumentType)" class="btn btn-primary">
+        <i class="bi bi-plus-circle"></i> Create New Version
+    </a>
+</div>
+
+@if (Model.Versions.Count == 0)
+{
+    <div class="alert alert-warning">
+        <strong>No versions found.</strong> Create a new version to add content to this document.
+    </div>
+}
+else
+{
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="card-title mb-0">Document Versions</h5>
+            <span class="badge bg-secondary">@Model.Versions.Count version(s)</span>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover mb-0">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Version</th>
+                            <th>Status</th>
+                            <th>Effective Date</th>
+                            <th>Created</th>
+                            <th>Change Summary</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var version in Model.Versions)
+                        {
+                            var isActive = version.Id == Model.ActiveVersionId;
+                            var isFuture = version.IsPublished && version.EffectiveDate > DateTimeOffset.UtcNow;
+                            var isPast = version.IsPublished && version.EffectiveDate <= DateTimeOffset.UtcNow && !isActive;
+                            var daysUntilEffective = isFuture ? Math.Max(0, (version.EffectiveDate - DateTimeOffset.UtcNow).Days) : 0;
+                            
+                            <tr class="@(isActive ? "table-success" : isFuture ? "table-info" : isPast ? "table-secondary" : "")">
+                                <td>
+                                    <strong>v@version.VersionNumber</strong>
+                                </td>
+                                <td>
+                                    @if (isActive)
+                                    {
+                                        <span class="badge bg-success">Active</span>
+                                    }
+                                    else if (isFuture)
+                                    {
+                                        <span class="badge bg-info">Upcoming</span>
+                                    }
+                                    else if (version.IsPublished)
+                                    {
+                                        <span class="badge bg-secondary">Published</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-warning text-dark">Draft</span>
+                                    }
+                                </td>
+                                <td>
+                                    @version.EffectiveDate.ToString("yyyy-MM-dd HH:mm")
+                                    @if (isFuture)
+                                    {
+                                        <br />
+                                        <small class="text-muted">
+                                            in @daysUntilEffective day@(daysUntilEffective == 1 ? "" : "s")
+                                        </small>
+                                    }
+                                </td>
+                                <td>
+                                    @version.CreatedAt.ToString("yyyy-MM-dd")
+                                    <br />
+                                    <small class="text-muted">by @version.CreatedByUserId</small>
+                                </td>
+                                <td>
+                                    @if (!string.IsNullOrEmpty(version.ChangeSummary))
+                                    {
+                                        <span title="@version.ChangeSummary">
+                                            @(version.ChangeSummary.Length > 50 
+                                                ? version.ChangeSummary.Substring(0, 50) + "..." 
+                                                : version.ChangeSummary)
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">—</span>
+                                    }
+                                </td>
+                                <td>
+                                    <div class="btn-group" role="group">
+                                        <a asp-page="ViewVersion" asp-route-id="@version.Id" 
+                                           class="btn btn-sm btn-outline-primary">
+                                            View
+                                        </a>
+                                        @if (!version.IsPublished)
+                                        {
+                                            <a asp-page="EditVersion" asp-route-id="@version.Id" 
+                                               class="btn btn-sm btn-outline-secondary">
+                                                Edit
+                                            </a>
+                                            <form method="post" asp-page-handler="Publish" class="d-inline">
+                                                <input type="hidden" name="versionId" value="@version.Id" />
+                                                <input type="hidden" name="documentType" value="@((int)Model.DocumentType)" />
+                                                <button type="submit" class="btn btn-sm btn-outline-success"
+                                                        onclick="return confirm('Are you sure you want to publish this version? This action cannot be undone.');">
+                                                    Publish
+                                                </button>
+                                            </form>
+                                        }
+                                        else if (!isActive && version.EffectiveDate > DateTimeOffset.UtcNow)
+                                        {
+                                            <a asp-page="EditVersion" asp-route-id="@version.Id" 
+                                               class="btn btn-sm btn-outline-secondary">
+                                                Edit
+                                            </a>
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mt-4">
+        <div class="card-header">
+            <h6 class="mb-0">Legend</h6>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-3">
+                    <span class="badge bg-success">Active</span>
+                    <small class="text-muted ms-2">Currently shown to users</small>
+                </div>
+                <div class="col-md-3">
+                    <span class="badge bg-info">Upcoming</span>
+                    <small class="text-muted ms-2">Published, takes effect on date</small>
+                </div>
+                <div class="col-md-3">
+                    <span class="badge bg-secondary">Published</span>
+                    <small class="text-muted ms-2">Superseded by newer version</small>
+                </div>
+                <div class="col-md-3">
+                    <span class="badge bg-warning text-dark">Draft</span>
+                    <small class="text-muted ms-2">Not yet published</small>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<div class="mt-4">
+    <a asp-page="Index" class="btn btn-outline-secondary">
+        &laquo; Back to Legal Content
+    </a>
+</div>

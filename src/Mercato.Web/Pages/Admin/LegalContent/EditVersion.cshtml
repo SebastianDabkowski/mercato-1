@@ -1,0 +1,138 @@
+@page
+@model Mercato.Web.Pages.Admin.LegalContent.EditVersionModel
+@{
+    ViewData["Title"] = $"Edit Version - {Model.Document?.Title ?? Model.DocumentType.ToString()}";
+}
+
+<h1>Edit Version</h1>
+<h5 class="text-muted mb-4">@(Model.Document?.Title ?? Model.DocumentType.ToString()) - v@Model.Version?.VersionNumber</h5>
+
+@if (Model.IsPublished)
+{
+    <div class="alert alert-info">
+        <strong>Note:</strong> This version is published and scheduled to take effect on 
+        @Model.Version?.EffectiveDate.ToString("yyyy-MM-dd HH:mm") UTC. 
+        You can still modify it until it becomes effective.
+    </div>
+}
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">Version Details</h5>
+                @if (Model.IsPublished)
+                {
+                    <span class="badge bg-success">Published</span>
+                }
+                else
+                {
+                    <span class="badge bg-warning text-dark">Draft</span>
+                }
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    <input type="hidden" asp-for="Input.Id" />
+                    <input type="hidden" asp-for="Input.DocumentType" />
+                    
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label asp-for="Input.VersionNumber" class="form-label"></label>
+                            <input asp-for="Input.VersionNumber" class="form-control" placeholder="e.g., 1.0, 2.0" />
+                            <span asp-validation-for="Input.VersionNumber" class="text-danger"></span>
+                        </div>
+                        <div class="col-md-4">
+                            <label asp-for="Input.EffectiveDate" class="form-label"></label>
+                            <input asp-for="Input.EffectiveDate" type="date" class="form-control" />
+                            <span asp-validation-for="Input.EffectiveDate" class="text-danger"></span>
+                        </div>
+                        <div class="col-md-4">
+                            <label asp-for="Input.EffectiveTime" class="form-label"></label>
+                            <input asp-for="Input.EffectiveTime" type="time" class="form-control" />
+                            <span asp-validation-for="Input.EffectiveTime" class="text-danger"></span>
+                            <small class="text-muted">Time in UTC</small>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Input.ChangeSummary" class="form-label"></label>
+                        <textarea asp-for="Input.ChangeSummary" class="form-control" rows="2" 
+                                  placeholder="Brief summary of changes from previous version"></textarea>
+                        <span asp-validation-for="Input.ChangeSummary" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Input.Content" class="form-label"></label>
+                        <textarea asp-for="Input.Content" class="form-control" rows="20" 
+                                  placeholder="Enter the legal document content in HTML format..."></textarea>
+                        <span asp-validation-for="Input.Content" class="text-danger"></span>
+                    </div>
+
+                    <div class="d-flex justify-content-between">
+                        <a asp-page="Versions" asp-route-documentType="@((int)Model.DocumentType)" 
+                           class="btn btn-outline-secondary">
+                            Cancel
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-save"></i> Save Changes
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">Version Info</h6>
+            </div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-5">Created:</dt>
+                    <dd class="col-sm-7">@Model.Version?.CreatedAt.ToString("yyyy-MM-dd HH:mm")</dd>
+                    
+                    <dt class="col-sm-5">Created By:</dt>
+                    <dd class="col-sm-7">@Model.Version?.CreatedByUserId</dd>
+                    
+                    @if (Model.Version?.UpdatedAt.HasValue == true)
+                    {
+                        <dt class="col-sm-5">Updated:</dt>
+                        <dd class="col-sm-7">@Model.Version.UpdatedAt.Value.ToString("yyyy-MM-dd HH:mm")</dd>
+                        
+                        <dt class="col-sm-5">Updated By:</dt>
+                        <dd class="col-sm-7">@Model.Version.UpdatedByUserId</dd>
+                    }
+                </dl>
+            </div>
+        </div>
+        
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6 class="mb-0">Preview</h6>
+            </div>
+            <div class="card-body">
+                <div id="contentPreview" class="border p-3" style="max-height: 400px; overflow-y: auto;">
+                    @Html.Raw(Model.Input.Content)
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        // Preview is for admin use only - HTML content preview
+        // Note: Content will be sanitized server-side before public display
+        document.getElementById('Input_Content').addEventListener('input', function() {
+            var preview = document.getElementById('contentPreview');
+            if (this.value) {
+                preview.innerHTML = this.value;
+            } else {
+                preview.innerHTML = '<em class="text-muted">Enter content to see preview...</em>';
+            }
+        });
+    </script>
+}
