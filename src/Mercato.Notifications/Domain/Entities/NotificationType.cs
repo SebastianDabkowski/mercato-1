@@ -63,5 +63,10 @@ public enum NotificationType
     /// <summary>
     /// Notification for when a product photo is removed by admin moderation.
     /// </summary>
-    PhotoImageRemoved = 11
+    PhotoImageRemoved = 11,
+
+    /// <summary>
+    /// Notification for a security incident alert.
+    /// </summary>
+    SecurityIncident = 12
 }

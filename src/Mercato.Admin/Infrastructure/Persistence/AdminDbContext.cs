@@ -108,6 +108,16 @@ public class AdminDbContext : DbContext
     /// </summary>
     public DbSet<DataProcessingActivityHistory> DataProcessingActivityHistories { get; set; } = null!;
 
+    /// <summary>
+    /// Gets or sets the security incidents.
+    /// </summary>
+    public DbSet<SecurityIncident> SecurityIncidents { get; set; } = null!;
+
+    /// <summary>
+    /// Gets or sets the security incident status changes.
+    /// </summary>
+    public DbSet<SecurityIncidentStatusChange> SecurityIncidentStatusChanges { get; set; } = null!;
+
     /// <inheritdoc/>
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -431,6 +441,38 @@ public class AdminDbContext : DbContext
             entity.HasIndex(e => e.ChangedAt);
             entity.HasIndex(e => new { e.DataProcessingActivityId, e.ChangedAt })
                 .HasDatabaseName("IX_DataProcessingActivityHistories_ActivityId_ChangedAt");
+        });
+
+        modelBuilder.Entity<SecurityIncident>(entity =>
+        {
+            entity.ToTable("SecurityIncidents");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Source).IsRequired().HasMaxLength(500);
+            entity.Property(e => e.DetectionRule).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.Description).IsRequired().HasMaxLength(2000);
+            entity.Property(e => e.Details).HasMaxLength(4000);
+            entity.Property(e => e.ResolutionNotes).HasMaxLength(2000);
+            entity.Property(e => e.ResolvedByUserId).HasMaxLength(450);
+            entity.HasIndex(e => e.DetectedAt);
+            entity.HasIndex(e => e.Severity);
+            entity.HasIndex(e => e.Status);
+            entity.HasIndex(e => e.DetectionRule);
+            entity.HasIndex(e => new { e.Severity, e.Status })
+                .HasDatabaseName("IX_SecurityIncidents_Severity_Status");
+            entity.HasIndex(e => new { e.DetectedAt, e.Severity })
+                .HasDatabaseName("IX_SecurityIncidents_DetectedAt_Severity");
+        });
+
+        modelBuilder.Entity<SecurityIncidentStatusChange>(entity =>
+        {
+            entity.ToTable("SecurityIncidentStatusChanges");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.ChangedByUserId).IsRequired().HasMaxLength(450);
+            entity.Property(e => e.Notes).HasMaxLength(2000);
+            entity.HasIndex(e => e.SecurityIncidentId);
+            entity.HasIndex(e => e.ChangedAt);
+            entity.HasIndex(e => new { e.SecurityIncidentId, e.ChangedAt })
+                .HasDatabaseName("IX_SecurityIncidentStatusChanges_IncidentId_ChangedAt");
         });
     }
 }
