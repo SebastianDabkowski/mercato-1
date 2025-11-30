@@ -44,6 +44,8 @@ public static class AdminModuleExtensions
         services.AddScoped<ILegalConsentRepository, LegalConsentRepository>();
         services.AddScoped<IFeatureFlagRepository, FeatureFlagRepository>();
         services.AddScoped<IFeatureFlagHistoryRepository, FeatureFlagHistoryRepository>();
+        services.AddScoped<IDataProcessingActivityRepository, DataProcessingActivityRepository>();
+        services.AddScoped<IDataProcessingActivityHistoryRepository, DataProcessingActivityHistoryRepository>();
         // Note: MarketplaceDashboardRepository requires OrderDbContext, SellerDbContext, and ProductDbContext
         // which are registered by their respective modules (Orders, Seller, Product) in Program.cs.
         services.AddScoped<IMarketplaceDashboardRepository, MarketplaceDashboardRepository>();
@@ -84,6 +86,7 @@ public static class AdminModuleExtensions
         services.AddScoped<ILegalContentManagementService, LegalContentManagementService>();
         services.AddScoped<IAuditLogService, AuditLogService>();
         services.AddScoped<IFeatureFlagManagementService, FeatureFlagManagementService>();
+        services.AddScoped<IDataProcessingRegistryService, DataProcessingRegistryService>();
 
         return services;
     }
