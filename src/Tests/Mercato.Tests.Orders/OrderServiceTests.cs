@@ -29,6 +29,7 @@ public class OrderServiceTests
     private readonly Mock<ISellerNotificationEmailService> _mockSellerNotificationEmailService;
     private readonly Mock<IStoreEmailProvider> _mockStoreEmailProvider;
     private readonly Mock<IRefundService> _mockRefundService;
+    private readonly Mock<ICommissionService> _mockCommissionService;
     private readonly Mock<ILogger<OrderService>> _mockLogger;
     private readonly OrderService _service;
 
@@ -44,6 +45,7 @@ public class OrderServiceTests
         _mockSellerNotificationEmailService = new Mock<ISellerNotificationEmailService>(MockBehavior.Strict);
         _mockStoreEmailProvider = new Mock<IStoreEmailProvider>(MockBehavior.Strict);
         _mockRefundService = new Mock<IRefundService>(MockBehavior.Strict);
+        _mockCommissionService = new Mock<ICommissionService>(MockBehavior.Strict);
         _mockLogger = new Mock<ILogger<OrderService>>();
         var returnSettings = Options.Create(new ReturnSettings { ReturnWindowDays = 30 });
 
@@ -64,6 +66,7 @@ public class OrderServiceTests
             _mockSellerNotificationEmailService.Object,
             _mockStoreEmailProvider.Object,
             _mockRefundService.Object,
+            _mockCommissionService.Object,
             returnSettings,
             _mockLogger.Object);
     }

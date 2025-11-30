@@ -15,6 +15,11 @@ namespace Mercato.Orders.Infrastructure;
 /// </summary>
 public class OrderService : IOrderService
 {
+    /// <summary>
+    /// Maximum number of records to retrieve for report exports and totals calculation.
+    /// </summary>
+    private const int MaxReportExportRecords = 10000;
+
     private readonly IOrderRepository _orderRepository;
     private readonly ISellerSubOrderRepository _sellerSubOrderRepository;
     private readonly IReturnRequestRepository _returnRequestRepository;
@@ -25,6 +30,7 @@ public class OrderService : IOrderService
     private readonly ISellerNotificationEmailService _sellerNotificationEmailService;
     private readonly IStoreEmailProvider _storeEmailProvider;
     private readonly IRefundService _refundService;
+    private readonly ICommissionService _commissionService;
     private readonly ReturnSettings _returnSettings;
     private readonly ILogger<OrderService> _logger;
 
@@ -41,6 +47,7 @@ public class OrderService : IOrderService
     /// <param name="sellerNotificationEmailService">The seller notification email service.</param>
     /// <param name="storeEmailProvider">The store email provider.</param>
     /// <param name="refundService">The refund service.</param>
+    /// <param name="commissionService">The commission service.</param>
     /// <param name="returnSettings">The return settings.</param>
     /// <param name="logger">The logger.</param>
     public OrderService(
@@ -54,6 +61,7 @@ public class OrderService : IOrderService
         ISellerNotificationEmailService sellerNotificationEmailService,
         IStoreEmailProvider storeEmailProvider,
         IRefundService refundService,
+        ICommissionService commissionService,
         IOptions<ReturnSettings> returnSettings,
         ILogger<OrderService> logger)
     {
@@ -67,6 +75,7 @@ public class OrderService : IOrderService
         _sellerNotificationEmailService = sellerNotificationEmailService;
         _storeEmailProvider = storeEmailProvider;
         _refundService = refundService;
+        _commissionService = commissionService;
         _returnSettings = returnSettings.Value;
         _logger = logger;
     }
@@ -2295,5 +2304,219 @@ public class OrderService : IOrderService
                 "Failed to send return/complaint notification for case {CaseNumber}",
                 returnRequest.CaseNumber);
         }
+    }
+
+    /// <inheritdoc />
+    public async Task<GetSellerReportResult> GetSellerReportAsync(SellerReportFilterQuery query)
+    {
+        var validationErrors = ValidateSellerReportFilterQuery(query);
+        if (validationErrors.Count > 0)
+        {
+            return GetSellerReportResult.Failure(validationErrors);
+        }
+
+        try
+        {
+            // Get filtered sub-orders for the store
+            var (subOrders, totalCount) = await _sellerSubOrderRepository.GetFilteredByStoreIdAsync(
+                query.StoreId,
+                query.Statuses.Count > 0 ? query.Statuses : null,
+                query.FromDate,
+                query.ToDate,
+                null, // No buyer search for reports
+                query.Page,
+                query.PageSize);
+
+            // Get all sub-orders for totals calculation (without pagination)
+            var (allSubOrders, _) = await _sellerSubOrderRepository.GetFilteredByStoreIdAsync(
+                query.StoreId,
+                query.Statuses.Count > 0 ? query.Statuses : null,
+                query.FromDate,
+                query.ToDate,
+                null,
+                1,
+                MaxReportExportRecords);
+
+            // Get commission records for the store.
+            // Note: In the Payments module, CommissionRecord.SellerId represents the StoreId,
+            // as commission is calculated per seller store, not per user account.
+            var commissionResult = await _commissionService.GetCommissionRecordsBySellerIdAsync(query.StoreId);
+            var commissionByOrderId = commissionResult.Succeeded
+                ? commissionResult.Records.ToDictionary(c => c.OrderId, c => c)
+                : new Dictionary<Guid, Mercato.Payments.Domain.Entities.CommissionRecord>();
+
+            // Build report items for current page
+            var reportItems = subOrders.Select(subOrder =>
+            {
+                commissionByOrderId.TryGetValue(subOrder.OrderId, out var commission);
+                var commissionAmount = commission?.NetCommissionAmount ?? 0m;
+                var orderValue = subOrder.TotalAmount;
+
+                return new SellerReportItem
+                {
+                    SubOrderId = subOrder.Id,
+                    SubOrderNumber = subOrder.SubOrderNumber,
+                    OrderDate = subOrder.CreatedAt,
+                    Status = subOrder.Status,
+                    OrderValue = orderValue,
+                    CommissionAmount = commissionAmount,
+                    NetAmount = orderValue - commissionAmount
+                };
+            }).ToList();
+
+            // Calculate totals across all matching items
+            decimal totalOrderValue = 0;
+            decimal totalCommissionAmount = 0;
+            foreach (var subOrder in allSubOrders)
+            {
+                totalOrderValue += subOrder.TotalAmount;
+                if (commissionByOrderId.TryGetValue(subOrder.OrderId, out var commission))
+                {
+                    totalCommissionAmount += commission.NetCommissionAmount;
+                }
+            }
+            var totalNetAmount = totalOrderValue - totalCommissionAmount;
+
+            _logger.LogInformation(
+                "Generated seller report for store {StoreId} with {ItemCount} items, total value {TotalValue}",
+                query.StoreId, reportItems.Count, totalOrderValue);
+
+            return GetSellerReportResult.Success(
+                reportItems,
+                totalCount,
+                query.Page,
+                query.PageSize,
+                totalOrderValue,
+                totalCommissionAmount,
+                totalNetAmount);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error generating seller report for store {StoreId}", query.StoreId);
+            return GetSellerReportResult.Failure("An error occurred while generating the report.");
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<byte[]> ExportSellerReportToCsvAsync(Guid storeId, SellerReportFilterQuery query)
+    {
+        // Create a new query object to avoid mutating the input parameter
+        var exportQuery = new SellerReportFilterQuery
+        {
+            StoreId = storeId,
+            Statuses = query.Statuses,
+            FromDate = query.FromDate,
+            ToDate = query.ToDate,
+            Page = 1,
+            PageSize = MaxReportExportRecords
+        };
+
+        var validationErrors = ValidateSellerReportFilterQuery(exportQuery);
+        if (validationErrors.Count > 0)
+        {
+            _logger.LogWarning("Export validation failed for store {StoreId}: {Errors}", storeId, string.Join(", ", validationErrors));
+            return [];
+        }
+
+        try
+        {
+            // Get all matching sub-orders
+            var (subOrders, _) = await _sellerSubOrderRepository.GetFilteredByStoreIdAsync(
+                exportQuery.StoreId,
+                exportQuery.Statuses.Count > 0 ? exportQuery.Statuses : null,
+                exportQuery.FromDate,
+                exportQuery.ToDate,
+                null,
+                exportQuery.Page,
+                exportQuery.PageSize);
+
+            // Return empty if no orders to export
+            if (subOrders.Count == 0)
+            {
+                return [];
+            }
+
+            // Get commission records
+            var commissionResult = await _commissionService.GetCommissionRecordsBySellerIdAsync(storeId);
+            var commissionByOrderId = commissionResult.Succeeded
+                ? commissionResult.Records.ToDictionary(c => c.OrderId, c => c)
+                : new Dictionary<Guid, Mercato.Payments.Domain.Entities.CommissionRecord>();
+
+            var csv = new StringBuilder();
+
+            // CSV Header with financial fields
+            csv.AppendLine("Sub-Order Number,Order Date,Status,Order Value,Commission Amount,Net Amount");
+
+            // CSV Data
+            decimal totalOrderValue = 0;
+            decimal totalCommissionAmount = 0;
+            decimal totalNetAmount = 0;
+
+            foreach (var subOrder in subOrders)
+            {
+                commissionByOrderId.TryGetValue(subOrder.OrderId, out var commission);
+                var commissionAmount = commission?.NetCommissionAmount ?? 0m;
+                var orderValue = subOrder.TotalAmount;
+                var netAmount = orderValue - commissionAmount;
+
+                totalOrderValue += orderValue;
+                totalCommissionAmount += commissionAmount;
+                totalNetAmount += netAmount;
+
+                var line = string.Join(",",
+                    EscapeCsvField(subOrder.SubOrderNumber),
+                    EscapeCsvField(subOrder.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss")),
+                    EscapeCsvField(subOrder.Status.ToString()),
+                    EscapeCsvField(orderValue.ToString("F2")),
+                    EscapeCsvField(commissionAmount.ToString("F2")),
+                    EscapeCsvField(netAmount.ToString("F2")));
+
+                csv.AppendLine(line);
+            }
+
+            // Add summary row
+            csv.AppendLine();
+            csv.AppendLine(string.Join(",",
+                EscapeCsvField("TOTALS"),
+                string.Empty,
+                string.Empty,
+                EscapeCsvField(totalOrderValue.ToString("F2")),
+                EscapeCsvField(totalCommissionAmount.ToString("F2")),
+                EscapeCsvField(totalNetAmount.ToString("F2"))));
+
+            return Encoding.UTF8.GetBytes(csv.ToString());
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error exporting seller report to CSV for store {StoreId}", storeId);
+            return [];
+        }
+    }
+
+    private static List<string> ValidateSellerReportFilterQuery(SellerReportFilterQuery query)
+    {
+        var errors = new List<string>();
+
+        if (query.StoreId == Guid.Empty)
+        {
+            errors.Add("Store ID is required.");
+        }
+
+        if (query.Page < 1)
+        {
+            errors.Add("Page number must be at least 1.");
+        }
+
+        if (query.PageSize < 1 || query.PageSize > MaxReportExportRecords)
+        {
+            errors.Add($"Page size must be between 1 and {MaxReportExportRecords}.");
+        }
+
+        if (query.FromDate.HasValue && query.ToDate.HasValue && query.FromDate > query.ToDate)
+        {
+            errors.Add("From date cannot be after to date.");
+        }
+
+        return errors;
     }
 }
