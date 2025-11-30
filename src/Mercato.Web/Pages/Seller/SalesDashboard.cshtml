@@ -1,0 +1,281 @@
+@page
+@model Mercato.Web.Pages.Seller.SalesDashboardModel
+@{
+    ViewData["Title"] = "Sales Dashboard";
+}
+
+<h1>Sales Dashboard</h1>
+<p class="text-muted">Track your store's sales performance over time.</p>
+
+<!-- Filters -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label for="TimePeriod" class="form-label">Time Period</label>
+                <select asp-for="TimePeriod" class="form-select" id="TimePeriod">
+                    <option value="today">Today</option>
+                    <option value="7d">Last 7 Days</option>
+                    <option value="30d">Last 30 Days</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label for="Granularity" class="form-label">Granularity</label>
+                <select asp-for="Granularity" class="form-select" id="Granularity">
+                    <option value="day">Daily</option>
+                    <option value="week">Weekly</option>
+                    <option value="month">Monthly</option>
+                </select>
+            </div>
+            @if (Model.DashboardResult?.AvailableProducts.Count > 0)
+            {
+                <div class="col-md-3">
+                    <label for="ProductId" class="form-label">Product</label>
+                    <select asp-for="ProductId" class="form-select" id="ProductId">
+                        <option value="">All Products</option>
+                        @foreach (var product in Model.DashboardResult.AvailableProducts)
+                        {
+                            <option value="@product.Id">@product.Title</option>
+                        }
+                    </select>
+                </div>
+            }
+            @if (Model.DashboardResult?.AvailableCategories.Count > 0)
+            {
+                <div class="col-md-2">
+                    <label for="Category" class="form-label">Category</label>
+                    <select asp-for="Category" class="form-select" id="Category">
+                        <option value="">All Categories</option>
+                        @foreach (var category in Model.DashboardResult.AvailableCategories)
+                        {
+                            <option value="@category">@category</option>
+                        }
+                    </select>
+                </div>
+            }
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary w-100">Apply</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@if (Model.DashboardResult != null)
+{
+    <!-- Last Refresh Time -->
+    <div class="alert alert-light mb-4">
+        <i class="bi bi-clock"></i>
+        <strong>Last Refresh:</strong> @Model.DashboardResult.RetrievedAt.ToString("yyyy-MM-dd HH:mm:ss") UTC
+        <span class="text-muted">| Showing @SalesDashboardModel.GetGranularityDisplay(Model.Granularity) data for @SalesDashboardModel.GetTimePeriodDisplay(Model.TimePeriod)</span>
+    </div>
+
+    @if (Model.HasNoData)
+    {
+        <div class="alert alert-info mb-4">
+            <i class="bi bi-info-circle"></i>
+            <strong>No sales data available</strong> for the selected period and filters.
+            <p class="mb-0 mt-2">This could be because:</p>
+            <ul class="mb-0">
+                <li>You haven't received any orders in this period</li>
+                <li>The selected product or category has no orders</li>
+                <li>Try adjusting your date range or removing filters</li>
+            </ul>
+        </div>
+    }
+
+    <!-- KPI Cards -->
+    <div class="row mb-4">
+        <!-- GMV -->
+        <div class="col-md-6 mb-3">
+            <div class="card h-100 border-success">
+                <div class="card-body text-center">
+                    <h5 class="card-title text-muted">Total GMV</h5>
+                    <h2 class="display-4 text-success">@SalesDashboardModel.FormatCurrency(Model.DashboardResult.TotalGmv)</h2>
+                    <small class="text-muted">Gross Merchandise Value (items + shipping)</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Orders -->
+        <div class="col-md-6 mb-3">
+            <div class="card h-100 border-primary">
+                <div class="card-body text-center">
+                    <h5 class="card-title text-muted">Total Orders</h5>
+                    <h2 class="display-4 text-primary">@Model.DashboardResult.TotalOrders.ToString("N0")</h2>
+                    <small class="text-muted">Sub-orders in the selected period</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sales Chart -->
+    @if (Model.DashboardResult.ChartDataPoints.Count > 0)
+    {
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-graph-up me-2"></i>Sales Over Time
+                </h5>
+            </div>
+            <div class="card-body">
+                <div style="position: relative; height: 400px;">
+                    <canvas id="salesChart"></canvas>
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- Period Details -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Period Details</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4">
+                    <p><strong>Store:</strong> @Model.StoreName</p>
+                </div>
+                <div class="col-md-4">
+                    <p><strong>Start Date:</strong> @Model.DashboardResult.StartDate.ToString("yyyy-MM-dd HH:mm:ss") UTC</p>
+                </div>
+                <div class="col-md-4">
+                    <p><strong>End Date:</strong> @Model.DashboardResult.EndDate.ToString("yyyy-MM-dd HH:mm:ss") UTC</p>
+                </div>
+            </div>
+            @if (Model.ProductId.HasValue || !string.IsNullOrEmpty(Model.Category))
+            {
+                <div class="row">
+                    <div class="col-12">
+                        <p class="text-muted mb-0">
+                            <small>
+                                <i class="bi bi-funnel me-1"></i>Filters applied:
+                                @if (Model.ProductId.HasValue)
+                                {
+                                    var productName = Model.DashboardResult.AvailableProducts.FirstOrDefault(p => p.Id == Model.ProductId)?.Title ?? "Unknown";
+                                    <span class="badge bg-secondary me-1">Product: @productName</span>
+                                }
+                                @if (!string.IsNullOrEmpty(Model.Category))
+                                {
+                                    <span class="badge bg-secondary">Category: @Model.Category</span>
+                                }
+                            </small>
+                        </p>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+<div class="mt-4">
+    <a asp-page="/Seller/Index" class="btn btn-secondary">
+        &laquo; Back to Seller Portal
+    </a>
+    <a asp-page="/Seller/Orders/Index" class="btn btn-outline-primary ms-2">
+        <i class="bi bi-receipt me-1"></i>View Orders
+    </a>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var ctx = document.getElementById('salesChart');
+            if (!ctx) return;
+
+            var labels = @Html.Raw(Model.GetChartLabelsJson());
+            var gmvData = @Html.Raw(Model.GetGmvDataJson());
+            var orderData = @Html.Raw(Model.GetOrderCountDataJson());
+
+            if (labels.length === 0) return;
+
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            type: 'bar',
+                            label: 'GMV ($)',
+                            data: gmvData,
+                            backgroundColor: 'rgba(40, 167, 69, 0.7)',
+                            borderColor: 'rgb(40, 167, 69)',
+                            borderWidth: 1,
+                            yAxisID: 'y'
+                        },
+                        {
+                            type: 'line',
+                            label: 'Orders',
+                            data: orderData,
+                            borderColor: 'rgb(0, 123, 255)',
+                            backgroundColor: 'rgba(0, 123, 255, 0.1)',
+                            borderWidth: 2,
+                            tension: 0.1,
+                            yAxisID: 'y1'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    var label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.dataset.yAxisID === 'y') {
+                                        label += '$' + context.parsed.y.toLocaleString();
+                                    } else {
+                                        label += context.parsed.y;
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            title: {
+                                display: true,
+                                text: 'GMV ($)'
+                            },
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return '$' + value.toLocaleString();
+                                }
+                            }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            title: {
+                                display: true,
+                                text: 'Orders'
+                            },
+                            beginAtZero: true,
+                            grid: {
+                                drawOnChartArea: false
+                            }
+                        }
+                    }
+                }
+            });
+        });
+    </script>
+}

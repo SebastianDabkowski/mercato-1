@@ -36,6 +36,7 @@ public static class SellerModuleExtensions
         services.AddScoped<IShippingRuleRepository, ShippingRuleRepository>();
         services.AddScoped<IShippingMethodRepository, ShippingMethodRepository>();
         services.AddScoped<ISellerReputationRepository, SellerReputationRepository>();
+        services.AddScoped<ISellerSalesDashboardRepository, SellerSalesDashboardRepository>();
 
         // Register services
         services.AddScoped<IKycService, KycService>();
@@ -45,6 +46,7 @@ public static class SellerModuleExtensions
         services.AddScoped<IStoreUserService, StoreUserService>();
         services.AddScoped<IShippingMethodService, ShippingMethodService>();
         services.AddScoped<ISellerReputationService, SellerReputationService>();
+        services.AddScoped<ISellerSalesDashboardService, SellerSalesDashboardService>();
         services.AddScoped<ISellerNotificationEmailService, SellerNotificationEmailService>();
         services.AddScoped<IStoreEmailProvider, StoreEmailProvider>();
         services.AddScoped<IPayoutNotificationService, PayoutNotificationService>();
