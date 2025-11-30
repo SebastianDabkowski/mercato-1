@@ -1,0 +1,280 @@
+@page "{id:guid}"
+@model Mercato.Web.Pages.Admin.Products.DetailsModel
+@{
+    ViewData["Title"] = "Product Moderation Details";
+}
+
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <a asp-page="Index" class="btn btn-outline-secondary mb-2">
+                <i class="bi bi-arrow-left me-1"></i>Back to List
+            </a>
+            <h1><i class="bi bi-box-seam me-2"></i>Product Moderation</h1>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            @Model.ErrorMessage
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(Model.SuccessMessage))
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="bi bi-check-circle me-2"></i>@Model.SuccessMessage
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    @if (Model.ProductDetails == null)
+    {
+        <div class="alert alert-warning">
+            <i class="bi bi-exclamation-triangle me-2"></i>Product not found.
+        </div>
+    }
+    else
+    {
+        <div class="row">
+            @* Product Information *@
+            <div class="col-lg-8">
+                <div class="card mb-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="bi bi-info-circle me-2"></i>Product Information</h5>
+                        <div>
+                            <span class="badge @DetailsModel.GetProductStatusBadgeClass(Model.ProductDetails.Status) me-1">
+                                @DetailsModel.GetProductStatusDisplayText(Model.ProductDetails.Status)
+                            </span>
+                            <span class="badge @DetailsModel.GetModerationStatusBadgeClass(Model.ProductDetails.ModerationStatus)">
+                                @DetailsModel.GetModerationStatusDisplayText(Model.ProductDetails.ModerationStatus)
+                            </span>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <dl>
+                                    <dt>Title</dt>
+                                    <dd class="fs-5">@Model.ProductDetails.Title</dd>
+                                    
+                                    <dt>Category</dt>
+                                    <dd><span class="badge bg-light text-dark">@Model.ProductDetails.Category</span></dd>
+                                    
+                                    <dt>Price</dt>
+                                    <dd class="fs-5 fw-bold text-success">$@Model.ProductDetails.Price.ToString("N2")</dd>
+                                    
+                                    <dt>Stock</dt>
+                                    <dd>
+                                        @if (Model.ProductDetails.Stock > 0)
+                                        {
+                                            <span class="badge bg-success">@Model.ProductDetails.Stock in stock</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-danger">Out of stock</span>
+                                        }
+                                    </dd>
+                                </dl>
+                            </div>
+                            <div class="col-md-6">
+                                <dl>
+                                    <dt>Store</dt>
+                                    <dd>@Model.ProductDetails.StoreName</dd>
+                                    
+                                    <dt>Seller ID</dt>
+                                    <dd><code>@Model.ProductDetails.SellerId</code></dd>
+                                    
+                                    <dt>Created</dt>
+                                    <dd>@Model.ProductDetails.CreatedAt.ToString("MMM dd, yyyy h:mm tt")</dd>
+                                    
+                                    <dt>Last Updated</dt>
+                                    <dd>@Model.ProductDetails.LastUpdatedAt.ToString("MMM dd, yyyy h:mm tt")</dd>
+                                </dl>
+                            </div>
+                        </div>
+                        
+                        <hr />
+                        
+                        <h6>Description</h6>
+                        <div class="bg-light p-3 rounded">
+                            @if (!string.IsNullOrEmpty(Model.ProductDetails.Description))
+                            {
+                                <p style="white-space: pre-wrap;">@Model.ProductDetails.Description</p>
+                            }
+                            else
+                            {
+                                <p class="text-muted fst-italic">No description provided.</p>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                @* Product Images *@
+                @if (Model.ProductDetails.ImageUrls.Count > 0)
+                {
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="bi bi-images me-2"></i>Product Images (@Model.ProductDetails.ImageUrls.Count)</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                @foreach (var imageUrl in Model.ProductDetails.ImageUrls)
+                                {
+                                    <div class="col-md-3 col-sm-4 col-6">
+                                        <a href="@imageUrl" target="_blank" class="d-block">
+                                            <img src="@imageUrl" alt="Product image" 
+                                                 class="img-fluid rounded border" 
+                                                 style="width: 100%; height: 150px; object-fit: cover;" />
+                                        </a>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                }
+
+                @* Moderation History *@
+                @if (Model.ProductDetails.ModerationHistory.Count > 0)
+                {
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="bi bi-clock-history me-2"></i>Moderation History</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="timeline">
+                                @foreach (var entry in Model.ProductDetails.ModerationHistory)
+                                {
+                                    <div class="d-flex mb-3">
+                                        <div class="flex-shrink-0">
+                                            @if (entry.Decision == Mercato.Product.Domain.Entities.ProductModerationStatus.Approved)
+                                            {
+                                                <span class="badge rounded-pill bg-success p-2">
+                                                    <i class="bi bi-check-lg"></i>
+                                                </span>
+                                            }
+                                            else if (entry.Decision == Mercato.Product.Domain.Entities.ProductModerationStatus.Rejected)
+                                            {
+                                                <span class="badge rounded-pill bg-danger p-2">
+                                                    <i class="bi bi-x-lg"></i>
+                                                </span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge rounded-pill bg-secondary p-2">
+                                                    <i class="bi bi-hourglass"></i>
+                                                </span>
+                                            }
+                                        </div>
+                                        <div class="flex-grow-1 ms-3">
+                                            <div class="d-flex justify-content-between">
+                                                <span class="fw-semibold">
+                                                    @DetailsModel.GetModerationStatusDisplayText(entry.Decision)
+                                                </span>
+                                                <small class="text-muted">
+                                                    @entry.CreatedAt.ToString("MMM dd, yyyy h:mm tt")
+                                                </small>
+                                            </div>
+                                            <small class="text-muted">by @entry.AdminUserId</small>
+                                            @if (!string.IsNullOrEmpty(entry.Reason))
+                                            {
+                                                <p class="mb-0 mt-1">@entry.Reason</p>
+                                            }
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            @* Moderation Actions *@
+            <div class="col-lg-4">
+                @if (Model.ProductDetails.ModerationStatus == Mercato.Product.Domain.Entities.ProductModerationStatus.Rejected)
+                {
+                    <div class="card border-danger mb-4">
+                        <div class="card-header bg-danger text-white">
+                            <h5 class="mb-0"><i class="bi bi-x-circle me-2"></i>Rejected</h5>
+                        </div>
+                        <div class="card-body">
+                            <p class="text-muted">This product was rejected on @Model.ProductDetails.ModeratedAt?.ToString("MMM dd, yyyy h:mm tt")</p>
+                            @if (!string.IsNullOrEmpty(Model.ProductDetails.ModerationReason))
+                            {
+                                <div class="alert alert-danger mb-0">
+                                    <strong>Reason:</strong><br />
+                                    @Model.ProductDetails.ModerationReason
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+
+                <div class="card mb-4">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0"><i class="bi bi-check-circle me-2"></i>Approve Product</h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted">Approving this product will make it active and visible to buyers.</p>
+                        <form method="post" asp-page-handler="Approve" asp-route-id="@Model.ProductDetails.Id">
+                            <div class="mb-3">
+                                <label class="form-label">Approval Note (optional)</label>
+                                <textarea class="form-control" name="ApprovalReason" rows="2" 
+                                          placeholder="Add an optional note..."></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-success w-100">
+                                <i class="bi bi-check-lg me-1"></i>Approve Product
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="card mb-4">
+                    <div class="card-header bg-danger text-white">
+                        <h5 class="mb-0"><i class="bi bi-x-circle me-2"></i>Reject Product</h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted">Rejecting this product will prevent it from being displayed to buyers. The seller will be notified with your reason.</p>
+                        <form method="post" asp-page-handler="Reject" asp-route-id="@Model.ProductDetails.Id">
+                            <div class="mb-3">
+                                <label class="form-label">Rejection Reason <span class="text-danger">*</span></label>
+                                <textarea class="form-control" name="RejectionReason" rows="3" required
+                                          placeholder="Explain why this product is being rejected..."></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-danger w-100">
+                                <i class="bi bi-x-lg me-1"></i>Reject Product
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                @* Current Moderation Info *@
+                @if (Model.ProductDetails.ModeratedAt.HasValue)
+                {
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="bi bi-info-circle me-2"></i>Last Moderation</h5>
+                        </div>
+                        <div class="card-body">
+                            <dl class="mb-0">
+                                <dt>Date</dt>
+                                <dd>@Model.ProductDetails.ModeratedAt?.ToString("MMM dd, yyyy h:mm tt")</dd>
+                                
+                                <dt>By</dt>
+                                <dd><code>@Model.ProductDetails.ModeratedBy</code></dd>
+                                
+                                @if (!string.IsNullOrEmpty(Model.ProductDetails.ModerationReason))
+                                {
+                                    <dt>Reason</dt>
+                                    <dd>@Model.ProductDetails.ModerationReason</dd>
+                                }
+                            </dl>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
