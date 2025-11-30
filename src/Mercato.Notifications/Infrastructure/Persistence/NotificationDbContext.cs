@@ -32,6 +32,11 @@ public class NotificationDbContext : DbContext
     /// </summary>
     public DbSet<Message> Messages { get; set; }
 
+    /// <summary>
+    /// Gets or sets the push subscriptions DbSet.
+    /// </summary>
+    public DbSet<PushSubscription> PushSubscriptions { get; set; }
+
     /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -105,6 +110,23 @@ public class NotificationDbContext : DbContext
             // Index for thread messages ordering
             entity.HasIndex(e => new { e.ThreadId, e.CreatedAt })
                 .HasDatabaseName("IX_Messages_ThreadId_CreatedAt");
+        });
+
+        modelBuilder.Entity<PushSubscription>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.UserId).IsRequired().HasMaxLength(450);
+            entity.Property(e => e.Endpoint).IsRequired().HasMaxLength(2000);
+            entity.Property(e => e.P256DH).IsRequired().HasMaxLength(500);
+            entity.Property(e => e.Auth).IsRequired().HasMaxLength(500);
+
+            // Index for efficient user subscription queries
+            entity.HasIndex(e => e.UserId)
+                .HasDatabaseName("IX_PushSubscriptions_UserId");
+
+            // Index for endpoint lookups (to avoid duplicates)
+            entity.HasIndex(e => e.Endpoint)
+                .HasDatabaseName("IX_PushSubscriptions_Endpoint");
         });
     }
 }

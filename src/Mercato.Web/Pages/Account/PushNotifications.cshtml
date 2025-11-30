@@ -1,0 +1,294 @@
+@page
+@model Mercato.Web.Pages.Account.PushNotificationsModel
+@{
+    ViewData["Title"] = "Push Notifications";
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <h1>Push Notifications</h1>
+        <p>Manage your push notification preferences to stay updated on orders, messages, and more.</p>
+
+        @if (!string.IsNullOrEmpty(Model.StatusMessage))
+        {
+            <div class="alert @(Model.IsError ? "alert-danger" : "alert-success")" role="alert">
+                @Model.StatusMessage
+            </div>
+        }
+
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Notification Status</h5>
+            </div>
+            <div class="card-body">
+                <div id="push-status" class="mb-3">
+                    <div id="push-loading" class="text-muted">
+                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                        Checking notification status...
+                    </div>
+                    <div id="push-not-supported" class="alert alert-warning" style="display: none;">
+                        <strong>Not Supported:</strong> Push notifications are not supported in this browser.
+                    </div>
+                    <div id="push-denied" class="alert alert-danger" style="display: none;">
+                        <strong>Blocked:</strong> Push notifications have been blocked. Please enable them in your browser settings.
+                    </div>
+                    <div id="push-enabled" class="alert alert-success" style="display: none;">
+                        <strong>Enabled:</strong> You are receiving push notifications on this device.
+                        <span id="subscription-count"></span>
+                    </div>
+                    <div id="push-disabled" class="alert alert-secondary" style="display: none;">
+                        <strong>Disabled:</strong> Push notifications are currently disabled for this device.
+                    </div>
+                </div>
+
+                <div id="push-actions">
+                    <button id="btn-enable-push" class="btn btn-primary" style="display: none;">
+                        <i class="bi bi-bell-fill me-1"></i> Enable Push Notifications
+                    </button>
+                    <button id="btn-disable-push" class="btn btn-outline-danger" style="display: none;">
+                        <i class="bi bi-bell-slash me-1"></i> Disable Push Notifications
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">About Push Notifications</h5>
+            </div>
+            <div class="card-body">
+                <p>When enabled, you'll receive instant notifications for:</p>
+                <ul>
+                    <li><strong>Order Updates</strong> - When your order is confirmed, shipped, or delivered</li>
+                    <li><strong>Messages</strong> - When you receive a new message from a buyer or seller</li>
+                    <li><strong>Returns</strong> - Updates on your return requests</li>
+                    <li><strong>Payouts</strong> - When your seller payouts are processed</li>
+                    <li><strong>System Updates</strong> - Important platform announcements</li>
+                </ul>
+                <p class="text-muted mb-0">
+                    <small>You can disable push notifications at any time from this page or your browser settings.</small>
+                </p>
+            </div>
+        </div>
+
+        <div class="mt-4">
+            @if (User.IsInRole("Buyer"))
+            {
+                <a asp-page="/Buyer/Index" class="btn btn-outline-secondary">Back to Buyer Portal</a>
+            }
+            else if (User.IsInRole("Seller"))
+            {
+                <a asp-page="/Seller/Index" class="btn btn-outline-secondary">Back to Seller Dashboard</a>
+            }
+            else
+            {
+                <a asp-page="/Index" class="btn btn-outline-secondary">Back to Home</a>
+            }
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        (function() {
+            'use strict';
+
+            const vapidPublicKey = '@Html.Raw(Model.VapidPublicKey)';
+            const subscriptionApiUrl = '/Api/PushSubscription';
+
+            // UI Elements
+            const loadingEl = document.getElementById('push-loading');
+            const notSupportedEl = document.getElementById('push-not-supported');
+            const deniedEl = document.getElementById('push-denied');
+            const enabledEl = document.getElementById('push-enabled');
+            const disabledEl = document.getElementById('push-disabled');
+            const subscriptionCountEl = document.getElementById('subscription-count');
+            const enableBtn = document.getElementById('btn-enable-push');
+            const disableBtn = document.getElementById('btn-disable-push');
+
+            function hideAllStatus() {
+                loadingEl.style.display = 'none';
+                notSupportedEl.style.display = 'none';
+                deniedEl.style.display = 'none';
+                enabledEl.style.display = 'none';
+                disabledEl.style.display = 'none';
+                enableBtn.style.display = 'none';
+                disableBtn.style.display = 'none';
+            }
+
+            function showStatus(status, subscriptionCount) {
+                hideAllStatus();
+                switch (status) {
+                    case 'not-supported':
+                        notSupportedEl.style.display = 'block';
+                        break;
+                    case 'denied':
+                        deniedEl.style.display = 'block';
+                        break;
+                    case 'enabled':
+                        enabledEl.style.display = 'block';
+                        if (subscriptionCount > 1) {
+                            subscriptionCountEl.textContent = `(${subscriptionCount} devices)`;
+                        }
+                        disableBtn.style.display = 'inline-block';
+                        break;
+                    case 'disabled':
+                        disabledEl.style.display = 'block';
+                        enableBtn.style.display = 'inline-block';
+                        break;
+                }
+            }
+
+            function urlBase64ToUint8Array(base64String) {
+                const padding = '='.repeat((4 - base64String.length % 4) % 4);
+                const base64 = (base64String + padding)
+                    .replace(/-/g, '+')
+                    .replace(/_/g, '/');
+
+                const rawData = window.atob(base64);
+                const outputArray = new Uint8Array(rawData.length);
+
+                for (let i = 0; i < rawData.length; ++i) {
+                    outputArray[i] = rawData.charCodeAt(i);
+                }
+                return outputArray;
+            }
+
+            async function checkStatus() {
+                // Check if push notifications are supported
+                if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+                    showStatus('not-supported');
+                    return;
+                }
+
+                // Check permission status
+                const permission = Notification.permission;
+                if (permission === 'denied') {
+                    showStatus('denied');
+                    return;
+                }
+
+                // Check server-side subscription status
+                try {
+                    const response = await fetch(`${subscriptionApiUrl}?handler=Status`);
+                    if (response.ok) {
+                        const data = await response.json();
+                        if (data.isSubscribed) {
+                            showStatus('enabled', data.subscriptionCount);
+                        } else {
+                            showStatus('disabled');
+                        }
+                    } else {
+                        showStatus('disabled');
+                    }
+                } catch (error) {
+                    console.error('Error checking subscription status:', error);
+                    showStatus('disabled');
+                }
+            }
+
+            async function enablePushNotifications() {
+                try {
+                    enableBtn.disabled = true;
+                    enableBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Enabling...';
+
+                    // Request permission
+                    const permission = await Notification.requestPermission();
+                    if (permission !== 'granted') {
+                        showStatus('denied');
+                        return;
+                    }
+
+                    // Register service worker
+                    const registration = await navigator.serviceWorker.register('/push-sw.js');
+                    await navigator.serviceWorker.ready;
+
+                    // Subscribe to push notifications
+                    const subscription = await registration.pushManager.subscribe({
+                        userVisibleOnly: true,
+                        applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
+                    });
+
+                    const subscriptionJson = subscription.toJSON();
+
+                    // Send subscription to server
+                    const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value;
+                    const response = await fetch(`${subscriptionApiUrl}?handler=Subscribe`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'RequestVerificationToken': token || ''
+                        },
+                        body: JSON.stringify({
+                            endpoint: subscriptionJson.endpoint,
+                            p256dh: subscriptionJson.keys.p256dh,
+                            auth: subscriptionJson.keys.auth
+                        })
+                    });
+
+                    if (response.ok) {
+                        showStatus('enabled', 1);
+                    } else {
+                        alert('Failed to enable push notifications. Please try again.');
+                        showStatus('disabled');
+                    }
+                } catch (error) {
+                    console.error('Error enabling push notifications:', error);
+                    alert('Failed to enable push notifications. Please try again.');
+                    showStatus('disabled');
+                } finally {
+                    enableBtn.disabled = false;
+                    enableBtn.innerHTML = '<i class="bi bi-bell-fill me-1"></i> Enable Push Notifications';
+                }
+            }
+
+            async function disablePushNotifications() {
+                try {
+                    disableBtn.disabled = true;
+                    disableBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Disabling...';
+
+                    // Unsubscribe from browser
+                    const registration = await navigator.serviceWorker.getRegistration('/push-sw.js');
+                    if (registration) {
+                        const subscription = await registration.pushManager.getSubscription();
+                        if (subscription) {
+                            await subscription.unsubscribe();
+                        }
+                    }
+
+                    // Remove subscription from server
+                    const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value;
+                    const response = await fetch(`${subscriptionApiUrl}?handler=Unsubscribe`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'RequestVerificationToken': token || ''
+                        }
+                    });
+
+                    if (response.ok) {
+                        showStatus('disabled');
+                    } else {
+                        alert('Failed to disable push notifications. Please try again.');
+                        await checkStatus();
+                    }
+                } catch (error) {
+                    console.error('Error disabling push notifications:', error);
+                    alert('Failed to disable push notifications. Please try again.');
+                    await checkStatus();
+                } finally {
+                    disableBtn.disabled = false;
+                    disableBtn.innerHTML = '<i class="bi bi-bell-slash me-1"></i> Disable Push Notifications';
+                }
+            }
+
+            // Event listeners
+            enableBtn.addEventListener('click', enablePushNotifications);
+            disableBtn.addEventListener('click', disablePushNotifications);
+
+            // Check status on page load
+            checkStatus();
+        })();
+    </script>
+    @Html.AntiForgeryToken()
+}
