@@ -1,0 +1,200 @@
+@page "{id:guid}"
+@model Mercato.Web.Pages.Admin.Currencies.HistoryModel
+@{
+    ViewData["Title"] = "Currency History";
+}
+
+<h1>Currency History</h1>
+
+<div class="alert alert-info">
+    <strong>Change History</strong> - View all changes made to this currency for audit and compliance purposes
+</div>
+
+@if (!string.IsNullOrEmpty(Model.ErrorMessage))
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        @Model.ErrorMessage
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+@if (Model.Currency != null)
+{
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="card-title mb-0">Currency Information</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-3">
+                    <strong>Code:</strong> <span class="badge bg-primary">@Model.Currency.Code</span>
+                    @if (Model.Currency.IsBaseCurrency)
+                    {
+                        <span class="badge bg-success ms-1">Base</span>
+                    }
+                </div>
+                <div class="col-md-3">
+                    <strong>Name:</strong> @Model.Currency.Name
+                </div>
+                <div class="col-md-3">
+                    <strong>Symbol:</strong> @Model.Currency.Symbol
+                </div>
+                <div class="col-md-3">
+                    <strong>Status:</strong>
+                    @if (Model.Currency.IsEnabled)
+                    {
+                        <span class="badge bg-success">Enabled</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-danger">Disabled</span>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@if (Model.History.Count == 0)
+{
+    <div class="alert alert-warning">
+        <strong>No history found.</strong> No changes have been recorded for this currency.
+    </div>
+}
+else
+{
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="card-title mb-0">Change History</h5>
+            <span class="badge bg-secondary">@Model.History.Count changes</span>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-striped mb-0">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Date/Time</th>
+                            <th>Change Type</th>
+                            <th>Changed By</th>
+                            <th>Details</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var record in Model.History)
+                        {
+                            var changeTypeClass = record.ChangeType switch
+                            {
+                                "Created" => "bg-success",
+                                "Updated" => "bg-primary",
+                                "Enabled" => "bg-success",
+                                "Disabled" => "bg-danger",
+                                "SetAsBase" => "bg-warning text-dark",
+                                _ => "bg-secondary"
+                            };
+                            <tr>
+                                <td>
+                                    <small>@record.ChangedAt.ToString("yyyy-MM-dd HH:mm:ss")</small>
+                                </td>
+                                <td>
+                                    <span class="badge @changeTypeClass">@record.ChangeType</span>
+                                </td>
+                                <td>
+                                    <div>
+                                        <small class="text-muted">@record.ChangedByUserId</small>
+                                    </div>
+                                    @if (!string.IsNullOrEmpty(record.ChangedByUserEmail))
+                                    {
+                                        <div>
+                                            <small>@record.ChangedByUserEmail</small>
+                                        </div>
+                                    }
+                                </td>
+                                <td>
+                                    @if (!string.IsNullOrEmpty(record.Reason))
+                                    {
+                                        <div class="mb-2">
+                                            <strong>Reason:</strong> @record.Reason
+                                        </div>
+                                    }
+                                    
+                                    @if (record.ChangeType == "Created")
+                                    {
+                                        <button type="button" class="btn btn-sm btn-outline-info" 
+                                                data-bs-toggle="collapse" 
+                                                data-bs-target="#new-@record.Id">
+                                            Show New Values
+                                        </button>
+                                        <div id="new-@record.Id" class="collapse mt-2">
+                                            <pre class="bg-light p-2 small mb-0 overflow-auto json-preview">@FormatJson(record.NewValues)</pre>
+                                        </div>
+                                    }
+                                    else if (record.ChangeType == "Updated" || record.ChangeType == "Enabled" || record.ChangeType == "Disabled" || record.ChangeType == "SetAsBase")
+                                    {
+                                        <div class="btn-group btn-group-sm">
+                                            <button type="button" class="btn btn-outline-secondary" 
+                                                    data-bs-toggle="collapse" 
+                                                    data-bs-target="#prev-@record.Id">
+                                                Previous
+                                            </button>
+                                            <button type="button" class="btn btn-outline-info" 
+                                                    data-bs-toggle="collapse" 
+                                                    data-bs-target="#new-@record.Id">
+                                                New
+                                            </button>
+                                        </div>
+                                        <div id="prev-@record.Id" class="collapse mt-2">
+                                            <strong>Previous Values:</strong>
+                                            <pre class="bg-light p-2 small mb-0 overflow-auto json-preview">@FormatJson(record.PreviousValues)</pre>
+                                        </div>
+                                        <div id="new-@record.Id" class="collapse mt-2">
+                                            <strong>New Values:</strong>
+                                            <pre class="bg-light p-2 small mb-0 overflow-auto json-preview">@FormatJson(record.NewValues)</pre>
+                                        </div>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+}
+
+<div class="mt-4">
+    @if (Model.Currency != null)
+    {
+        <a asp-page="Edit" asp-route-id="@Model.Currency.Id" class="btn btn-primary">
+            Edit Currency
+        </a>
+    }
+    <a asp-page="Index" class="btn btn-outline-secondary">
+        &laquo; Back to Currencies
+    </a>
+</div>
+
+@functions {
+    private static readonly System.Text.Json.JsonSerializerOptions IndentedJsonOptions = new()
+    {
+        WriteIndented = true
+    };
+
+    private string FormatJson(string? json)
+    {
+        if (string.IsNullOrEmpty(json))
+        {
+            return "N/A";
+        }
+        
+        try
+        {
+            var element = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(json);
+            return System.Text.Json.JsonSerializer.Serialize(element, IndentedJsonOptions);
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            // Return original string if JSON parsing fails (display fallback)
+            return json;
+        }
+    }
+}

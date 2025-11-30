@@ -58,6 +58,16 @@ public class AdminDbContext : DbContext
     /// </summary>
     public DbSet<VatRuleHistory> VatRuleHistories { get; set; } = null!;
 
+    /// <summary>
+    /// Gets or sets the currencies.
+    /// </summary>
+    public DbSet<Currency> Currencies { get; set; } = null!;
+
+    /// <summary>
+    /// Gets or sets the currency history records.
+    /// </summary>
+    public DbSet<CurrencyHistory> CurrencyHistories { get; set; } = null!;
+
     /// <inheritdoc/>
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -196,6 +206,40 @@ public class AdminDbContext : DbContext
             entity.HasIndex(e => e.ChangedAt);
             entity.HasIndex(e => new { e.VatRuleId, e.ChangedAt })
                 .HasDatabaseName("IX_VatRuleHistories_VatRuleId_ChangedAt");
+        });
+
+        modelBuilder.Entity<Currency>(entity =>
+        {
+            entity.ToTable("Currencies");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Code).IsRequired().HasMaxLength(3);
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.Symbol).IsRequired().HasMaxLength(5);
+            entity.Property(e => e.ExchangeRateToBase).HasPrecision(18, 6);
+            entity.Property(e => e.ExchangeRateSource).HasMaxLength(100);
+            entity.Property(e => e.CreatedByUserId).IsRequired().HasMaxLength(450);
+            entity.Property(e => e.UpdatedByUserId).HasMaxLength(450);
+            entity.HasIndex(e => e.Code).IsUnique();
+            entity.HasIndex(e => e.IsBaseCurrency);
+            entity.HasIndex(e => e.IsEnabled);
+            entity.HasIndex(e => new { e.IsEnabled, e.IsBaseCurrency })
+                .HasDatabaseName("IX_Currencies_IsEnabled_IsBaseCurrency");
+        });
+
+        modelBuilder.Entity<CurrencyHistory>(entity =>
+        {
+            entity.ToTable("CurrencyHistories");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.ChangeType).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.PreviousValues).HasColumnType("nvarchar(max)");
+            entity.Property(e => e.NewValues).IsRequired().HasColumnType("nvarchar(max)");
+            entity.Property(e => e.ChangedByUserId).IsRequired().HasMaxLength(450);
+            entity.Property(e => e.ChangedByUserEmail).HasMaxLength(256);
+            entity.Property(e => e.Reason).HasMaxLength(1000);
+            entity.HasIndex(e => e.CurrencyId);
+            entity.HasIndex(e => e.ChangedAt);
+            entity.HasIndex(e => new { e.CurrencyId, e.ChangedAt })
+                .HasDatabaseName("IX_CurrencyHistories_CurrencyId_ChangedAt");
         });
     }
 }
