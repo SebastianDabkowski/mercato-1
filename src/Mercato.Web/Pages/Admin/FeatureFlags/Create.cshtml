@@ -1,0 +1,132 @@
+@page
+@model Mercato.Web.Pages.Admin.FeatureFlags.CreateModel
+@{
+    ViewData["Title"] = "Create Feature Flag";
+}
+
+<h1>Create Feature Flag</h1>
+
+<div class="alert alert-info">
+    <strong>Create a new feature flag</strong> - Control feature availability across environments and user groups
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Flag Details</h5>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    <div asp-validation-summary="All" class="text-danger mb-3"></div>
+
+                    <div class="mb-3">
+                        <label asp-for="Input.Key" class="form-label"></label>
+                        <input asp-for="Input.Key" class="form-control" placeholder="e.g., enable_new_checkout" />
+                        <span asp-validation-for="Input.Key" class="text-danger"></span>
+                        <small class="form-text text-muted">Unique key used in code. Use lowercase letters, numbers, underscores, and hyphens only.</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Input.Name" class="form-label"></label>
+                        <input asp-for="Input.Name" class="form-control" placeholder="e.g., New Checkout Experience" />
+                        <span asp-validation-for="Input.Name" class="text-danger"></span>
+                        <small class="form-text text-muted">A descriptive name for this feature flag.</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Input.Description" class="form-label"></label>
+                        <textarea asp-for="Input.Description" class="form-control" rows="3" placeholder="Describe what this feature flag controls..."></textarea>
+                        <span asp-validation-for="Input.Description" class="text-danger"></span>
+                    </div>
+
+                    <hr class="my-4">
+                    <h6>Environment & Targeting</h6>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="Input.Environment" class="form-label"></label>
+                            <select asp-for="Input.Environment" class="form-select">
+                                <option value="Development">Development</option>
+                                <option value="Testing">Testing</option>
+                                <option value="Staging">Staging</option>
+                                <option value="Production">Production</option>
+                            </select>
+                            <span asp-validation-for="Input.Environment" class="text-danger"></span>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="Input.TargetType" class="form-label"></label>
+                            <select asp-for="Input.TargetType" class="form-select" id="targetTypeSelect">
+                                <option value="None">None (Global)</option>
+                                <option value="AllUsers">All Users</option>
+                                <option value="InternalUsers">Internal Users Only</option>
+                                <option value="SpecificSellers">Specific Sellers</option>
+                                <option value="PercentageRollout">Percentage Rollout</option>
+                            </select>
+                            <span asp-validation-for="Input.TargetType" class="text-danger"></span>
+                        </div>
+                    </div>
+
+                    <div class="mb-3" id="targetValueContainer">
+                        <label asp-for="Input.TargetValue" class="form-label">Target Value</label>
+                        <input asp-for="Input.TargetValue" class="form-control" placeholder="Enter value for SpecificSellers or PercentageRollout" />
+                        <span asp-validation-for="Input.TargetValue" class="text-danger"></span>
+                        <small class="form-text text-muted">For SpecificSellers: JSON array like ["seller-1", "seller-2"]. For PercentageRollout: number 0-100.</small>
+                    </div>
+
+                    <div class="mb-3 form-check">
+                        <input asp-for="Input.IsEnabled" class="form-check-input" />
+                        <label asp-for="Input.IsEnabled" class="form-check-label"></label>
+                        <small class="form-text text-muted d-block">Enable the feature flag immediately after creation.</small>
+                    </div>
+
+                    <hr class="my-4">
+
+                    <div class="d-flex justify-content-between">
+                        <a asp-page="Index" class="btn btn-outline-secondary">Cancel</a>
+                        <button type="submit" class="btn btn-primary">Create Flag</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">Target Types</h6>
+            </div>
+            <div class="card-body">
+                <dl>
+                    <dt>None / All Users</dt>
+                    <dd class="text-muted small">The flag applies globally when enabled.</dd>
+
+                    <dt>Internal Users</dt>
+                    <dd class="text-muted small">Only users with "internal-" prefix or "@@internal" in their ID will see the feature.</dd>
+
+                    <dt>Specific Sellers</dt>
+                    <dd class="text-muted small">Enter a JSON array of seller IDs, e.g., <code>["seller-1", "seller-2"]</code></dd>
+
+                    <dt>Percentage Rollout</dt>
+                    <dd class="text-muted small">Enter a number 0-100 for gradual rollout to that percentage of users.</dd>
+                </dl>
+            </div>
+        </div>
+
+        <div class="card mt-3 border-warning">
+            <div class="card-header bg-warning text-dark">
+                <h6 class="mb-0">Important</h6>
+            </div>
+            <div class="card-body">
+                <p class="small text-muted mb-0">
+                    Feature flags allow gradual rollout of new features. Test thoroughly in Development and Testing environments before enabling in Production.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
