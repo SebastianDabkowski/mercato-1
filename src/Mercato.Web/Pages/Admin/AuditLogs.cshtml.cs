@@ -70,18 +70,32 @@ public class AuditLogsModel : PageModel
     public string? EntityId { get; set; }
 
     /// <summary>
+    /// Gets or sets the outcome filter (Success, Failure, or All).
+    /// </summary>
+    [BindProperty(SupportsGet = true)]
+    public string? Outcome { get; set; }
+
+    /// <summary>
     /// Handles GET requests to load the audit logs page.
     /// </summary>
     public async Task OnGetAsync()
     {
         _logger.LogInformation(
-            "Admin accessing audit logs with filters: StartDate={StartDate}, EndDate={EndDate}, AdminUserId={AdminUserId}, EntityType={EntityType}, ActionType={ActionType}, EntityId={EntityId}",
+            "Admin accessing audit logs with filters: StartDate={StartDate}, EndDate={EndDate}, AdminUserId={AdminUserId}, EntityType={EntityType}, ActionType={ActionType}, EntityId={EntityId}, Outcome={Outcome}",
             StartDate,
             EndDate,
             AdminUserId,
             EntityType,
             ActionType,
-            EntityId);
+            EntityId,
+            Outcome);
+
+        bool? isSuccess = Outcome switch
+        {
+            "Success" => true,
+            "Failure" => false,
+            _ => null
+        };
 
         AuditLogs = await _auditLogService.GetAuditLogsAsync(
             StartDate,
@@ -89,6 +103,7 @@ public class AuditLogsModel : PageModel
             AdminUserId,
             EntityType,
             ActionType,
-            EntityId);
+            EntityId,
+            isSuccess);
     }
 }

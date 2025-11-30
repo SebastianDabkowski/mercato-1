@@ -27,6 +27,43 @@ public class AuditLogService : IAuditLogService
     }
 
     /// <inheritdoc/>
+    public async Task<AdminAuditLog> LogCriticalActionAsync(
+        string userId,
+        string action,
+        string entityType,
+        string entityId,
+        bool isSuccess,
+        string? details = null,
+        string? failureReason = null,
+        string? ipAddress = null,
+        CancellationToken cancellationToken = default)
+    {
+        var auditLog = new AdminAuditLog
+        {
+            Id = Guid.NewGuid(),
+            AdminUserId = userId,
+            Action = action,
+            EntityType = entityType,
+            EntityId = entityId,
+            IsSuccess = isSuccess,
+            Details = details,
+            FailureReason = failureReason,
+            IpAddress = ipAddress,
+            Timestamp = DateTimeOffset.UtcNow
+        };
+
+        _logger.LogInformation(
+            "Logging critical action: UserId={UserId}, Action={Action}, EntityType={EntityType}, EntityId={EntityId}, IsSuccess={IsSuccess}",
+            userId,
+            action,
+            entityType,
+            entityId,
+            isSuccess);
+
+        return await _repository.AddAsync(auditLog);
+    }
+
+    /// <inheritdoc/>
     public async Task<IReadOnlyList<AdminAuditLog>> GetAuditLogsAsync(
         DateTimeOffset? startDate = null,
         DateTimeOffset? endDate = null,
@@ -34,17 +71,19 @@ public class AuditLogService : IAuditLogService
         string? entityType = null,
         string? action = null,
         string? entityId = null,
+        bool? isSuccess = null,
         int maxResults = 100,
         CancellationToken cancellationToken = default)
     {
         _logger.LogInformation(
-            "Retrieving audit logs with filters: StartDate={StartDate}, EndDate={EndDate}, AdminUserId={AdminUserId}, EntityType={EntityType}, Action={Action}, EntityId={EntityId}, MaxResults={MaxResults}",
+            "Retrieving audit logs with filters: StartDate={StartDate}, EndDate={EndDate}, AdminUserId={AdminUserId}, EntityType={EntityType}, Action={Action}, EntityId={EntityId}, IsSuccess={IsSuccess}, MaxResults={MaxResults}",
             startDate,
             endDate,
             adminUserId,
             entityType,
             action,
             entityId,
+            isSuccess,
             maxResults);
 
         return await _repository.GetFilteredAsync(
@@ -54,6 +93,7 @@ public class AuditLogService : IAuditLogService
             entityType,
             action,
             entityId,
+            isSuccess,
             maxResults,
             cancellationToken);
     }
@@ -70,5 +110,41 @@ public class AuditLogService : IAuditLogService
             entityId);
 
         return await _repository.GetByEntityAsync(entityType, entityId);
+    }
+
+    /// <inheritdoc/>
+    public async Task<int> PurgeOldLogsAsync(int retentionDays, CancellationToken cancellationToken = default)
+    {
+        var cutoffDate = DateTimeOffset.UtcNow.AddDays(-retentionDays);
+
+        _logger.LogInformation(
+            "Purging audit logs older than {CutoffDate} (retention: {RetentionDays} days)",
+            cutoffDate,
+            retentionDays);
+
+        var deletedCount = await _repository.DeleteOlderThanAsync(cutoffDate, cancellationToken);
+
+        _logger.LogInformation(
+            "Purged {DeletedCount} audit log entries older than {CutoffDate}",
+            deletedCount,
+            cutoffDate);
+
+        return deletedCount;
+    }
+
+    /// <inheritdoc/>
+    public async Task<IReadOnlyList<AdminAuditLog>> GetLogsForArchivalAsync(
+        int retentionDays,
+        int batchSize = 1000,
+        CancellationToken cancellationToken = default)
+    {
+        var cutoffDate = DateTimeOffset.UtcNow.AddDays(-retentionDays);
+
+        _logger.LogInformation(
+            "Retrieving audit logs for archival older than {CutoffDate} (batch size: {BatchSize})",
+            cutoffDate,
+            batchSize);
+
+        return await _repository.GetLogsForArchivalAsync(cutoffDate, batchSize, cancellationToken);
     }
 }

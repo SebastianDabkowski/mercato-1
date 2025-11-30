@@ -40,6 +40,7 @@ public interface IAdminAuditRepository
     /// <param name="entityType">Optional entity type filter.</param>
     /// <param name="action">Optional action filter.</param>
     /// <param name="entityId">Optional entity ID filter.</param>
+    /// <param name="isSuccess">Optional success/failure filter.</param>
     /// <param name="maxResults">Maximum number of results to return. Default is 100.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>A filtered list of audit log entries.</returns>
@@ -50,6 +51,27 @@ public interface IAdminAuditRepository
         string? entityType = null,
         string? action = null,
         string? entityId = null,
+        bool? isSuccess = null,
         int maxResults = 100,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Deletes audit logs older than the specified date.
+    /// </summary>
+    /// <param name="olderThan">The cutoff date. Logs older than this date will be deleted.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The number of deleted records.</returns>
+    Task<int> DeleteOlderThanAsync(DateTimeOffset olderThan, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets audit logs older than the specified date for archival purposes.
+    /// </summary>
+    /// <param name="olderThan">The cutoff date.</param>
+    /// <param name="batchSize">Maximum number of records to retrieve per batch.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>A list of audit log entries for archival.</returns>
+    Task<IReadOnlyList<AdminAuditLog>> GetLogsForArchivalAsync(
+        DateTimeOffset olderThan,
+        int batchSize = 1000,
         CancellationToken cancellationToken = default);
 }

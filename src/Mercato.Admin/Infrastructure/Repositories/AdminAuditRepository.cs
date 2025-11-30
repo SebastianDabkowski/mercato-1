@@ -66,6 +66,7 @@ public class AdminAuditRepository : IAdminAuditRepository
         string? entityType = null,
         string? action = null,
         string? entityId = null,
+        bool? isSuccess = null,
         int maxResults = 100,
         CancellationToken cancellationToken = default)
     {
@@ -101,9 +102,35 @@ public class AdminAuditRepository : IAdminAuditRepository
             query = query.Where(a => a.EntityId == entityId);
         }
 
+        if (isSuccess.HasValue)
+        {
+            query = query.Where(a => a.IsSuccess == isSuccess.Value);
+        }
+
         return await query
             .OrderByDescending(a => a.Timestamp)
             .Take(maxResults)
+            .ToListAsync(cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task<int> DeleteOlderThanAsync(DateTimeOffset olderThan, CancellationToken cancellationToken = default)
+    {
+        return await _context.AdminAuditLogs
+            .Where(a => a.Timestamp < olderThan)
+            .ExecuteDeleteAsync(cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<AdminAuditLog>> GetLogsForArchivalAsync(
+        DateTimeOffset olderThan,
+        int batchSize = 1000,
+        CancellationToken cancellationToken = default)
+    {
+        return await _context.AdminAuditLogs
+            .Where(a => a.Timestamp < olderThan)
+            .OrderBy(a => a.Timestamp)
+            .Take(batchSize)
             .ToListAsync(cancellationToken);
     }
 }

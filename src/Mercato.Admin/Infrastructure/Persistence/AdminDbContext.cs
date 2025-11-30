@@ -193,10 +193,14 @@ public class AdminDbContext : DbContext
             entity.Property(e => e.EntityId).IsRequired().HasMaxLength(450);
             entity.Property(e => e.Details).HasMaxLength(2000);
             entity.Property(e => e.IpAddress).HasMaxLength(45);
+            entity.Property(e => e.FailureReason).HasMaxLength(1000);
             entity.HasIndex(e => e.AdminUserId);
             entity.HasIndex(e => e.Timestamp);
+            entity.HasIndex(e => e.IsSuccess);
             entity.HasIndex(e => new { e.EntityType, e.EntityId })
                 .HasDatabaseName("IX_AdminAuditLogs_EntityType_EntityId");
+            entity.HasIndex(e => new { e.Timestamp, e.IsSuccess })
+                .HasDatabaseName("IX_AdminAuditLogs_Timestamp_IsSuccess");
         });
 
         modelBuilder.Entity<UserBlockInfo>(entity =>

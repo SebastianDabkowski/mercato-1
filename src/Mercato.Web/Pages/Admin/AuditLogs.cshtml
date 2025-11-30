@@ -38,6 +38,9 @@
                     <option value="LegalDocument">Legal Document</option>
                     <option value="Integration">Integration</option>
                     <option value="Settings">Settings</option>
+                    <option value="Payout">Payout</option>
+                    <option value="Refund">Refund</option>
+                    <option value="Account">Account</option>
                 </select>
             </div>
             <div class="col-md-2">
@@ -47,6 +50,14 @@
             <div class="col-md-2">
                 <label for="EntityId" class="form-label">Entity ID</label>
                 <input type="text" asp-for="EntityId" class="form-control" id="EntityId" placeholder="Resource ID" />
+            </div>
+            <div class="col-md-2">
+                <label for="Outcome" class="form-label">Outcome</label>
+                <select asp-for="Outcome" class="form-select" id="Outcome">
+                    <option value="">All Outcomes</option>
+                    <option value="Success">Success</option>
+                    <option value="Failure">Failure</option>
+                </select>
             </div>
             <div class="col-12">
                 <button type="submit" class="btn btn-primary">Apply Filters</button>
@@ -79,6 +90,7 @@
                             <th>Action</th>
                             <th>Entity Type</th>
                             <th>Entity ID</th>
+                            <th>Outcome</th>
                             <th>Details</th>
                             <th>IP Address</th>
                         </tr>
@@ -104,10 +116,33 @@
                                     }
                                 </td>
                                 <td>
+                                    @if (log.IsSuccess)
+                                    {
+                                        <span class="badge bg-success">Success</span>
+                                    }
+                                    else
+                                    {
+                                        @if (!string.IsNullOrEmpty(log.FailureReason))
+                                        {
+                                            <span class="badge bg-danger" title="@log.FailureReason">Failure</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-danger">Failure</span>
+                                        }
+                                    }
+                                </td>
+                                <td>
                                     @if (!string.IsNullOrEmpty(log.Details))
                                     {
                                         <span title="@log.Details">
                                             @(log.Details.Length > 50 ? log.Details[..50] + "..." : log.Details)
+                                        </span>
+                                    }
+                                    else if (!string.IsNullOrEmpty(log.FailureReason))
+                                    {
+                                        <span class="text-danger" title="@log.FailureReason">
+                                            @(log.FailureReason.Length > 50 ? log.FailureReason[..50] + "..." : log.FailureReason)
                                         </span>
                                     }
                                     else
