@@ -99,6 +99,11 @@ public class UserDetailInfo
     /// Gets or sets optional additional details about the block reason.
     /// </summary>
     public string? BlockReasonDetails { get; set; }
+
+    /// <summary>
+    /// Gets or sets the full block/reactivate history for this user.
+    /// </summary>
+    public IReadOnlyList<BlockHistoryInfo> BlockHistory { get; set; } = [];
 }
 
 /// <summary>

@@ -181,6 +181,9 @@ public class UserAccountManagementService : IUserAccountManagementService
         // Check for active block
         var activeBlock = await _userBlockRepository.GetActiveBlockAsync(userId);
 
+        // Get block history
+        var blockHistory = await GetBlockHistoryAsync(userId, cancellationToken);
+
         var userDetail = new UserDetailInfo
         {
             UserId = user.Id,
@@ -201,7 +204,8 @@ public class UserAccountManagementService : IUserAccountManagementService
             BlockedByAdminEmail = activeBlock?.BlockedByAdminEmail,
             BlockedAt = activeBlock?.BlockedAt,
             BlockReason = activeBlock?.Reason.ToString(),
-            BlockReasonDetails = activeBlock?.ReasonDetails
+            BlockReasonDetails = activeBlock?.ReasonDetails,
+            BlockHistory = blockHistory
         };
 
         _logger.LogInformation("Retrieved detailed information for user {UserId} ({Email}).", userId, user.Email);
@@ -339,6 +343,7 @@ public class UserAccountManagementService : IUserAccountManagementService
         existingBlock.IsActive = false;
         existingBlock.UnblockedAt = DateTimeOffset.UtcNow;
         existingBlock.UnblockedByAdminId = command.AdminUserId;
+        existingBlock.UnblockedByAdminEmail = command.AdminEmail;
 
         try
         {
@@ -370,6 +375,31 @@ public class UserAccountManagementService : IUserAccountManagementService
         }
 
         return await _userBlockRepository.GetActiveBlockAsync(userId);
+    }
+
+    /// <inheritdoc/>
+    public async Task<IReadOnlyList<BlockHistoryInfo>> GetBlockHistoryAsync(
+        string userId,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrEmpty(userId))
+        {
+            return [];
+        }
+
+        var blockHistory = await _userBlockRepository.GetBlockHistoryAsync(userId);
+
+        return blockHistory.Select(b => new BlockHistoryInfo
+        {
+            Id = b.Id,
+            BlockedByAdminEmail = b.BlockedByAdminEmail,
+            BlockedAt = b.BlockedAt,
+            Reason = b.Reason.ToString(),
+            ReasonDetails = b.ReasonDetails,
+            IsActive = b.IsActive,
+            UnblockedAt = b.UnblockedAt,
+            UnblockedByAdminEmail = b.UnblockedByAdminEmail
+        }).ToList().AsReadOnly();
     }
 
     /// <summary>

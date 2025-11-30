@@ -58,4 +58,14 @@ public interface IUserAccountManagementService
     Task<UserBlockInfo?> GetActiveBlockAsync(
         string userId,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets the block/reactivate history for a user.
+    /// </summary>
+    /// <param name="userId">The user ID to look up.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The list of block history records, ordered by date descending.</returns>
+    Task<IReadOnlyList<BlockHistoryInfo>> GetBlockHistoryAsync(
+        string userId,
+        CancellationToken cancellationToken = default);
 }

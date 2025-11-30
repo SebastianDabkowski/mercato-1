@@ -51,6 +51,11 @@ public class UserBlockInfo
     public string? UnblockedByAdminId { get; set; }
 
     /// <summary>
+    /// Gets or sets the email of the admin who unblocked the user (if applicable).
+    /// </summary>
+    public string? UnblockedByAdminEmail { get; set; }
+
+    /// <summary>
     /// Gets or sets whether this block is currently active.
     /// </summary>
     public bool IsActive { get; set; } = true;

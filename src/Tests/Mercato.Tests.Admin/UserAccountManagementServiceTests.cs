@@ -16,6 +16,8 @@ public class UserAccountManagementServiceTests
         var mock = new Mock<IUserBlockRepository>();
         mock.Setup(x => x.GetActiveBlockAsync(It.IsAny<string>()))
             .ReturnsAsync((UserBlockInfo?)null);
+        mock.Setup(x => x.GetBlockHistoryAsync(It.IsAny<string>()))
+            .ReturnsAsync(new List<UserBlockInfo>());
         return mock;
     }
 
@@ -702,6 +704,7 @@ public class UserAccountManagementServiceTests
 
         var mockUserBlockRepo = new Mock<IUserBlockRepository>();
         mockUserBlockRepo.Setup(x => x.GetActiveBlockAsync(userId)).ReturnsAsync(activeBlock);
+        mockUserBlockRepo.Setup(x => x.GetBlockHistoryAsync(userId)).ReturnsAsync(new List<UserBlockInfo> { activeBlock });
 
         var mockLogger = new Mock<ILogger<UserAccountManagementService>>();
 
@@ -808,6 +811,211 @@ public class UserAccountManagementServiceTests
         // Assert
         Assert.False(result.Succeeded);
         Assert.Contains("User ID is required.", result.Errors);
+    }
+
+    [Fact]
+    public async Task GetBlockHistoryAsync_WithValidUserId_ReturnsHistory()
+    {
+        // Arrange
+        var userId = "user-with-history";
+        var blockHistory = new List<UserBlockInfo>
+        {
+            new UserBlockInfo
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                BlockedByAdminId = "admin-1",
+                BlockedByAdminEmail = "admin1@example.com",
+                Reason = BlockReason.Fraud,
+                ReasonDetails = "Fraud detected",
+                BlockedAt = DateTimeOffset.UtcNow.AddDays(-10),
+                IsActive = false,
+                UnblockedAt = DateTimeOffset.UtcNow.AddDays(-5),
+                UnblockedByAdminId = "admin-2",
+                UnblockedByAdminEmail = "admin2@example.com"
+            },
+            new UserBlockInfo
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                BlockedByAdminId = "admin-3",
+                BlockedByAdminEmail = "admin3@example.com",
+                Reason = BlockReason.PolicyViolation,
+                ReasonDetails = "Repeated policy violations",
+                BlockedAt = DateTimeOffset.UtcNow.AddDays(-1),
+                IsActive = true
+            }
+        };
+
+        var mockUserManager = CreateMockUserManager();
+        var mockAuthEventRepo = new Mock<IAuthenticationEventRepository>();
+        var mockUserBlockRepo = new Mock<IUserBlockRepository>();
+        mockUserBlockRepo.Setup(x => x.GetBlockHistoryAsync(userId)).ReturnsAsync(blockHistory);
+
+        var mockLogger = new Mock<ILogger<UserAccountManagementService>>();
+
+        var service = new UserAccountManagementService(
+            mockUserManager.Object,
+            mockAuthEventRepo.Object,
+            mockUserBlockRepo.Object,
+            mockLogger.Object);
+
+        // Act
+        var result = await service.GetBlockHistoryAsync(userId);
+
+        // Assert
+        Assert.Equal(2, result.Count);
+        Assert.Equal("admin1@example.com", result[0].BlockedByAdminEmail);
+        Assert.Equal("Fraud", result[0].Reason);
+        Assert.False(result[0].IsActive);
+        Assert.NotNull(result[0].UnblockedAt);
+        Assert.Equal("admin2@example.com", result[0].UnblockedByAdminEmail);
+        Assert.Equal("admin3@example.com", result[1].BlockedByAdminEmail);
+        Assert.Equal("PolicyViolation", result[1].Reason);
+        Assert.True(result[1].IsActive);
+    }
+
+    [Fact]
+    public async Task GetBlockHistoryAsync_WithEmptyUserId_ReturnsEmptyList()
+    {
+        // Arrange
+        var mockUserManager = CreateMockUserManager();
+        var mockAuthEventRepo = new Mock<IAuthenticationEventRepository>();
+        var mockUserBlockRepo = CreateMockUserBlockRepository();
+        var mockLogger = new Mock<ILogger<UserAccountManagementService>>();
+
+        var service = new UserAccountManagementService(
+            mockUserManager.Object,
+            mockAuthEventRepo.Object,
+            mockUserBlockRepo.Object,
+            mockLogger.Object);
+
+        // Act
+        var result = await service.GetBlockHistoryAsync("");
+
+        // Assert
+        Assert.Empty(result);
+    }
+
+    [Fact]
+    public async Task GetUserDetailAsync_WithBlockHistory_IncludesBlockHistory()
+    {
+        // Arrange
+        var userId = "user-with-history";
+        var user = new IdentityUser
+        {
+            Id = userId,
+            Email = "user@example.com",
+            EmailConfirmed = true
+        };
+
+        var blockHistory = new List<UserBlockInfo>
+        {
+            new UserBlockInfo
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                BlockedByAdminId = "admin-1",
+                BlockedByAdminEmail = "admin1@example.com",
+                Reason = BlockReason.Spam,
+                BlockedAt = DateTimeOffset.UtcNow.AddDays(-10),
+                IsActive = false,
+                UnblockedAt = DateTimeOffset.UtcNow.AddDays(-5),
+                UnblockedByAdminId = "admin-2",
+                UnblockedByAdminEmail = "admin2@example.com"
+            }
+        };
+
+        var mockUserManager = CreateMockUserManager();
+        mockUserManager.Setup(x => x.FindByIdAsync(userId)).ReturnsAsync(user);
+        mockUserManager.Setup(x => x.GetRolesAsync(user)).ReturnsAsync(new List<string> { "Buyer" });
+
+        var mockAuthEventRepo = new Mock<IAuthenticationEventRepository>();
+        mockAuthEventRepo.Setup(x => x.GetFilteredAsync(
+            It.IsAny<DateTimeOffset?>(),
+            It.IsAny<DateTimeOffset?>(),
+            It.IsAny<AuthenticationEventType?>(),
+            It.IsAny<string?>(),
+            It.IsAny<string?>(),
+            It.IsAny<bool?>(),
+            It.IsAny<int>(),
+            It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<AuthenticationEvent>());
+
+        var mockUserBlockRepo = new Mock<IUserBlockRepository>();
+        mockUserBlockRepo.Setup(x => x.GetActiveBlockAsync(userId)).ReturnsAsync((UserBlockInfo?)null);
+        mockUserBlockRepo.Setup(x => x.GetBlockHistoryAsync(userId)).ReturnsAsync(blockHistory);
+
+        var mockLogger = new Mock<ILogger<UserAccountManagementService>>();
+
+        var service = new UserAccountManagementService(
+            mockUserManager.Object,
+            mockAuthEventRepo.Object,
+            mockUserBlockRepo.Object,
+            mockLogger.Object);
+
+        // Act
+        var result = await service.GetUserDetailAsync(userId);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.False(result.IsBlocked);
+        Assert.Single(result.BlockHistory);
+        Assert.Equal("admin1@example.com", result.BlockHistory[0].BlockedByAdminEmail);
+        Assert.Equal("admin2@example.com", result.BlockHistory[0].UnblockedByAdminEmail);
+    }
+
+    [Fact]
+    public async Task UnblockUserAsync_StoresUnblockedByAdminEmail()
+    {
+        // Arrange
+        var userId = "user-to-unblock";
+        var user = new IdentityUser { Id = userId, Email = "user@example.com" };
+        var existingBlock = new UserBlockInfo
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            BlockedByAdminId = "admin-1",
+            IsActive = true
+        };
+
+        var mockUserManager = CreateMockUserManager();
+        mockUserManager.Setup(x => x.FindByIdAsync(userId)).ReturnsAsync(user);
+        mockUserManager.Setup(x => x.SetLockoutEndDateAsync(user, null))
+            .ReturnsAsync(IdentityResult.Success);
+        mockUserManager.Setup(x => x.ResetAccessFailedCountAsync(user))
+            .ReturnsAsync(IdentityResult.Success);
+
+        var mockAuthEventRepo = new Mock<IAuthenticationEventRepository>();
+        var mockUserBlockRepo = new Mock<IUserBlockRepository>();
+        mockUserBlockRepo.Setup(x => x.GetActiveBlockAsync(userId)).ReturnsAsync(existingBlock);
+        mockUserBlockRepo.Setup(x => x.UpdateAsync(It.IsAny<UserBlockInfo>())).Returns(Task.CompletedTask);
+
+        var mockLogger = new Mock<ILogger<UserAccountManagementService>>();
+
+        var service = new UserAccountManagementService(
+            mockUserManager.Object,
+            mockAuthEventRepo.Object,
+            mockUserBlockRepo.Object,
+            mockLogger.Object);
+
+        var command = new UnblockUserCommand
+        {
+            UserId = userId,
+            AdminUserId = "admin-2",
+            AdminEmail = "admin2@example.com"
+        };
+
+        // Act
+        var result = await service.UnblockUserAsync(command);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        mockUserBlockRepo.Verify(x => x.UpdateAsync(It.Is<UserBlockInfo>(
+            b => b.IsActive == false &&
+                 b.UnblockedByAdminId == "admin-2" &&
+                 b.UnblockedByAdminEmail == "admin2@example.com" &&
+                 b.UnblockedAt.HasValue)), Times.Once);
     }
 
     private static Mock<UserManager<IdentityUser>> CreateMockUserManager()
