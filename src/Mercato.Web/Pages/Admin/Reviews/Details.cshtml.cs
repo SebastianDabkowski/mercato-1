@@ -1,6 +1,7 @@
 using Mercato.Admin.Application.Commands;
 using Mercato.Admin.Application.Queries;
 using Mercato.Admin.Application.Services;
+using Mercato.Admin.Domain.Entities;
 using Mercato.Orders.Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -57,6 +58,12 @@ public class DetailsModel : PageModel
     /// </summary>
     [BindProperty]
     public string? ModerationReason { get; set; }
+
+    /// <summary>
+    /// Gets or sets the removal reason category when hiding a review.
+    /// </summary>
+    [BindProperty]
+    public ReviewRemovalReason? RemovalReason { get; set; }
 
     /// <summary>
     /// Gets or sets the flag reason.
@@ -116,6 +123,13 @@ public class DetailsModel : PageModel
             return await OnGetAsync(id);
         }
 
+        // Require removal reason when hiding a review
+        if (NewStatus.Value == ReviewStatus.Hidden && !RemovalReason.HasValue)
+        {
+            ErrorMessage = "Removal reason category is required when hiding a review.";
+            return await OnGetAsync(id);
+        }
+
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrEmpty(userId))
         {
@@ -129,7 +143,8 @@ public class DetailsModel : PageModel
             ReviewId = id,
             AdminUserId = userId,
             NewStatus = NewStatus.Value,
-            ModerationReason = ModerationReason
+            ModerationReason = ModerationReason,
+            RemovalReason = RemovalReason
         };
 
         var result = await _reviewModerationService.ModerateReviewAsync(command);
@@ -222,4 +237,29 @@ public class DetailsModel : PageModel
     /// Gets all available review statuses for moderation.
     /// </summary>
     public static IEnumerable<ReviewStatus> AllStatuses => Enum.GetValues<ReviewStatus>();
+
+    /// <summary>
+    /// Gets all available removal reasons for hiding reviews.
+    /// </summary>
+    public static IEnumerable<ReviewRemovalReason> AllRemovalReasons => 
+        Enum.GetValues<ReviewRemovalReason>().Where(r => r != ReviewRemovalReason.None);
+
+    /// <summary>
+    /// Gets display text for a removal reason.
+    /// </summary>
+    /// <param name="reason">The removal reason.</param>
+    /// <returns>The display text.</returns>
+    public static string GetRemovalReasonDisplayText(ReviewRemovalReason reason) => reason switch
+    {
+        ReviewRemovalReason.None => "None",
+        ReviewRemovalReason.HateSpeech => "Hate Speech",
+        ReviewRemovalReason.Spam => "Spam",
+        ReviewRemovalReason.OffTopic => "Off Topic",
+        ReviewRemovalReason.PersonalData => "Personal Data",
+        ReviewRemovalReason.FalseInformation => "False Information",
+        ReviewRemovalReason.Profanity => "Profanity",
+        ReviewRemovalReason.TermsViolation => "Terms Violation",
+        ReviewRemovalReason.Other => "Other",
+        _ => reason.ToString()
+    };
 }

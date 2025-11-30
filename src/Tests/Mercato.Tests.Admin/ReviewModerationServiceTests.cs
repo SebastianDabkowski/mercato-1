@@ -460,7 +460,8 @@ public class ReviewModerationServiceTests
             ReviewId = reviewId,
             AdminUserId = "admin-user",
             NewStatus = ReviewStatus.Hidden,
-            ModerationReason = "Violates content guidelines"
+            ModerationReason = "Violates content guidelines",
+            RemovalReason = ReviewRemovalReason.TermsViolation
         };
 
         // Act
@@ -524,6 +525,249 @@ public class ReviewModerationServiceTests
         Assert.Contains("Pending", capturedAuditLog.Details);
         Assert.Contains("Published", capturedAuditLog.Details);
         Assert.Contains("Approved after review", capturedAuditLog.Details);
+    }
+
+    [Fact]
+    public async Task ModerateReviewAsync_HidingWithoutRemovalReason_ReturnsValidationError()
+    {
+        // Arrange
+        var command = new ModerateReviewCommand
+        {
+            ReviewId = Guid.NewGuid(),
+            AdminUserId = "admin-user",
+            NewStatus = ReviewStatus.Hidden,
+            ModerationReason = "Violates guidelines"
+            // RemovalReason is null/not set
+        };
+
+        // Act
+        var result = await _service.ModerateReviewAsync(command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains("Removal reason category is required when hiding a review.", result.Errors);
+    }
+
+    [Fact]
+    public async Task ModerateReviewAsync_HidingWithRemovalReasonNone_ReturnsValidationError()
+    {
+        // Arrange
+        var command = new ModerateReviewCommand
+        {
+            ReviewId = Guid.NewGuid(),
+            AdminUserId = "admin-user",
+            NewStatus = ReviewStatus.Hidden,
+            ModerationReason = "Violates guidelines",
+            RemovalReason = ReviewRemovalReason.None
+        };
+
+        // Act
+        var result = await _service.ModerateReviewAsync(command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains("Removal reason category is required when hiding a review.", result.Errors);
+    }
+
+    [Fact]
+    public async Task ModerateReviewAsync_HidingWithValidRemovalReason_ReturnsSuccess()
+    {
+        // Arrange
+        var reviewId = Guid.NewGuid();
+        var review = new ProductReview
+        {
+            Id = reviewId,
+            ProductId = Guid.NewGuid(),
+            StoreId = Guid.NewGuid(),
+            BuyerId = "buyer-123",
+            Rating = 1,
+            ReviewText = "Spam content",
+            Status = ReviewStatus.Published,
+            CreatedAt = DateTimeOffset.UtcNow,
+            LastUpdatedAt = DateTimeOffset.UtcNow
+        };
+
+        _mockProductReviewRepository
+            .Setup(r => r.GetByIdAsync(reviewId))
+            .ReturnsAsync(review);
+
+        _mockProductReviewRepository
+            .Setup(r => r.UpdateAsync(It.IsAny<ProductReview>()))
+            .Returns(Task.CompletedTask);
+
+        _mockAdminAuditRepository
+            .Setup(r => r.AddAsync(It.IsAny<AdminAuditLog>()))
+            .ReturnsAsync((AdminAuditLog a) => a);
+
+        var command = new ModerateReviewCommand
+        {
+            ReviewId = reviewId,
+            AdminUserId = "admin-user",
+            NewStatus = ReviewStatus.Hidden,
+            ModerationReason = "Contains spam content",
+            RemovalReason = ReviewRemovalReason.Spam
+        };
+
+        // Act
+        var result = await _service.ModerateReviewAsync(command);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.Equal(ReviewStatus.Hidden, review.Status);
+    }
+
+    [Fact]
+    public async Task ModerateReviewAsync_HidingWithRemovalReason_IncludesRemovalReasonInAuditLog()
+    {
+        // Arrange
+        var reviewId = Guid.NewGuid();
+        var review = new ProductReview
+        {
+            Id = reviewId,
+            ProductId = Guid.NewGuid(),
+            StoreId = Guid.NewGuid(),
+            BuyerId = "buyer-123",
+            Rating = 1,
+            ReviewText = "Hate speech content",
+            Status = ReviewStatus.Published,
+            CreatedAt = DateTimeOffset.UtcNow,
+            LastUpdatedAt = DateTimeOffset.UtcNow
+        };
+
+        AdminAuditLog? capturedAuditLog = null;
+
+        _mockProductReviewRepository
+            .Setup(r => r.GetByIdAsync(reviewId))
+            .ReturnsAsync(review);
+
+        _mockProductReviewRepository
+            .Setup(r => r.UpdateAsync(It.IsAny<ProductReview>()))
+            .Returns(Task.CompletedTask);
+
+        _mockAdminAuditRepository
+            .Setup(r => r.AddAsync(It.IsAny<AdminAuditLog>()))
+            .Callback<AdminAuditLog>(a => capturedAuditLog = a)
+            .ReturnsAsync((AdminAuditLog a) => a);
+
+        var command = new ModerateReviewCommand
+        {
+            ReviewId = reviewId,
+            AdminUserId = "admin-user",
+            NewStatus = ReviewStatus.Hidden,
+            ModerationReason = "Contains hate speech",
+            RemovalReason = ReviewRemovalReason.HateSpeech
+        };
+
+        // Act
+        await _service.ModerateReviewAsync(command);
+
+        // Assert
+        Assert.NotNull(capturedAuditLog);
+        Assert.Contains("Hidden", capturedAuditLog.Details);
+        Assert.Contains("HateSpeech", capturedAuditLog.Details);
+        Assert.Contains("Contains hate speech", capturedAuditLog.Details);
+    }
+
+    [Theory]
+    [InlineData(ReviewRemovalReason.Spam)]
+    [InlineData(ReviewRemovalReason.HateSpeech)]
+    [InlineData(ReviewRemovalReason.OffTopic)]
+    [InlineData(ReviewRemovalReason.PersonalData)]
+    [InlineData(ReviewRemovalReason.FalseInformation)]
+    [InlineData(ReviewRemovalReason.Profanity)]
+    [InlineData(ReviewRemovalReason.TermsViolation)]
+    [InlineData(ReviewRemovalReason.Other)]
+    public async Task ModerateReviewAsync_AllRemovalReasons_AreAccepted(ReviewRemovalReason removalReason)
+    {
+        // Arrange
+        var reviewId = Guid.NewGuid();
+        var review = new ProductReview
+        {
+            Id = reviewId,
+            ProductId = Guid.NewGuid(),
+            StoreId = Guid.NewGuid(),
+            BuyerId = "buyer-123",
+            Rating = 1,
+            ReviewText = "Violating content",
+            Status = ReviewStatus.Published,
+            CreatedAt = DateTimeOffset.UtcNow,
+            LastUpdatedAt = DateTimeOffset.UtcNow
+        };
+
+        _mockProductReviewRepository
+            .Setup(r => r.GetByIdAsync(reviewId))
+            .ReturnsAsync(review);
+
+        _mockProductReviewRepository
+            .Setup(r => r.UpdateAsync(It.IsAny<ProductReview>()))
+            .Returns(Task.CompletedTask);
+
+        _mockAdminAuditRepository
+            .Setup(r => r.AddAsync(It.IsAny<AdminAuditLog>()))
+            .ReturnsAsync((AdminAuditLog a) => a);
+
+        var command = new ModerateReviewCommand
+        {
+            ReviewId = reviewId,
+            AdminUserId = "admin-user",
+            NewStatus = ReviewStatus.Hidden,
+            ModerationReason = $"Removed for {removalReason}",
+            RemovalReason = removalReason
+        };
+
+        // Act
+        var result = await _service.ModerateReviewAsync(command);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.Equal(ReviewStatus.Hidden, review.Status);
+    }
+
+    [Fact]
+    public async Task ModerateReviewAsync_PublishingDoesNotRequireRemovalReason()
+    {
+        // Arrange
+        var reviewId = Guid.NewGuid();
+        var review = new ProductReview
+        {
+            Id = reviewId,
+            ProductId = Guid.NewGuid(),
+            StoreId = Guid.NewGuid(),
+            BuyerId = "buyer-123",
+            Rating = 5,
+            ReviewText = "Great product",
+            Status = ReviewStatus.Pending,
+            CreatedAt = DateTimeOffset.UtcNow,
+            LastUpdatedAt = DateTimeOffset.UtcNow
+        };
+
+        _mockProductReviewRepository
+            .Setup(r => r.GetByIdAsync(reviewId))
+            .ReturnsAsync(review);
+
+        _mockProductReviewRepository
+            .Setup(r => r.UpdateAsync(It.IsAny<ProductReview>()))
+            .Returns(Task.CompletedTask);
+
+        _mockAdminAuditRepository
+            .Setup(r => r.AddAsync(It.IsAny<AdminAuditLog>()))
+            .ReturnsAsync((AdminAuditLog a) => a);
+
+        var command = new ModerateReviewCommand
+        {
+            ReviewId = reviewId,
+            AdminUserId = "admin-user",
+            NewStatus = ReviewStatus.Published,
+            ModerationReason = "Approved - meets guidelines"
+            // RemovalReason is null - should be acceptable for Published status
+        };
+
+        // Act
+        var result = await _service.ModerateReviewAsync(command);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.Equal(ReviewStatus.Published, review.Status);
     }
 
     #endregion
