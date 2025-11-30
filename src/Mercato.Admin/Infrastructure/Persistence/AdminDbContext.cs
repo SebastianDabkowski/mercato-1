@@ -43,6 +43,11 @@ public class AdminDbContext : DbContext
     /// </summary>
     public DbSet<AdminAuditLog> AdminAuditLogs { get; set; } = null!;
 
+    /// <summary>
+    /// Gets or sets the user block information records.
+    /// </summary>
+    public DbSet<UserBlockInfo> UserBlockInfos { get; set; } = null!;
+
     /// <inheritdoc/>
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -132,6 +137,21 @@ public class AdminDbContext : DbContext
             entity.HasIndex(e => e.Timestamp);
             entity.HasIndex(e => new { e.EntityType, e.EntityId })
                 .HasDatabaseName("IX_AdminAuditLogs_EntityType_EntityId");
+        });
+
+        modelBuilder.Entity<UserBlockInfo>(entity =>
+        {
+            entity.ToTable("UserBlockInfos");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.UserId).IsRequired().HasMaxLength(450);
+            entity.Property(e => e.BlockedByAdminId).IsRequired().HasMaxLength(450);
+            entity.Property(e => e.BlockedByAdminEmail).IsRequired().HasMaxLength(256);
+            entity.Property(e => e.ReasonDetails).HasMaxLength(2000);
+            entity.Property(e => e.UnblockedByAdminId).HasMaxLength(450);
+            entity.HasIndex(e => e.UserId);
+            entity.HasIndex(e => e.IsActive);
+            entity.HasIndex(e => new { e.UserId, e.IsActive })
+                .HasDatabaseName("IX_UserBlockInfos_UserId_IsActive");
         });
     }
 }

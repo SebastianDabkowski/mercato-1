@@ -74,6 +74,31 @@ public class UserDetailInfo
     /// Gets or sets any admin notes or flags for this user.
     /// </summary>
     public IReadOnlyList<string> AdminNotes { get; set; } = [];
+
+    /// <summary>
+    /// Gets or sets whether the user is currently blocked.
+    /// </summary>
+    public bool IsBlocked { get; set; }
+
+    /// <summary>
+    /// Gets or sets the email of the admin who blocked the user.
+    /// </summary>
+    public string? BlockedByAdminEmail { get; set; }
+
+    /// <summary>
+    /// Gets or sets when the user was blocked.
+    /// </summary>
+    public DateTimeOffset? BlockedAt { get; set; }
+
+    /// <summary>
+    /// Gets or sets the reason for blocking the user.
+    /// </summary>
+    public string? BlockReason { get; set; }
+
+    /// <summary>
+    /// Gets or sets optional additional details about the block reason.
+    /// </summary>
+    public string? BlockReasonDetails { get; set; }
 }
 
 /// <summary>

@@ -1,4 +1,6 @@
+using Mercato.Admin.Application.Commands;
 using Mercato.Admin.Application.Queries;
+using Mercato.Admin.Domain.Entities;
 
 namespace Mercato.Admin.Application.Services;
 
@@ -24,6 +26,36 @@ public interface IUserAccountManagementService
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The detailed user information, or null if not found.</returns>
     Task<UserDetailInfo?> GetUserDetailAsync(
+        string userId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Blocks a user account.
+    /// </summary>
+    /// <param name="command">The block user command.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The result of the block operation.</returns>
+    Task<BlockUserResult> BlockUserAsync(
+        BlockUserCommand command,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Unblocks a user account.
+    /// </summary>
+    /// <param name="command">The unblock user command.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The result of the unblock operation.</returns>
+    Task<UnblockUserResult> UnblockUserAsync(
+        UnblockUserCommand command,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets the active block for a user if one exists.
+    /// </summary>
+    /// <param name="userId">The user ID to check.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The active block info if found; otherwise, null.</returns>
+    Task<UserBlockInfo?> GetActiveBlockAsync(
         string userId,
         CancellationToken cancellationToken = default);
 }

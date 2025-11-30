@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.Text;
 using System.Text.RegularExpressions;
+using Mercato.Identity.Application.Services;
 using Mercato.Seller.Application.Commands;
 using Mercato.Seller.Application.Services;
 using Mercato.Seller.Domain.Entities;
@@ -20,6 +21,7 @@ public class StoreProfileService : IStoreProfileService
     private const int MaxSlugLength = 200;
 
     private readonly IStoreRepository _repository;
+    private readonly IUserBlockCheckService? _userBlockCheckService;
     private readonly ILogger<StoreProfileService> _logger;
 
     /// <summary>
@@ -27,12 +29,15 @@ public class StoreProfileService : IStoreProfileService
     /// </summary>
     /// <param name="repository">The store repository.</param>
     /// <param name="logger">The logger.</param>
+    /// <param name="userBlockCheckService">The user block check service (optional).</param>
     public StoreProfileService(
         IStoreRepository repository,
-        ILogger<StoreProfileService> logger)
+        ILogger<StoreProfileService> logger,
+        IUserBlockCheckService? userBlockCheckService = null)
     {
         _repository = repository ?? throw new ArgumentNullException(nameof(repository));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _userBlockCheckService = userBlockCheckService;
     }
 
     /// <inheritdoc />
@@ -63,6 +68,17 @@ public class StoreProfileService : IStoreProfileService
         // Only return stores that are publicly accessible
         if (store.Status == StoreStatus.Active || store.Status == StoreStatus.LimitedActive)
         {
+            // Check if the seller is blocked
+            if (_userBlockCheckService != null)
+            {
+                var isBlocked = await _userBlockCheckService.IsUserBlockedAsync(store.SellerId);
+                if (isBlocked)
+                {
+                    _logger.LogInformation("Store {StoreId} not accessible because seller {SellerId} is blocked.", store.Id, store.SellerId);
+                    return null;
+                }
+            }
+
             return store;
         }
 

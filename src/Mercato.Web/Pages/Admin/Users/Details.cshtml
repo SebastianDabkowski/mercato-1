@@ -9,6 +9,22 @@
 
 <p class="text-muted">View detailed information about a user account including verification status, login activity, and security settings.</p>
 
+@if (!string.IsNullOrEmpty(TempData["SuccessMessage"] as string))
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+@if (!string.IsNullOrEmpty(TempData["ErrorMessage"] as string))
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        @TempData["ErrorMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
 @if (Model.UserDetail == null)
 {
     <div class="alert alert-danger">
@@ -86,6 +102,33 @@ else
                     </dl>
                 </div>
             </div>
+
+            @if (Model.UserDetail.IsBlocked)
+            {
+                <div class="card mb-4 border-danger">
+                    <div class="card-header bg-danger text-white">
+                        <h5 class="mb-0">⛔ Block Information</h5>
+                    </div>
+                    <div class="card-body">
+                        <dl class="row mb-0">
+                            <dt class="col-sm-4">Blocked By</dt>
+                            <dd class="col-sm-8">@Model.UserDetail.BlockedByAdminEmail</dd>
+
+                            <dt class="col-sm-4">Blocked At</dt>
+                            <dd class="col-sm-8">@Model.UserDetail.BlockedAt?.ToString("yyyy-MM-dd HH:mm:ss UTC")</dd>
+
+                            <dt class="col-sm-4">Reason</dt>
+                            <dd class="col-sm-8">@Model.UserDetail.BlockReason</dd>
+
+                            @if (!string.IsNullOrEmpty(Model.UserDetail.BlockReasonDetails))
+                            {
+                                <dt class="col-sm-4">Details</dt>
+                                <dd class="col-sm-8">@Model.UserDetail.BlockReasonDetails</dd>
+                            }
+                        </dl>
+                    </div>
+                </div>
+            }
 
             <div class="card mb-4">
                 <div class="card-header">
@@ -251,6 +294,18 @@ else
         <a asp-page="ChangeRole" asp-route-userId="@Model.UserDetail.UserId" class="btn btn-warning">
             <i class="bi bi-pencil"></i> Change Role
         </a>
+        @if (Model.UserDetail.IsBlocked)
+        {
+            <a asp-page="Unblock" asp-route-userId="@Model.UserDetail.UserId" class="btn btn-success">
+                <i class="bi bi-unlock"></i> Unblock User
+            </a>
+        }
+        else
+        {
+            <a asp-page="Block" asp-route-userId="@Model.UserDetail.UserId" class="btn btn-danger">
+                <i class="bi bi-lock"></i> Block User
+            </a>
+        }
         <a asp-page="Index" class="btn btn-secondary">
             &laquo; Back to Users
         </a>
