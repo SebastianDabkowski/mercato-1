@@ -68,6 +68,11 @@ public class AdminDbContext : DbContext
     /// </summary>
     public DbSet<CurrencyHistory> CurrencyHistories { get; set; } = null!;
 
+    /// <summary>
+    /// Gets or sets the integrations.
+    /// </summary>
+    public DbSet<Integration> Integrations { get; set; } = null!;
+
     /// <inheritdoc/>
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -240,6 +245,29 @@ public class AdminDbContext : DbContext
             entity.HasIndex(e => e.ChangedAt);
             entity.HasIndex(e => new { e.CurrencyId, e.ChangedAt })
                 .HasDatabaseName("IX_CurrencyHistories_CurrencyId_ChangedAt");
+        });
+
+        modelBuilder.Entity<Integration>(entity =>
+        {
+            entity.ToTable("Integrations");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.ApiEndpoint).HasMaxLength(500);
+            entity.Property(e => e.ApiKeyMasked).HasMaxLength(200);
+            entity.Property(e => e.MerchantId).HasMaxLength(100);
+            entity.Property(e => e.CallbackUrl).HasMaxLength(500);
+            entity.Property(e => e.LastHealthCheckMessage).HasMaxLength(1000);
+            entity.Property(e => e.CreatedByUserId).IsRequired().HasMaxLength(450);
+            entity.Property(e => e.UpdatedByUserId).HasMaxLength(450);
+            entity.HasIndex(e => e.Name);
+            entity.HasIndex(e => e.IntegrationType);
+            entity.HasIndex(e => e.Environment);
+            entity.HasIndex(e => e.IsEnabled);
+            entity.HasIndex(e => e.Status);
+            entity.HasIndex(e => new { e.IntegrationType, e.Environment })
+                .HasDatabaseName("IX_Integrations_IntegrationType_Environment");
+            entity.HasIndex(e => new { e.IsEnabled, e.Status })
+                .HasDatabaseName("IX_Integrations_IsEnabled_Status");
         });
     }
 }

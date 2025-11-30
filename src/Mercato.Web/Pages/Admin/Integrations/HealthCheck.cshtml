@@ -1,0 +1,193 @@
+@page "{id:guid}"
+@model Mercato.Web.Pages.Admin.Integrations.HealthCheckModel
+@{
+    ViewData["Title"] = "Health Check";
+}
+
+<h1>Health Check</h1>
+
+<div class="alert alert-info">
+    <strong>Integration Health Check</strong> - Test connectivity and verify the integration is working correctly
+</div>
+
+@if (!string.IsNullOrEmpty(Model.ErrorMessage))
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        @Model.ErrorMessage
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">@Model.Integration.Name</h5>
+                <span class="badge @HealthCheckModel.GetStatusBadgeClass(Model.Integration.Status)">
+                    @Model.Integration.Status
+                </span>
+            </div>
+            <div class="card-body">
+                @if (Model.HealthCheckPerformed)
+                {
+                    <div class="alert @(Model.IsHealthy ? "alert-success" : "alert-danger")" role="alert">
+                        <h5 class="alert-heading">
+                            @if (Model.IsHealthy)
+                            {
+                                <i class="bi bi-check-circle-fill"></i>
+                                <span>Health Check Passed</span>
+                            }
+                            else
+                            {
+                                <i class="bi bi-x-circle-fill"></i>
+                                <span>Health Check Failed</span>
+                            }
+                        </h5>
+                        <hr>
+                        <p class="mb-0">
+                            <strong>Message:</strong> @(Model.HealthCheckMessage ?? "No message")
+                        </p>
+                        <p class="mb-0 mt-2">
+                            <strong>Time:</strong> @Model.Integration.LastHealthCheckAt?.ToString("yyyy-MM-dd HH:mm")
+                        </p>
+                    </div>
+                }
+
+                <h6>Connection Settings</h6>
+                <dl class="row">
+                    <dt class="col-sm-4">API Endpoint:</dt>
+                    <dd class="col-sm-8">
+                        @if (!string.IsNullOrEmpty(Model.Integration.ApiEndpoint))
+                        {
+                            <code>@Model.Integration.ApiEndpoint</code>
+                        }
+                        else
+                        {
+                            <span class="text-warning">Not configured</span>
+                        }
+                    </dd>
+
+                    <dt class="col-sm-4">API Key:</dt>
+                    <dd class="col-sm-8">
+                        @if (!string.IsNullOrEmpty(Model.Integration.ApiKeyMasked))
+                        {
+                            <code>@Model.Integration.ApiKeyMasked</code>
+                            <small class="text-muted">(masked)</small>
+                        }
+                        else
+                        {
+                            <span class="text-warning">Not configured</span>
+                        }
+                    </dd>
+
+                    <dt class="col-sm-4">Enabled:</dt>
+                    <dd class="col-sm-8">
+                        @if (Model.Integration.IsEnabled)
+                        {
+                            <span class="badge bg-success">Yes</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-danger">No</span>
+                        }
+                    </dd>
+                </dl>
+
+                <hr>
+
+                <h6>Previous Health Check</h6>
+                @if (Model.Integration.LastHealthCheckAt.HasValue && !Model.HealthCheckPerformed)
+                {
+                    <dl class="row">
+                        <dt class="col-sm-4">Time:</dt>
+                        <dd class="col-sm-8">@Model.Integration.LastHealthCheckAt.Value.ToString("yyyy-MM-dd HH:mm:ss")</dd>
+
+                        <dt class="col-sm-4">Result:</dt>
+                        <dd class="col-sm-8">
+                            @if (Model.Integration.LastHealthCheckStatus == true)
+                            {
+                                <span class="badge bg-success">Healthy</span>
+                            }
+                            else if (Model.Integration.LastHealthCheckStatus == false)
+                            {
+                                <span class="badge bg-danger">Unhealthy</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary">Unknown</span>
+                            }
+                        </dd>
+
+                        <dt class="col-sm-4">Message:</dt>
+                        <dd class="col-sm-8">@(Model.Integration.LastHealthCheckMessage ?? "No message")</dd>
+                    </dl>
+                }
+                else if (!Model.HealthCheckPerformed)
+                {
+                    <p class="text-muted">No previous health check recorded.</p>
+                }
+
+                <hr>
+
+                <form method="post" asp-route-id="@Model.Integration.Id">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-arrow-repeat"></i> Run Health Check
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">Actions</h6>
+            </div>
+            <div class="card-body">
+                <a asp-page="Details" asp-route-id="@Model.Integration.Id" class="btn btn-outline-info w-100 mb-2">
+                    View Details
+                </a>
+                <a asp-page="Edit" asp-route-id="@Model.Integration.Id" class="btn btn-outline-primary w-100 mb-2">
+                    Edit Integration
+                </a>
+                <a asp-page="Index" class="btn btn-outline-secondary w-100">
+                    Back to List
+                </a>
+            </div>
+        </div>
+
+        <div class="card mt-3 border-info">
+            <div class="card-header bg-info text-white">
+                <h6 class="mb-0">About Health Checks</h6>
+            </div>
+            <div class="card-body">
+                <p class="small text-muted mb-2">
+                    Health checks verify that the integration is properly configured and can communicate with the external service.
+                </p>
+                <p class="small text-muted mb-0">
+                    <strong>Common issues:</strong>
+                </p>
+                <ul class="small text-muted mb-0">
+                    <li>API endpoint not configured</li>
+                    <li>Invalid or missing API key</li>
+                    <li>Network connectivity issues</li>
+                    <li>External service unavailable</li>
+                </ul>
+            </div>
+        </div>
+
+        @if (!Model.Integration.IsEnabled)
+        {
+            <div class="card mt-3 border-warning">
+                <div class="card-header bg-warning text-dark">
+                    <h6 class="mb-0">Integration Disabled</h6>
+                </div>
+                <div class="card-body">
+                    <p class="small text-muted mb-0">
+                        This integration is currently disabled. You can still run health checks, but actual calls are blocked.
+                    </p>
+                </div>
+            </div>
+        }
+    </div>
+</div>

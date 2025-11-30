@@ -1,0 +1,182 @@
+@page
+@model Mercato.Web.Pages.Admin.Integrations.IndexModel
+@{
+    ViewData["Title"] = "Integration Management";
+}
+
+<h1>Integration Management</h1>
+
+<div class="alert alert-info">
+    <strong>External Integrations</strong> - Configure and monitor payment providers, shipping systems, ERP, and other external services
+</div>
+
+@if (!string.IsNullOrEmpty(Model.SuccessMessage))
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @Model.SuccessMessage
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+@if (!string.IsNullOrEmpty(Model.ErrorMessage))
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        @Model.ErrorMessage
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<div class="mb-4">
+    <a asp-page="Create" class="btn btn-primary">
+        <i class="bi bi-plus-circle"></i> Add Integration
+    </a>
+</div>
+
+@if (Model.Integrations.Count == 0)
+{
+    <div class="alert alert-warning">
+        <strong>No integrations configured.</strong> Add integrations to connect external services.
+    </div>
+}
+else
+{
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="card-title mb-0">Configured Integrations</h5>
+            <span class="badge bg-secondary">@Model.Integrations.Count integrations</span>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover mb-0">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Name</th>
+                            <th>Type</th>
+                            <th>Environment</th>
+                            <th>Status</th>
+                            <th>API Endpoint</th>
+                            <th>Last Health Check</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var integration in Model.Integrations)
+                        {
+                            <tr>
+                                <td>
+                                    <strong>@integration.Name</strong>
+                                </td>
+                                <td>
+                                    <span class="badge @IndexModel.GetTypeBadgeClass(integration.IntegrationType)">
+                                        @IndexModel.GetTypeDisplayText(integration.IntegrationType)
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="badge @IndexModel.GetEnvironmentBadgeClass(integration.Environment)">
+                                        @IndexModel.GetEnvironmentDisplayText(integration.Environment)
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="badge @IndexModel.GetStatusBadgeClass(integration.Status)">
+                                        @integration.Status
+                                    </span>
+                                    @if (!integration.IsEnabled)
+                                    {
+                                        <span class="badge bg-dark ms-1">Disabled</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (!string.IsNullOrEmpty(integration.ApiEndpoint))
+                                    {
+                                        <small class="text-muted">@integration.ApiEndpoint</small>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-warning">Not configured</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (integration.LastHealthCheckAt.HasValue)
+                                    {
+                                        <div>
+                                            @if (integration.LastHealthCheckStatus == true)
+                                            {
+                                                <span class="badge bg-success">Healthy</span>
+                                            }
+                                            else if (integration.LastHealthCheckStatus == false)
+                                            {
+                                                <span class="badge bg-danger">Unhealthy</span>
+                                            }
+                                            <br />
+                                            <small class="text-muted">@integration.LastHealthCheckAt.Value.ToString("yyyy-MM-dd HH:mm")</small>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">Never</span>
+                                    }
+                                </td>
+                                <td>
+                                    <div class="btn-group" role="group">
+                                        <a asp-page="Details" asp-route-id="@integration.Id" class="btn btn-sm btn-outline-info">
+                                            Details
+                                        </a>
+                                        <a asp-page="Edit" asp-route-id="@integration.Id" class="btn btn-sm btn-outline-primary">
+                                            Edit
+                                        </a>
+                                        <a asp-page="HealthCheck" asp-route-id="@integration.Id" class="btn btn-sm btn-outline-secondary">
+                                            Health Check
+                                        </a>
+                                    </div>
+                                    <div class="btn-group ms-1" role="group">
+                                        @if (integration.IsEnabled)
+                                        {
+                                            <form method="post" asp-page-handler="Disable" asp-route-id="@integration.Id" class="d-inline">
+                                                <button type="submit" class="btn btn-sm btn-outline-warning" onclick="return confirm('Are you sure you want to disable this integration?');">
+                                                    Disable
+                                                </button>
+                                            </form>
+                                        }
+                                        else
+                                        {
+                                            <form method="post" asp-page-handler="Enable" asp-route-id="@integration.Id" class="d-inline">
+                                                <button type="submit" class="btn btn-sm btn-outline-success">
+                                                    Enable
+                                                </button>
+                                            </form>
+                                        }
+                                        <form method="post" asp-page-handler="Delete" asp-route-id="@integration.Id" class="d-inline">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Are you sure you want to delete this integration? This action cannot be undone.');">
+                                                Delete
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mt-4 border-warning">
+        <div class="card-header bg-warning text-dark">
+            <h6 class="mb-0">Important Notes</h6>
+        </div>
+        <div class="card-body">
+            <ul class="small text-muted mb-0">
+                <li><strong>Disabled integrations:</strong> When an integration is disabled, all calls to it are blocked gracefully.</li>
+                <li><strong>API Keys:</strong> API keys are stored securely and only the last 4 characters are shown.</li>
+                <li><strong>Health Checks:</strong> Run health checks to verify connectivity and diagnose issues.</li>
+                <li><strong>Environment:</strong> Use Sandbox for testing, Production for live operations.</li>
+            </ul>
+        </div>
+    </div>
+}
+
+<div class="mt-4">
+    <a asp-page="/Admin/Index" class="btn btn-outline-secondary">
+        &laquo; Back to Admin Dashboard
+    </a>
+</div>
