@@ -46,10 +46,12 @@ public class ProductModerationRepository : IProductModerationRepository
         // Apply search term filter
         if (!string.IsNullOrWhiteSpace(searchTerm))
         {
-            var likePattern = $"%{searchTerm}%";
+            // Escape LIKE wildcards to prevent unintended pattern matching
+            var escapedSearchTerm = EscapeLikePattern(searchTerm);
+            var likePattern = $"%{escapedSearchTerm}%";
             query = query.Where(p =>
-                EF.Functions.Like(p.Title, likePattern) ||
-                (p.Description != null && EF.Functions.Like(p.Description, likePattern)));
+                EF.Functions.Like(p.Title, likePattern, "\\") ||
+                (p.Description != null && EF.Functions.Like(p.Description, likePattern, "\\")));
         }
 
         var totalCount = await query.CountAsync();
@@ -61,6 +63,20 @@ public class ProductModerationRepository : IProductModerationRepository
             .ToListAsync();
 
         return (products, totalCount);
+    }
+
+    /// <summary>
+    /// Escapes LIKE pattern special characters to prevent SQL injection via wildcards.
+    /// </summary>
+    /// <param name="input">The input string to escape.</param>
+    /// <returns>The escaped string safe for use in LIKE patterns.</returns>
+    private static string EscapeLikePattern(string input)
+    {
+        return input
+            .Replace("\\", "\\\\")
+            .Replace("%", "\\%")
+            .Replace("_", "\\_")
+            .Replace("[", "\\[");
     }
 
     /// <inheritdoc />

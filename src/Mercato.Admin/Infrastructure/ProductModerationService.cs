@@ -24,6 +24,11 @@ public class ProductModerationService : IProductModerationService
     /// </summary>
     private const int DescriptionPreviewMaxLength = 100;
 
+    /// <summary>
+    /// Ellipsis indicator for truncated text.
+    /// </summary>
+    private const string TruncationIndicator = "...";
+
     private readonly IProductModerationRepository _productModerationRepository;
     private readonly IStoreRepository _storeRepository;
     private readonly IAdminAuditRepository _adminAuditRepository;
@@ -353,6 +358,7 @@ public class ProductModerationService : IProductModerationService
             var successCount = 0;
             var failureCount = 0;
             var errors = new List<string>();
+            var modifiedProducts = new List<Product.Domain.Entities.Product>();
 
             foreach (var product in products)
             {
@@ -404,6 +410,7 @@ public class ProductModerationService : IProductModerationService
                         IpAddress = command.IpAddress
                     });
 
+                    modifiedProducts.Add(product);
                     successCount++;
                 }
                 catch (Exception ex)
@@ -414,12 +421,10 @@ public class ProductModerationService : IProductModerationService
                 }
             }
 
-            // Update all products in bulk
-            if (successCount > 0)
+            // Update only the successfully modified products in bulk
+            if (modifiedProducts.Count > 0)
             {
-                await _productModerationRepository.UpdateModerationStatusBulkAsync(products.Where(p => 
-                    (command.Approve && p.ModerationStatus == ProductModerationStatus.Approved) ||
-                    (!command.Approve && p.ModerationStatus == ProductModerationStatus.Rejected)));
+                await _productModerationRepository.UpdateModerationStatusBulkAsync(modifiedProducts);
 
                 // Create audit log entry
                 await _adminAuditRepository.AddAsync(new AdminAuditLog
@@ -435,13 +440,11 @@ public class ProductModerationService : IProductModerationService
                 });
 
                 // Send notifications to sellers
-                var storeIds = products.Select(p => p.StoreId).Distinct().ToList();
+                var storeIds = modifiedProducts.Select(p => p.StoreId).Distinct().ToList();
                 var stores = await _storeRepository.GetByIdsAsync(storeIds);
                 var storeDict = stores.ToDictionary(s => s.Id);
 
-                foreach (var product in products.Where(p => 
-                    (command.Approve && p.ModerationStatus == ProductModerationStatus.Approved) ||
-                    (!command.Approve && p.ModerationStatus == ProductModerationStatus.Rejected)))
+                foreach (var product in modifiedProducts)
                 {
                     if (storeDict.TryGetValue(product.StoreId, out var store) && !string.IsNullOrEmpty(store.SellerId))
                     {
@@ -554,7 +557,7 @@ public class ProductModerationService : IProductModerationService
             return description;
         }
 
-        return description[..DescriptionPreviewMaxLength] + "...";
+        return description[..DescriptionPreviewMaxLength] + TruncationIndicator;
     }
 
     private static string? ParseFirstImageUrl(string? imagesJson)
