@@ -1,0 +1,233 @@
+@page
+@model Mercato.Web.Pages.Admin.UserAnalyticsModel
+@{
+    ViewData["Title"] = "User Analytics";
+}
+
+<h1>User Analytics</h1>
+<p class="text-muted">View aggregated user registration and activity metrics. All data is anonymized to protect user privacy.</p>
+
+<!-- Time Period Filter -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3 align-items-end">
+            <div class="col-md-4">
+                <label for="TimePeriod" class="form-label">Time Period</label>
+                <select asp-for="TimePeriod" class="form-select" id="TimePeriod">
+                    <option value="today">Today</option>
+                    <option value="7d">Last 7 Days</option>
+                    <option value="30d">Last 30 Days</option>
+                    <option value="90d">Last 90 Days</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary w-100">Apply</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@if (Model.AnalyticsResult != null)
+{
+    <!-- Last Refresh Time -->
+    <div class="alert alert-light mb-4">
+        <i class="bi bi-clock"></i>
+        <strong>Last Refresh:</strong> @Model.AnalyticsResult.RetrievedAt.ToString("yyyy-MM-dd HH:mm:ss") UTC
+        <span class="text-muted">| Showing data for @UserAnalyticsModel.GetTimePeriodDisplay(Model.TimePeriod)</span>
+    </div>
+
+    <!-- Insufficient Data Warning -->
+    @if (Model.AnalyticsResult.HasInsufficientData)
+    {
+        <div class="alert alert-info mb-4">
+            <i class="bi bi-info-circle"></i>
+            <strong>No data available</strong> - @Model.AnalyticsResult.InsufficientDataMessage
+        </div>
+    }
+    else if (!string.IsNullOrEmpty(Model.AnalyticsResult.InsufficientDataMessage))
+    {
+        <div class="alert alert-warning mb-4">
+            <i class="bi bi-exclamation-triangle"></i>
+            @Model.AnalyticsResult.InsufficientDataMessage
+        </div>
+    }
+
+    <!-- Registration Metrics Section -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="bi bi-person-plus"></i> Registration Metrics</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <!-- New Buyer Accounts -->
+                <div class="col-md-6 mb-3">
+                    <div class="card h-100 border-primary @UserAnalyticsModel.GetCardClass(Model.AnalyticsResult.HasBuyerRegistrationData)">
+                        <div class="card-body text-center">
+                            <h6 class="card-title text-muted">New Buyer Accounts</h6>
+                            @if (Model.AnalyticsResult.HasBuyerRegistrationData)
+                            {
+                                <h2 class="display-4 text-primary">@Model.AnalyticsResult.NewBuyerAccounts.ToString("N0")</h2>
+                                <small class="text-muted">Buyers registered in period<sup>†</sup></small>
+                            }
+                            else
+                            {
+                                <h2 class="display-4 text-secondary">—</h2>
+                                <small class="text-muted">Data unavailable</small>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                <!-- New Seller Accounts -->
+                <div class="col-md-6 mb-3">
+                    <div class="card h-100 border-success @UserAnalyticsModel.GetCardClass(Model.AnalyticsResult.HasSellerRegistrationData)">
+                        <div class="card-body text-center">
+                            <h6 class="card-title text-muted">New Seller Accounts</h6>
+                            @if (Model.AnalyticsResult.HasSellerRegistrationData)
+                            {
+                                <h2 class="display-4 text-success">@Model.AnalyticsResult.NewSellerAccounts.ToString("N0")</h2>
+                                <small class="text-muted">Stores created in period</small>
+                            }
+                            else
+                            {
+                                <h2 class="display-4 text-secondary">—</h2>
+                                <small class="text-muted">Data unavailable</small>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Activity Metrics Section -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="bi bi-activity"></i> Activity Metrics</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <!-- Total Active Users -->
+                <div class="col-md-4 mb-3">
+                    <div class="card h-100 border-info @UserAnalyticsModel.GetCardClass(Model.AnalyticsResult.HasLoginActivityData)">
+                        <div class="card-body text-center">
+                            <h6 class="card-title text-muted">Total Active Users</h6>
+                            @if (Model.AnalyticsResult.HasLoginActivityData)
+                            {
+                                <h2 class="display-4 text-info">@Model.AnalyticsResult.TotalActiveUsers.ToString("N0")</h2>
+                                <small class="text-muted">Users who logged in at least once</small>
+                            }
+                            else
+                            {
+                                <h2 class="display-4 text-secondary">—</h2>
+                                <small class="text-muted">Data unavailable</small>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Users Who Logged In -->
+                <div class="col-md-4 mb-3">
+                    <div class="card h-100 border-warning @UserAnalyticsModel.GetCardClass(Model.AnalyticsResult.HasLoginActivityData)">
+                        <div class="card-body text-center">
+                            <h6 class="card-title text-muted">Users Logged In</h6>
+                            @if (Model.AnalyticsResult.HasLoginActivityData)
+                            {
+                                <h2 class="display-4 text-warning">@Model.AnalyticsResult.UsersWhoLoggedIn.ToString("N0")</h2>
+                                <small class="text-muted">Unique users with successful logins</small>
+                            }
+                            else
+                            {
+                                <h2 class="display-4 text-secondary">—</h2>
+                                <small class="text-muted">Data unavailable</small>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Users Who Placed Orders -->
+                <div class="col-md-4 mb-3">
+                    <div class="card h-100 border-danger @UserAnalyticsModel.GetCardClass(Model.AnalyticsResult.HasOrderActivityData)">
+                        <div class="card-body text-center">
+                            <h6 class="card-title text-muted">Users Placed Orders</h6>
+                            @if (Model.AnalyticsResult.HasOrderActivityData)
+                            {
+                                <h2 class="display-4 text-danger">@Model.AnalyticsResult.UsersWhoPlacedOrders.ToString("N0")</h2>
+                                <small class="text-muted">Unique buyers with orders in period</small>
+                            }
+                            else
+                            {
+                                <h2 class="display-4 text-secondary">—</h2>
+                                <small class="text-muted">Data unavailable</small>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Active Users by Role Section -->
+    @if (Model.AnalyticsResult.HasLoginActivityData && Model.AnalyticsResult.ActiveUsersByRole.Count > 0)
+    {
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-people"></i> Active Users by Role</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    @foreach (var roleCount in Model.AnalyticsResult.ActiveUsersByRole.OrderByDescending(x => x.Value))
+                    {
+                        <div class="col-md-4 mb-3">
+                            <div class="card h-100">
+                                <div class="card-body text-center">
+                                    <h6 class="card-title text-muted">@roleCount.Key</h6>
+                                    <h3 class="display-5">@roleCount.Value.ToString("N0")</h3>
+                                    <small class="text-muted">active users</small>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- Period Details -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Period Details</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Start Date:</strong> @Model.AnalyticsResult.StartDate.ToString("yyyy-MM-dd HH:mm:ss") UTC</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>End Date:</strong> @Model.AnalyticsResult.EndDate.ToString("yyyy-MM-dd HH:mm:ss") UTC</p>
+                </div>
+            </div>
+            <hr />
+            <h6>Metric Definitions:</h6>
+            <ul class="mb-0">
+                <li><strong>New Buyer Accounts<sup>†</sup>:</strong> Approximate count based on first login events. For accurate registration counts, user registration tracking must be implemented.</li>
+                <li><strong>New Seller Accounts:</strong> Stores created during the selected period.</li>
+                <li><strong>Total Active Users:</strong> Users who logged in at least once during the period (engagement metric).</li>
+                <li><strong>Users Placed Orders:</strong> Unique buyers who placed at least one order during the period.</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Privacy Notice -->
+    <div class="alert alert-secondary mb-4">
+        <i class="bi bi-shield-check"></i>
+        <strong>Privacy Notice:</strong> All metrics shown are aggregated counts. Individual user data is not exposed. 
+        This dashboard complies with GDPR requirements by showing only anonymized, aggregated information.
+    </div>
+}
+
+<div class="mt-4">
+    <a asp-page="/Admin/Index" class="btn btn-secondary">
+        &laquo; Back to Admin Portal
+    </a>
+</div>
