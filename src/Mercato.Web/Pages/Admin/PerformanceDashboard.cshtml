@@ -95,13 +95,18 @@
 
         <!-- Active Products -->
         <div class="col-md-6 col-lg mb-3">
-            <div class="card h-100 border-warning">
-                <div class="card-body text-center">
-                    <h5 class="card-title text-muted">Active Products</h5>
-                    <h2 class="display-4 text-warning">@Model.DashboardResult.ActiveProducts.ToString("N0")</h2>
-                    <small class="text-muted">Products with Active status</small>
+            <a asp-page="/Product/Index" class="text-decoration-none">
+                <div class="card h-100 border-warning">
+                    <div class="card-body text-center">
+                        <h5 class="card-title text-muted">Active Products</h5>
+                        <h2 class="display-4 text-warning">@Model.DashboardResult.ActiveProducts.ToString("N0")</h2>
+                        <small class="text-muted">Products with Active status</small>
+                    </div>
+                    <div class="card-footer bg-transparent text-center">
+                        <small class="text-primary">View Catalog <i class="bi bi-arrow-right"></i></small>
+                    </div>
                 </div>
-            </div>
+            </a>
         </div>
 
         <!-- New Users -->
@@ -111,7 +116,7 @@
                     <div class="card-body text-center">
                         <h5 class="card-title text-muted">New Users</h5>
                         <h2 class="display-4 text-secondary">@Model.DashboardResult.NewUsers.ToString("N0")</h2>
-                        <small class="text-muted">Newly registered users in period</small>
+                        <small class="text-muted">Newly registered users in period *</small>
                     </div>
                     <div class="card-footer bg-transparent text-center">
                         <small class="text-primary">View Users <i class="bi bi-arrow-right"></i></small>
@@ -135,6 +140,7 @@
                     <p><strong>End Date:</strong> @Model.DashboardResult.EndDate.ToString("yyyy-MM-dd HH:mm:ss") UTC</p>
                 </div>
             </div>
+            <p class="text-muted mb-0"><small>* New Users metric requires user registration date tracking (currently not implemented).</small></p>
         </div>
     </div>
 }
