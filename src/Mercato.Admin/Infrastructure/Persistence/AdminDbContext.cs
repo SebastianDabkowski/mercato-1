@@ -98,6 +98,16 @@ public class AdminDbContext : DbContext
     /// </summary>
     public DbSet<FeatureFlagHistory> FeatureFlagHistories { get; set; } = null!;
 
+    /// <summary>
+    /// Gets or sets the data processing activities for GDPR compliance.
+    /// </summary>
+    public DbSet<DataProcessingActivity> DataProcessingActivities { get; set; } = null!;
+
+    /// <summary>
+    /// Gets or sets the data processing activity history records.
+    /// </summary>
+    public DbSet<DataProcessingActivityHistory> DataProcessingActivityHistories { get; set; } = null!;
+
     /// <inheritdoc/>
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -376,6 +386,47 @@ public class AdminDbContext : DbContext
             entity.HasIndex(e => e.ChangedAt);
             entity.HasIndex(e => new { e.FeatureFlagId, e.ChangedAt })
                 .HasDatabaseName("IX_FeatureFlagHistories_FeatureFlagId_ChangedAt");
+        });
+
+        modelBuilder.Entity<DataProcessingActivity>(entity =>
+        {
+            entity.ToTable("DataProcessingActivities");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.Purpose).IsRequired().HasMaxLength(2000);
+            entity.Property(e => e.LegalBasis).IsRequired().HasMaxLength(500);
+            entity.Property(e => e.DataCategories).IsRequired().HasMaxLength(2000);
+            entity.Property(e => e.DataSubjectCategories).IsRequired().HasMaxLength(2000);
+            entity.Property(e => e.Recipients).IsRequired().HasMaxLength(2000);
+            entity.Property(e => e.ThirdCountryTransfers).HasMaxLength(2000);
+            entity.Property(e => e.RetentionPeriod).IsRequired().HasMaxLength(500);
+            entity.Property(e => e.TechnicalMeasures).HasMaxLength(2000);
+            entity.Property(e => e.OrganizationalMeasures).HasMaxLength(2000);
+            entity.Property(e => e.ProcessorName).HasMaxLength(200);
+            entity.Property(e => e.ProcessorContact).HasMaxLength(500);
+            entity.Property(e => e.CreatedByUserId).IsRequired().HasMaxLength(450);
+            entity.Property(e => e.UpdatedByUserId).HasMaxLength(450);
+            entity.HasIndex(e => e.Name);
+            entity.HasIndex(e => e.IsActive);
+            entity.HasIndex(e => e.CreatedAt);
+            entity.HasIndex(e => new { e.IsActive, e.CreatedAt })
+                .HasDatabaseName("IX_DataProcessingActivities_IsActive_CreatedAt");
+        });
+
+        modelBuilder.Entity<DataProcessingActivityHistory>(entity =>
+        {
+            entity.ToTable("DataProcessingActivityHistories");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.ChangeType).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.PreviousValues).HasColumnType("nvarchar(max)");
+            entity.Property(e => e.NewValues).IsRequired().HasColumnType("nvarchar(max)");
+            entity.Property(e => e.ChangedByUserId).IsRequired().HasMaxLength(450);
+            entity.Property(e => e.ChangedByUserEmail).HasMaxLength(256);
+            entity.Property(e => e.Reason).HasMaxLength(1000);
+            entity.HasIndex(e => e.DataProcessingActivityId);
+            entity.HasIndex(e => e.ChangedAt);
+            entity.HasIndex(e => new { e.DataProcessingActivityId, e.ChangedAt })
+                .HasDatabaseName("IX_DataProcessingActivityHistories_ActivityId_ChangedAt");
         });
     }
 }

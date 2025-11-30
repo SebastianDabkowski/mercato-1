@@ -1,0 +1,174 @@
+@page "{id:guid}"
+@model Mercato.Web.Pages.Admin.DataProcessing.EditModel
+@{
+    ViewData["Title"] = "Edit Processing Activity";
+}
+
+<h1>Edit Processing Activity</h1>
+
+<div class="alert alert-info">
+    <strong>GDPR Article 30</strong> - Update the record of personal data processing activity. All changes are versioned.
+</div>
+
+<form method="post">
+    <div asp-validation-summary="All" class="text-danger"></div>
+    <input type="hidden" asp-for="Input.Id" />
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Basic Information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label asp-for="Input.Name" class="form-label"></label>
+                        <input asp-for="Input.Name" class="form-control" />
+                        <span asp-validation-for="Input.Name" class="text-danger"></span>
+                        <small class="text-muted">A descriptive name for this processing activity.</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Input.Purpose" class="form-label"></label>
+                        <textarea asp-for="Input.Purpose" class="form-control" rows="4"></textarea>
+                        <span asp-validation-for="Input.Purpose" class="text-danger"></span>
+                        <small class="text-muted">Describe the specific purpose(s) for processing personal data.</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Input.LegalBasis" class="form-label"></label>
+                        <select asp-for="Input.LegalBasis" class="form-select">
+                            <option value="">-- Select Legal Basis --</option>
+                            <option value="Consent">Consent (Article 6(1)(a))</option>
+                            <option value="Contract">Contract (Article 6(1)(b))</option>
+                            <option value="Legal Obligation">Legal Obligation (Article 6(1)(c))</option>
+                            <option value="Vital Interests">Vital Interests (Article 6(1)(d))</option>
+                            <option value="Public Task">Public Task (Article 6(1)(e))</option>
+                            <option value="Legitimate Interests">Legitimate Interests (Article 6(1)(f))</option>
+                        </select>
+                        <span asp-validation-for="Input.LegalBasis" class="text-danger"></span>
+                        <small class="text-muted">The lawful basis under GDPR for this processing activity.</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Data Categories</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label asp-for="Input.DataCategories" class="form-label"></label>
+                        <textarea asp-for="Input.DataCategories" class="form-control" rows="3"></textarea>
+                        <span asp-validation-for="Input.DataCategories" class="text-danger"></span>
+                        <small class="text-muted">Categories of personal data processed (e.g., name, email, address, payment details).</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Input.DataSubjectCategories" class="form-label"></label>
+                        <textarea asp-for="Input.DataSubjectCategories" class="form-control" rows="3"></textarea>
+                        <span asp-validation-for="Input.DataSubjectCategories" class="text-danger"></span>
+                        <small class="text-muted">Categories of data subjects (e.g., customers, website visitors, sellers).</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Data Sharing & Transfers</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label asp-for="Input.Recipients" class="form-label"></label>
+                        <textarea asp-for="Input.Recipients" class="form-control" rows="3"></textarea>
+                        <span asp-validation-for="Input.Recipients" class="text-danger"></span>
+                        <small class="text-muted">Recipients or categories of recipients (e.g., payment processors, shipping partners).</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Input.ThirdCountryTransfers" class="form-label"></label>
+                        <textarea asp-for="Input.ThirdCountryTransfers" class="form-control" rows="3"></textarea>
+                        <span asp-validation-for="Input.ThirdCountryTransfers" class="text-danger"></span>
+                        <small class="text-muted">If data is transferred outside the EEA, describe the countries and safeguards in place.</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Retention & Security</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label asp-for="Input.RetentionPeriod" class="form-label"></label>
+                        <input asp-for="Input.RetentionPeriod" class="form-control" />
+                        <span asp-validation-for="Input.RetentionPeriod" class="text-danger"></span>
+                        <small class="text-muted">How long personal data is retained (e.g., "7 years after account closure").</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Input.TechnicalMeasures" class="form-label"></label>
+                        <textarea asp-for="Input.TechnicalMeasures" class="form-control" rows="3"></textarea>
+                        <span asp-validation-for="Input.TechnicalMeasures" class="text-danger"></span>
+                        <small class="text-muted">Technical security measures (e.g., encryption, access controls, backups).</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Input.OrganizationalMeasures" class="form-label"></label>
+                        <textarea asp-for="Input.OrganizationalMeasures" class="form-control" rows="3"></textarea>
+                        <span asp-validation-for="Input.OrganizationalMeasures" class="text-danger"></span>
+                        <small class="text-muted">Organizational measures (e.g., training, policies, access procedures).</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Data Processor (Optional)</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label asp-for="Input.ProcessorName" class="form-label"></label>
+                        <input asp-for="Input.ProcessorName" class="form-control" />
+                        <span asp-validation-for="Input.ProcessorName" class="text-danger"></span>
+                        <small class="text-muted">Name of any third-party processor handling this data on your behalf.</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Input.ProcessorContact" class="form-label"></label>
+                        <textarea asp-for="Input.ProcessorContact" class="form-control" rows="2"></textarea>
+                        <span asp-validation-for="Input.ProcessorContact" class="text-danger"></span>
+                        <small class="text-muted">Contact details for the data processor.</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-4 border-warning">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0">Change Reason</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-0">
+                        <label asp-for="Input.Reason" class="form-label"></label>
+                        <textarea asp-for="Input.Reason" class="form-control" rows="2"></textarea>
+                        <span asp-validation-for="Input.Reason" class="text-danger"></span>
+                        <small class="text-muted">Document the reason for this change (recommended for audit trail).</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="mt-3 d-flex gap-2">
+        <button type="submit" class="btn btn-primary">
+            <i class="bi bi-save"></i> Save Changes
+        </button>
+        <a asp-page="Details" asp-route-id="@Model.Input.Id" class="btn btn-outline-secondary">Cancel</a>
+    </div>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

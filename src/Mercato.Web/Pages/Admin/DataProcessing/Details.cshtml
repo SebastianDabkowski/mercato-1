@@ -1,0 +1,259 @@
+@page "{id:guid}"
+@model Mercato.Web.Pages.Admin.DataProcessing.DetailsModel
+@{
+    ViewData["Title"] = "Processing Activity Details";
+}
+
+<h1>Processing Activity Details</h1>
+
+@if (!string.IsNullOrEmpty(Model.SuccessMessage))
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @Model.SuccessMessage
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+@if (!string.IsNullOrEmpty(Model.ErrorMessage))
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        @Model.ErrorMessage
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+@if (Model.Activity != null)
+{
+    <div class="mb-3 d-flex justify-content-between align-items-center">
+        <div>
+            @if (Model.Activity.IsActive)
+            {
+                <span class="badge bg-success fs-6">Active</span>
+            }
+            else
+            {
+                <span class="badge bg-secondary fs-6">Inactive</span>
+            }
+        </div>
+        <div class="btn-group" role="group">
+            @if (Model.Activity.IsActive)
+            {
+                <a asp-page="Edit" asp-route-id="@Model.Activity.Id" class="btn btn-primary">
+                    <i class="bi bi-pencil"></i> Edit
+                </a>
+                <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deactivateModal">
+                    <i class="bi bi-x-circle"></i> Deactivate
+                </button>
+            }
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Basic Information</h5>
+                </div>
+                <div class="card-body">
+                    <dl class="row mb-0">
+                        <dt class="col-sm-4">Name</dt>
+                        <dd class="col-sm-8">@Model.Activity.Name</dd>
+
+                        <dt class="col-sm-4">Purpose</dt>
+                        <dd class="col-sm-8" style="white-space: pre-wrap;">@Model.Activity.Purpose</dd>
+
+                        <dt class="col-sm-4">Legal Basis</dt>
+                        <dd class="col-sm-8">@Model.Activity.LegalBasis</dd>
+                    </dl>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Data Categories</h5>
+                </div>
+                <div class="card-body">
+                    <dl class="row mb-0">
+                        <dt class="col-sm-4">Personal Data</dt>
+                        <dd class="col-sm-8" style="white-space: pre-wrap;">@Model.Activity.DataCategories</dd>
+
+                        <dt class="col-sm-4">Data Subjects</dt>
+                        <dd class="col-sm-8" style="white-space: pre-wrap;">@Model.Activity.DataSubjectCategories</dd>
+                    </dl>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Data Sharing & Transfers</h5>
+                </div>
+                <div class="card-body">
+                    <dl class="row mb-0">
+                        <dt class="col-sm-4">Recipients</dt>
+                        <dd class="col-sm-8" style="white-space: pre-wrap;">@Model.Activity.Recipients</dd>
+
+                        <dt class="col-sm-4">Third Country Transfers</dt>
+                        <dd class="col-sm-8" style="white-space: pre-wrap;">@(string.IsNullOrEmpty(Model.Activity.ThirdCountryTransfers) ? "None" : Model.Activity.ThirdCountryTransfers)</dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Retention & Security</h5>
+                </div>
+                <div class="card-body">
+                    <dl class="row mb-0">
+                        <dt class="col-sm-4">Retention Period</dt>
+                        <dd class="col-sm-8">@Model.Activity.RetentionPeriod</dd>
+
+                        <dt class="col-sm-4">Technical Measures</dt>
+                        <dd class="col-sm-8" style="white-space: pre-wrap;">@(string.IsNullOrEmpty(Model.Activity.TechnicalMeasures) ? "Not specified" : Model.Activity.TechnicalMeasures)</dd>
+
+                        <dt class="col-sm-4">Organizational Measures</dt>
+                        <dd class="col-sm-8" style="white-space: pre-wrap;">@(string.IsNullOrEmpty(Model.Activity.OrganizationalMeasures) ? "Not specified" : Model.Activity.OrganizationalMeasures)</dd>
+                    </dl>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Data Processor</h5>
+                </div>
+                <div class="card-body">
+                    @if (string.IsNullOrEmpty(Model.Activity.ProcessorName))
+                    {
+                        <p class="text-muted mb-0">No data processor specified. Processing is done in-house.</p>
+                    }
+                    else
+                    {
+                        <dl class="row mb-0">
+                            <dt class="col-sm-4">Processor Name</dt>
+                            <dd class="col-sm-8">@Model.Activity.ProcessorName</dd>
+
+                            <dt class="col-sm-4">Contact</dt>
+                            <dd class="col-sm-8" style="white-space: pre-wrap;">@(string.IsNullOrEmpty(Model.Activity.ProcessorContact) ? "Not specified" : Model.Activity.ProcessorContact)</dd>
+                        </dl>
+                    }
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Audit Information</h5>
+                </div>
+                <div class="card-body">
+                    <dl class="row mb-0">
+                        <dt class="col-sm-4">Created</dt>
+                        <dd class="col-sm-8">@Model.Activity.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss") UTC</dd>
+
+                        <dt class="col-sm-4">Created By</dt>
+                        <dd class="col-sm-8">@Model.Activity.CreatedByUserId</dd>
+
+                        @if (Model.Activity.UpdatedAt.HasValue)
+                        {
+                            <dt class="col-sm-4">Last Updated</dt>
+                            <dd class="col-sm-8">@Model.Activity.UpdatedAt.Value.ToString("yyyy-MM-dd HH:mm:ss") UTC</dd>
+
+                            <dt class="col-sm-4">Updated By</dt>
+                            <dd class="col-sm-8">@Model.Activity.UpdatedByUserId</dd>
+                        }
+                    </dl>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* Change History Section *@
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Change History</h5>
+        </div>
+        <div class="card-body">
+            @if (Model.History.Count == 0)
+            {
+                <p class="text-muted mb-0">No change history available.</p>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-sm table-striped">
+                        <thead>
+                            <tr>
+                                <th>Date/Time (UTC)</th>
+                                <th>Change Type</th>
+                                <th>Changed By</th>
+                                <th>Reason</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var entry in Model.History)
+                            {
+                                <tr>
+                                    <td>@entry.ChangedAt.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                                    <td>
+                                        @switch (entry.ChangeType)
+                                        {
+                                            case "Created":
+                                                <span class="badge bg-success">@entry.ChangeType</span>
+                                                break;
+                                            case "Updated":
+                                                <span class="badge bg-primary">@entry.ChangeType</span>
+                                                break;
+                                            case "Deactivated":
+                                                <span class="badge bg-danger">@entry.ChangeType</span>
+                                                break;
+                                            default:
+                                                <span class="badge bg-secondary">@entry.ChangeType</span>
+                                                break;
+                                        }
+                                    </td>
+                                    <td>
+                                        @(string.IsNullOrEmpty(entry.ChangedByUserEmail) ? entry.ChangedByUserId : entry.ChangedByUserEmail)
+                                    </td>
+                                    <td>@(entry.Reason ?? "-")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+
+    @* Deactivate Modal *@
+    <div class="modal fade" id="deactivateModal" tabindex="-1" aria-labelledby="deactivateModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form method="post" asp-page-handler="Deactivate">
+                    <div class="modal-header bg-danger text-white">
+                        <h5 class="modal-title" id="deactivateModalLabel">Deactivate Processing Activity</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="alert alert-warning">
+                            <strong>Warning:</strong> Deactivating this processing activity will mark it as inactive. This action is recorded in the audit log.
+                        </div>
+                        <input type="hidden" name="id" value="@Model.Activity.Id" />
+                        <div class="mb-3">
+                            <label for="reason" class="form-label">Reason for Deactivation</label>
+                            <textarea name="reason" id="reason" class="form-control" rows="3" placeholder="Enter the reason for deactivating this processing activity..."></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-danger">Deactivate</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+}
+
+<div class="mt-4">
+    <a asp-page="Index" class="btn btn-outline-secondary">
+        &laquo; Back to Registry
+    </a>
+</div>
