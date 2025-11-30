@@ -4,6 +4,8 @@ using Mercato.Web.Middleware;
 using Mercato.Admin;
 using Mercato.Analytics;
 using Mercato.Buyer;
+using Mercato.Buyer.Infrastructure;
+using Mercato.Buyer.Infrastructure.Persistence;
 using Mercato.Cart;
 using Mercato.Identity;
 using Mercato.Notifications;
@@ -120,11 +122,15 @@ var app = builder.Build();
 // 1. Adding EnsureCreated/Migrate logic before seeding, or
 // 2. Moving role seeding to a separate initialization step, or
 // 3. Adding try-catch to gracefully handle database unavailability at startup.
-// Seed roles
+// Seed roles and consent types
 using (var scope = app.Services.CreateScope())
 {
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
     await RoleSeeder.SeedRolesAsync(roleManager);
+
+    // Seed consent types
+    var buyerDbContext = scope.ServiceProvider.GetRequiredService<BuyerDbContext>();
+    await ConsentSeeder.SeedConsentTypesAsync(buyerDbContext);
 }
 
 // Configure the HTTP request pipeline.

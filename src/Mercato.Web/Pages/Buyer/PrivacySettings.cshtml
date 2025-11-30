@@ -1,0 +1,158 @@
+@page
+@model Mercato.Web.Pages.Buyer.PrivacySettingsModel
+@{
+    ViewData["Title"] = "Privacy Settings";
+    string FormatConsentDate(DateTimeOffset date) => date.ToString("MMMM dd, yyyy 'at' HH:mm");
+}
+
+<div class="container">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-page="/Buyer/Index">Buyer Portal</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Privacy Settings</li>
+        </ol>
+    </nav>
+
+    <h1><i class="bi bi-shield-lock me-2"></i>Privacy Settings</h1>
+    <p class="lead">Manage your privacy preferences and communication consents.</p>
+
+    @if (!string.IsNullOrEmpty(Model.StatusMessage))
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="bi bi-check-circle me-2"></i>@Model.StatusMessage
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    <div class="row">
+        <div class="col-lg-8">
+            <form method="post">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-toggle-on me-2"></i>Your Consents</h5>
+                    </div>
+                    <div class="card-body">
+                        @if (Model.Consents.Any())
+                        {
+                            <p class="text-muted mb-4">
+                                Review and update your privacy preferences below. All changes are recorded with timestamp for your records.
+                            </p>
+
+                            @for (int i = 0; i < Model.Consents.Count; i++)
+                            {
+                                var consent = Model.Consents[i];
+                                <div class="border rounded p-3 mb-3 @(consent.IsGranted ? "border-success bg-light" : "")">
+                                    <div class="form-check form-switch">
+                                        <input type="hidden" name="ConsentUpdates[@i].ConsentTypeCode" value="@consent.ConsentTypeCode" />
+                                        <input type="hidden" name="ConsentUpdates[@i].CurrentVersionId" value="@consent.CurrentVersionId" />
+                                        <input class="form-check-input" type="checkbox" 
+                                               name="ConsentUpdates[@i].IsGranted" 
+                                               value="true" 
+                                               id="consent_@consent.ConsentTypeCode"
+                                               @(consent.IsGranted ? "checked" : "")>
+                                        <label class="form-check-label fw-bold" for="consent_@consent.ConsentTypeCode">
+                                            @consent.ConsentTypeName
+                                            @if (consent.IsMandatory)
+                                            {
+                                                <span class="badge bg-warning text-dark ms-2">Required</span>
+                                            }
+                                            @if (consent.HasNewerVersion)
+                                            {
+                                                <span class="badge bg-info ms-2">Updated Terms Available</span>
+                                            }
+                                        </label>
+                                    </div>
+                                    
+                                    <p class="text-muted mt-2 mb-2">@consent.ConsentTypeDescription</p>
+                                    
+                                    <div class="small text-muted">
+                                        @if (consent.ConsentVersionNumber > 0)
+                                        {
+                                            <div class="row">
+                                                <div class="col-auto">
+                                                    <i class="bi bi-calendar-check me-1"></i>
+                                                    @if (consent.IsGranted)
+                                                    {
+                                                        <span>Consented on @FormatConsentDate(consent.ConsentedAt)</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span>Withdrawn on @FormatConsentDate(consent.ConsentedAt)</span>
+                                                    }
+                                                </div>
+                                                <div class="col-auto">
+                                                    <i class="bi bi-file-text me-1"></i>
+                                                    <span>Version @consent.ConsentVersionNumber</span>
+                                                </div>
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-warning"><i class="bi bi-exclamation-triangle me-1"></i>No consent recorded yet</span>
+                                        }
+                                    </div>
+
+                                    <details class="mt-2">
+                                        <summary class="text-primary small" style="cursor: pointer;">
+                                            <i class="bi bi-info-circle me-1"></i>View full consent text
+                                        </summary>
+                                        <div class="mt-2 p-2 bg-white border rounded small">
+                                            @consent.ConsentText
+                                        </div>
+                                    </details>
+                                </div>
+                            }
+
+                            <div class="d-grid gap-2 mt-4">
+                                <button type="submit" class="btn btn-primary btn-lg">
+                                    <i class="bi bi-check-lg me-2"></i>Save Preferences
+                                </button>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="text-center text-muted py-5">
+                                <i class="bi bi-shield-check display-1"></i>
+                                <p class="mt-3">No consent types are currently configured.</p>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </form>
+
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-info-circle me-2"></i>About Your Privacy</h5>
+                </div>
+                <div class="card-body">
+                    <p>At Mercato, we take your privacy seriously. Here's what you should know:</p>
+                    <ul class="mb-0">
+                        <li>You can change your preferences at any time</li>
+                        <li>All consent changes are recorded with timestamps for audit purposes</li>
+                        <li>Withdrawing consent does not affect the lawfulness of processing based on consent before withdrawal</li>
+                        <li>We keep historical records of your consent decisions as required by GDPR</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-link-45deg me-2"></i>Quick Links</h5>
+                </div>
+                <div class="list-group list-group-flush">
+                    <a asp-page="/Buyer/Index" class="list-group-item list-group-item-action">
+                        <i class="bi bi-house-door me-2"></i>Buyer Portal
+                    </a>
+                    <a asp-page="/Account/ChangePassword" class="list-group-item list-group-item-action">
+                        <i class="bi bi-key me-2"></i>Change Password
+                    </a>
+                    <a asp-page="/Buyer/Addresses/Index" class="list-group-item list-group-item-action">
+                        <i class="bi bi-geo-alt me-2"></i>Shipping Addresses
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
