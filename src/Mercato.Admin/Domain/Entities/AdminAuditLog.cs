@@ -44,4 +44,14 @@ public class AdminAuditLog
     /// Gets or sets the IP address from which the action was performed (if available).
     /// </summary>
     public string? IpAddress { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether the action was successful.
+    /// </summary>
+    public bool IsSuccess { get; set; }
+
+    /// <summary>
+    /// Gets or sets the failure reason if the action was not successful.
+    /// </summary>
+    public string? FailureReason { get; set; }
 }
