@@ -59,11 +59,23 @@ public class RolePermissionRepository : IRolePermissionRepository
             new RolePermission { Id = 34, RoleName = "Buyer", PermissionId = "product.details.view", GrantedBy = systemUser, GrantedAt = now },
             new RolePermission { Id = 35, RoleName = "Buyer", PermissionId = "product.search", GrantedBy = systemUser, GrantedAt = now },
             new RolePermission { Id = 36, RoleName = "Buyer", PermissionId = "cart.manage", GrantedBy = systemUser, GrantedAt = now },
-            new RolePermission { Id = 37, RoleName = "Buyer", PermissionId = "cart.checkout", GrantedBy = systemUser, GrantedAt = now }
+            new RolePermission { Id = 37, RoleName = "Buyer", PermissionId = "cart.checkout", GrantedBy = systemUser, GrantedAt = now },
+
+            // Support Role - Support staff permissions
+            new RolePermission { Id = 38, RoleName = "Support", PermissionId = "support.cases.view", GrantedBy = systemUser, GrantedAt = now },
+            new RolePermission { Id = 39, RoleName = "Support", PermissionId = "support.cases.manage", GrantedBy = systemUser, GrantedAt = now },
+            new RolePermission { Id = 40, RoleName = "Support", PermissionId = "admin.orders.view", GrantedBy = systemUser, GrantedAt = now },
+            new RolePermission { Id = 41, RoleName = "Support", PermissionId = "admin.users.view", GrantedBy = systemUser, GrantedAt = now },
+
+            // Compliance Role - Compliance officer permissions
+            new RolePermission { Id = 42, RoleName = "Compliance", PermissionId = "compliance.audit.view", GrantedBy = systemUser, GrantedAt = now },
+            new RolePermission { Id = 43, RoleName = "Compliance", PermissionId = "compliance.data.export", GrantedBy = systemUser, GrantedAt = now },
+            new RolePermission { Id = 44, RoleName = "Compliance", PermissionId = "admin.users.view", GrantedBy = systemUser, GrantedAt = now },
+            new RolePermission { Id = 45, RoleName = "Compliance", PermissionId = "admin.reports.view", GrantedBy = systemUser, GrantedAt = now }
         ];
     }
 
-    private static int _nextId = 38;
+    private static int _nextId = 46;
 
     /// <inheritdoc />
     public Task<IReadOnlyList<RolePermission>> GetAllAsync(CancellationToken cancellationToken = default)

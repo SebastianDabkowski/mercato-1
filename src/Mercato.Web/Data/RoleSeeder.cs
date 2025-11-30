@@ -23,12 +23,22 @@ public static class RoleSeeder
     public const string AdminRole = "Admin";
 
     /// <summary>
+    /// Role name for support staff.
+    /// </summary>
+    public const string SupportRole = "Support";
+
+    /// <summary>
+    /// Role name for compliance officers.
+    /// </summary>
+    public const string ComplianceRole = "Compliance";
+
+    /// <summary>
     /// Seeds the default roles if they do not exist.
     /// </summary>
     /// <param name="roleManager">The role manager.</param>
     public static async Task SeedRolesAsync(RoleManager<IdentityRole> roleManager)
     {
-        string[] roles = { BuyerRole, SellerRole, AdminRole };
+        string[] roles = { BuyerRole, SellerRole, AdminRole, SupportRole, ComplianceRole };
 
         foreach (var role in roles)
         {
