@@ -2,6 +2,7 @@ using Mercato.Web.Data;
 using Mercato.Web.Filters;
 using Mercato.Web.Middleware;
 using Mercato.Admin;
+using Mercato.Analytics;
 using Mercato.Buyer;
 using Mercato.Cart;
 using Mercato.Identity;
@@ -110,6 +111,7 @@ builder.Services.AddShippingModule(builder.Configuration);
 builder.Services.AddNotificationsModule(builder.Configuration);
 builder.Services.AddIdentityModule();
 builder.Services.AddAdminModule(builder.Configuration);
+builder.Services.AddAnalyticsModule(builder.Configuration);
 
 var app = builder.Build();
 
