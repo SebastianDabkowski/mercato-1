@@ -39,6 +39,9 @@ public class UserAccountManagementService : IUserAccountManagementService
     {
         ArgumentNullException.ThrowIfNull(query);
 
+        // Note: Loading users into memory is required because UserManager.GetRolesAsync
+        // doesn't support IQueryable. For large user bases, consider implementing
+        // a repository with direct database queries joining user and role tables.
         var allUsers = _userManager.Users.ToList();
         var filteredUsers = new List<(IdentityUser User, IList<string> Roles)>();
 
@@ -166,7 +169,7 @@ public class UserAccountManagementService : IUserAccountManagementService
 
         // Find the most recent successful login
         var lastLogin = userEvents
-            .Where(e => e.IsSuccessful && e.EventType == AuthenticationEventType.Login.ToString())
+            .Where(e => e.IsSuccessful && e.EventType == "Login")
             .OrderByDescending(e => e.Timestamp)
             .FirstOrDefault();
 
