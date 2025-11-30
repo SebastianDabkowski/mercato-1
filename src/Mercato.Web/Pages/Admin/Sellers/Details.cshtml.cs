@@ -1,3 +1,4 @@
+using Mercato.Admin.Application.Services;
 using Mercato.Seller.Application.Commands;
 using Mercato.Seller.Application.Services;
 using Mercato.Seller.Domain.Entities;
@@ -15,13 +16,16 @@ namespace Mercato.Web.Pages.Admin.Sellers;
 public class DetailsModel : PageModel
 {
     private readonly IKycService _kycService;
+    private readonly ISensitiveAccessAuditService _sensitiveAccessAuditService;
     private readonly ILogger<DetailsModel> _logger;
 
     public DetailsModel(
         IKycService kycService,
+        ISensitiveAccessAuditService sensitiveAccessAuditService,
         ILogger<DetailsModel> logger)
     {
         _kycService = kycService;
+        _sensitiveAccessAuditService = sensitiveAccessAuditService;
         _logger = logger;
     }
 
@@ -54,6 +58,17 @@ public class DetailsModel : PageModel
         {
             _logger.LogWarning("KYC submission {SubmissionId} not found", id);
             return NotFound();
+        }
+
+        // Log sensitive access for viewing KYC document
+        var adminUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!string.IsNullOrEmpty(adminUserId))
+        {
+            var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+            await _sensitiveAccessAuditService.LogKycDocumentAccessAsync(
+                adminUserId,
+                id,
+                ipAddress);
         }
 
         AuditLogs = await _kycService.GetAuditLogsAsync(id);

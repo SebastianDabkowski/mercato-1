@@ -87,6 +87,7 @@ public static class AdminModuleExtensions
         services.AddScoped<IAuditLogService, AuditLogService>();
         services.AddScoped<IFeatureFlagManagementService, FeatureFlagManagementService>();
         services.AddScoped<IDataProcessingRegistryService, DataProcessingRegistryService>();
+        services.AddScoped<ISensitiveAccessAuditService, SensitiveAccessAuditService>();
 
         return services;
     }
