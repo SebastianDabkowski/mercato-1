@@ -1,0 +1,156 @@
+@page "{categoryId:guid}"
+@model Mercato.Web.Pages.Admin.Categories.Attributes.IndexModel
+@using Mercato.Product.Domain.Entities
+@{
+    ViewData["Title"] = $"Attributes - {Model.Category?.Name}";
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-page="/Admin/Index">Admin</a></li>
+        <li class="breadcrumb-item"><a asp-page="/Admin/Categories/Index">Categories</a></li>
+        <li class="breadcrumb-item active" aria-current="page">@Model.Category?.Name Attributes</li>
+    </ol>
+</nav>
+
+<h1>Attribute Templates</h1>
+<h5 class="text-muted mb-4">Category: @Model.Category?.Name</h5>
+
+<p class="text-muted">Define attribute templates for this category. When sellers create products in this category, they will be presented with these structured fields for data entry.</p>
+
+@if (!string.IsNullOrEmpty(Model.SuccessMessage))
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <strong>Success!</strong> @Model.SuccessMessage
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+@if (!string.IsNullOrEmpty(Model.ErrorMessage))
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <strong>Error!</strong> @Model.ErrorMessage
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<div class="mb-4">
+    <a asp-page="Create" asp-route-categoryId="@Model.Category?.Id" class="btn btn-primary">
+        <i class="bi bi-plus-circle"></i> Add New Attribute
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Attribute List</h5>
+        <div>
+            <span class="badge bg-success">Active</span>
+            <span class="badge bg-warning">Deprecated</span>
+        </div>
+    </div>
+    <div class="card-body">
+        @if (Model.Attributes.Count == 0)
+        {
+            <div class="alert alert-info">
+                No attributes defined for this category. Add your first attribute to create a structured template.
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-dark">
+                        <tr>
+                            <th scope="col">Name</th>
+                            <th scope="col">Type</th>
+                            <th scope="col">Required</th>
+                            <th scope="col">Options</th>
+                            <th scope="col">Order</th>
+                            <th scope="col">Status</th>
+                            <th scope="col">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var attr in Model.Attributes)
+                        {
+                            var typeDisplay = attr.Type switch
+                            {
+                                CategoryAttributeType.Text => "Text",
+                                CategoryAttributeType.Number => "Number",
+                                CategoryAttributeType.List => "List",
+                                _ => "Unknown"
+                            };
+                            var badgeClass = attr.IsDeprecated ? "bg-warning" : "bg-success";
+                            var statusText = attr.IsDeprecated ? "Deprecated" : "Active";
+                            var listOptionsPreview = attr.Type == CategoryAttributeType.List && !string.IsNullOrEmpty(attr.ListOptions)
+                                ? (attr.ListOptions.Length > 50 ? attr.ListOptions[..50] + "..." : attr.ListOptions)
+                                : "-";
+                            <tr class="@(attr.IsDeprecated ? "text-muted" : "")">
+                                <td>@attr.Name</td>
+                                <td>
+                                    <span class="badge @(attr.Type == CategoryAttributeType.Text ? "bg-info" : attr.Type == CategoryAttributeType.Number ? "bg-primary" : "bg-secondary")">
+                                        @typeDisplay
+                                    </span>
+                                </td>
+                                <td>
+                                    @if (attr.IsRequired)
+                                    {
+                                        <span class="badge bg-danger">Required</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">Optional</span>
+                                    }
+                                </td>
+                                <td class="small" title="@attr.ListOptions">@listOptionsPreview</td>
+                                <td>@attr.DisplayOrder</td>
+                                <td>
+                                    <span class="badge @badgeClass">@statusText</span>
+                                </td>
+                                <td>
+                                    <a asp-page="Edit" asp-route-categoryId="@Model.Category?.Id" asp-route-attributeId="@attr.Id"
+                                       class="btn btn-sm btn-outline-primary"
+                                       title="Edit attribute">
+                                        Edit
+                                    </a>
+                                    @if (attr.IsDeprecated)
+                                    {
+                                        <form method="post" asp-page-handler="Restore" asp-route-categoryId="@Model.Category?.Id" asp-route-attributeId="@attr.Id" class="d-inline">
+                                            <button type="submit" class="btn btn-sm btn-outline-success"
+                                                    title="Restore attribute">
+                                                Restore
+                                            </button>
+                                        </form>
+                                    }
+                                    else
+                                    {
+                                        <form method="post" asp-page-handler="Deprecate" asp-route-categoryId="@Model.Category?.Id" asp-route-attributeId="@attr.Id" class="d-inline">
+                                            <button type="submit" class="btn btn-sm btn-outline-warning"
+                                                    onclick="return confirm('Are you sure you want to deprecate this attribute? It will be hidden from new product creation but remain visible for existing products.');"
+                                                    title="Deprecate attribute">
+                                                Deprecate
+                                            </button>
+                                        </form>
+                                    }
+                                    <form method="post" asp-page-handler="Delete" asp-route-categoryId="@Model.Category?.Id" asp-route-attributeId="@attr.Id" class="d-inline">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger"
+                                                onclick="return confirm('Are you sure you want to delete this attribute? This action cannot be undone.');"
+                                                title="Delete attribute">
+                                            Delete
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>
+
+<div class="mt-4">
+    <a asp-page="/Admin/Categories/Index" class="btn btn-outline-secondary">
+        &laquo; Back to Categories
+    </a>
+</div>

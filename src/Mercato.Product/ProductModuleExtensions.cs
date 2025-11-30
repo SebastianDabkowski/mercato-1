@@ -38,6 +38,7 @@ public static class ProductModuleExtensions
         services.AddScoped<IProductVariantRepository, ProductVariantRepository>();
         services.AddScoped<IProductModerationRepository, ProductModerationRepository>();
         services.AddScoped<IPhotoModerationRepository, PhotoModerationRepository>();
+        services.AddScoped<ICategoryAttributeRepository, CategoryAttributeRepository>();
 
         // Register services
         services.AddScoped<IProductService, ProductService>();
@@ -45,6 +46,7 @@ public static class ProductModuleExtensions
         services.AddScoped<IProductImportService, ProductImportService>();
         services.AddScoped<IProductVariantService, ProductVariantService>();
         services.AddScoped<ISearchSuggestionService, SearchSuggestionService>();
+        services.AddScoped<ICategoryAttributeService, CategoryAttributeService>();
 
         // Register ProductImageService with wwwroot path
         services.AddScoped<IProductImageService>(sp =>
