@@ -679,14 +679,17 @@ public class ProductDbContext : DbContext
                 .IsRequired();
 
             // Index for querying attributes by category
-            entity.HasIndex(e => e.CategoryId);
+            entity.HasIndex(e => e.CategoryId)
+                .HasDatabaseName("IX_CategoryAttributes_CategoryId");
 
             // Index for active (non-deprecated) attributes
-            entity.HasIndex(e => new { e.CategoryId, e.IsDeprecated });
+            entity.HasIndex(e => new { e.CategoryId, e.IsDeprecated })
+                .HasDatabaseName("IX_CategoryAttributes_CategoryId_IsDeprecated");
 
             // Unique index for attribute name within category
             entity.HasIndex(e => new { e.CategoryId, e.Name })
-                .IsUnique();
+                .IsUnique()
+                .HasDatabaseName("IX_CategoryAttributes_CategoryId_Name");
 
             // Relationship to category
             entity.HasOne(e => e.Category)

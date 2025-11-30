@@ -82,8 +82,9 @@
                             };
                             var badgeClass = attr.IsDeprecated ? "bg-warning" : "bg-success";
                             var statusText = attr.IsDeprecated ? "Deprecated" : "Active";
+                            var maxLen = IndexModel.ListOptionsPreviewMaxLength;
                             var listOptionsPreview = attr.Type == CategoryAttributeType.List && !string.IsNullOrEmpty(attr.ListOptions)
-                                ? (attr.ListOptions.Length > 50 ? attr.ListOptions[..50] + "..." : attr.ListOptions)
+                                ? (attr.ListOptions.Length > maxLen ? attr.ListOptions[..maxLen] + "..." : attr.ListOptions)
                                 : "-";
                             <tr class="@(attr.IsDeprecated ? "text-muted" : "")">
                                 <td>@attr.Name</td>

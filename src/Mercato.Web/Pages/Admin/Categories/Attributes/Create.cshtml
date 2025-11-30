@@ -98,10 +98,10 @@
         document.addEventListener('DOMContentLoaded', function() {
             var typeSelect = document.getElementById('attributeType');
             var listOptionsContainer = document.getElementById('listOptionsContainer');
+            var listTypeValue = '@((int)CategoryAttributeType.List)';
             
             function toggleListOptions() {
-                // CategoryAttributeType.List = 2
-                if (typeSelect.value === '2') {
+                if (typeSelect.value === listTypeValue) {
                     listOptionsContainer.style.display = 'block';
                 } else {
                     listOptionsContainer.style.display = 'none';

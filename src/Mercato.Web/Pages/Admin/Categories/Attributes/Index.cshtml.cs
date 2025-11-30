@@ -13,6 +13,11 @@ namespace Mercato.Web.Pages.Admin.Categories.Attributes;
 [Authorize(Roles = "Admin")]
 public class IndexModel : PageModel
 {
+    /// <summary>
+    /// Maximum length for list options preview text.
+    /// </summary>
+    public const int ListOptionsPreviewMaxLength = 50;
+
     private readonly ICategoryAttributeService _attributeService;
     private readonly ICategoryService _categoryService;
     private readonly ILogger<IndexModel> _logger;
