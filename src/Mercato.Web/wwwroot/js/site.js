@@ -377,6 +377,81 @@
     };
 
     // Initialize when DOM is ready
+    // ============================================
+    // Push Notifications Module
+    // ============================================
+
+    const PUSH_CONFIG = {
+        serviceWorkerPath: '/push-sw.js',
+        subscriptionApiUrl: '/Api/PushSubscription'
+    };
+
+    // Check if push notifications are supported
+    function isPushSupported() {
+        return 'serviceWorker' in navigator && 'PushManager' in window;
+    }
+
+    // Get push notification permission status
+    function getPushPermission() {
+        if (!isPushSupported()) {
+            return 'unsupported';
+        }
+        return Notification.permission;
+    }
+
+    // Request push notification permission
+    async function requestPushPermission() {
+        if (!isPushSupported()) {
+            return 'unsupported';
+        }
+        return await Notification.requestPermission();
+    }
+
+    // Register the push notification service worker
+    async function registerPushServiceWorker() {
+        if (!isPushSupported()) {
+            return null;
+        }
+        try {
+            const registration = await navigator.serviceWorker.register(PUSH_CONFIG.serviceWorkerPath);
+            await navigator.serviceWorker.ready;
+            return registration;
+        } catch (error) {
+            console.error('Error registering push service worker:', error);
+            return null;
+        }
+    }
+
+    // Get current push subscription
+    async function getCurrentPushSubscription() {
+        if (!isPushSupported()) {
+            return null;
+        }
+        try {
+            const registration = await navigator.serviceWorker.getRegistration(PUSH_CONFIG.serviceWorkerPath);
+            if (registration) {
+                return await registration.pushManager.getSubscription();
+            }
+            return null;
+        } catch (error) {
+            console.error('Error getting push subscription:', error);
+            return null;
+        }
+    }
+
+    // Expose push notification functions globally
+    window.MercatoPushNotifications = {
+        isSupported: isPushSupported,
+        getPermission: getPushPermission,
+        requestPermission: requestPushPermission,
+        registerServiceWorker: registerPushServiceWorker,
+        getSubscription: getCurrentPushSubscription
+    };
+
+    // ============================================
+    // Initialization
+    // ============================================
+
     function init() {
         initSearchSuggestions();
         trackProductView();

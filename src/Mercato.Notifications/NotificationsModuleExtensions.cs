@@ -33,10 +33,15 @@ public static class NotificationsModuleExtensions
         services.AddScoped<INotificationRepository, NotificationRepository>();
         services.AddScoped<IMessageRepository, MessageRepository>();
         services.AddScoped<IMessageThreadRepository, MessageThreadRepository>();
+        services.AddScoped<IPushSubscriptionRepository, PushSubscriptionRepository>();
+
+        // Register web push client
+        services.AddScoped<IWebPushClient, WebPushClient>();
 
         // Register services
         services.AddScoped<INotificationService, NotificationService>();
         services.AddScoped<IMessagingService, MessagingService>();
+        services.AddScoped<IPushNotificationService, PushNotificationService>();
 
         return services;
     }
