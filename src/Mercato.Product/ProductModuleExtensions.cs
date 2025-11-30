@@ -36,6 +36,7 @@ public static class ProductModuleExtensions
         services.AddScoped<IProductImportRepository, ProductImportRepository>();
         services.AddScoped<IProductImageRepository, ProductImageRepository>();
         services.AddScoped<IProductVariantRepository, ProductVariantRepository>();
+        services.AddScoped<IProductModerationRepository, ProductModerationRepository>();
 
         // Register services
         services.AddScoped<IProductService, ProductService>();

@@ -59,6 +59,9 @@ public static class AdminModuleExtensions
         services.AddScoped<ICommissionSummaryService, CommissionSummaryService>();
         services.AddScoped<IUserAnalyticsService, UserAnalyticsService>();
         services.AddScoped<IUserBlockCheckService, UserBlockCheckService>();
+        // Note: ProductModerationService requires IProductModerationRepository from Product module,
+        // IStoreRepository from Seller module, and INotificationService from Notifications module.
+        services.AddScoped<IProductModerationService, ProductModerationService>();
 
         return services;
     }

@@ -48,5 +48,15 @@ public enum NotificationType
     /// <summary>
     /// Notification for a system update.
     /// </summary>
-    SystemUpdate = 8
+    SystemUpdate = 8,
+
+    /// <summary>
+    /// Notification for when a product is approved by moderation.
+    /// </summary>
+    ProductApproved = 9,
+
+    /// <summary>
+    /// Notification for when a product is rejected by moderation.
+    /// </summary>
+    ProductRejected = 10
 }

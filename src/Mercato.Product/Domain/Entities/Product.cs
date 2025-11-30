@@ -118,6 +118,26 @@ public class Product
     public bool HasVariants { get; set; }
 
     /// <summary>
+    /// Gets or sets the moderation status for admin review.
+    /// </summary>
+    public ProductModerationStatus ModerationStatus { get; set; } = ProductModerationStatus.NotSubmitted;
+
+    /// <summary>
+    /// Gets or sets the reason for rejection when moderation status is Rejected.
+    /// </summary>
+    public string? ModerationReason { get; set; }
+
+    /// <summary>
+    /// Gets or sets the date and time when the product was last moderated.
+    /// </summary>
+    public DateTimeOffset? ModeratedAt { get; set; }
+
+    /// <summary>
+    /// Gets or sets the ID of the admin who last moderated this product.
+    /// </summary>
+    public string? ModeratedBy { get; set; }
+
+    /// <summary>
     /// Navigation property to the product variant attributes.
     /// </summary>
     public ICollection<ProductVariantAttribute> VariantAttributes { get; set; } = new List<ProductVariantAttribute>();

@@ -54,6 +54,11 @@ public class ProductDbContext : DbContext
     /// </summary>
     public DbSet<ProductVariant> ProductVariants { get; set; }
 
+    /// <summary>
+    /// Gets or sets the product moderation decisions DbSet.
+    /// </summary>
+    public DbSet<ProductModerationDecision> ProductModerationDecisions { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -66,6 +71,7 @@ public class ProductDbContext : DbContext
         ConfigureProductVariantAttribute(modelBuilder);
         ConfigureProductVariantAttributeValue(modelBuilder);
         ConfigureProductVariant(modelBuilder);
+        ConfigureProductModerationDecision(modelBuilder);
     }
 
     private static void ConfigureProduct(ModelBuilder modelBuilder)
@@ -141,6 +147,18 @@ public class ProductDbContext : DbContext
                 .IsRequired()
                 .HasDefaultValue(false);
 
+            entity.Property(e => e.ModerationStatus)
+                .IsRequired()
+                .HasDefaultValue(ProductModerationStatus.NotSubmitted);
+
+            entity.Property(e => e.ModerationReason)
+                .HasMaxLength(2000);
+
+            entity.Property(e => e.ModeratedAt);
+
+            entity.Property(e => e.ModeratedBy)
+                .HasMaxLength(450);
+
             // Index for querying products by store
             entity.HasIndex(e => e.StoreId);
 
@@ -152,6 +170,12 @@ public class ProductDbContext : DbContext
 
             // Index for efficient category lookups (used by category management)
             entity.HasIndex(e => e.Category);
+
+            // Index for moderation queue queries
+            entity.HasIndex(e => e.ModerationStatus);
+
+            // Index for moderation queue with category filter
+            entity.HasIndex(e => new { e.ModerationStatus, e.Category });
 
             // Unique index for SKU within store (for import matching)
             entity.HasIndex(e => new { e.StoreId, e.Sku })
@@ -467,6 +491,50 @@ public class ProductDbContext : DbContext
                 .WithMany(p => p.Variants)
                 .HasForeignKey(e => e.ProductId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+    }
+
+    private static void ConfigureProductModerationDecision(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<ProductModerationDecision>(entity =>
+        {
+            entity.ToTable("ProductModerationDecisions");
+
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.ProductId)
+                .IsRequired();
+
+            entity.Property(e => e.AdminUserId)
+                .IsRequired()
+                .HasMaxLength(450);
+
+            entity.Property(e => e.Decision)
+                .IsRequired();
+
+            entity.Property(e => e.Reason)
+                .HasMaxLength(2000);
+
+            entity.Property(e => e.PreviousStatus)
+                .IsRequired();
+
+            entity.Property(e => e.PreviousProductStatus)
+                .IsRequired();
+
+            entity.Property(e => e.CreatedAt)
+                .IsRequired();
+
+            entity.Property(e => e.IpAddress)
+                .HasMaxLength(45);
+
+            // Index for querying decisions by product
+            entity.HasIndex(e => e.ProductId);
+
+            // Index for querying by admin user
+            entity.HasIndex(e => e.AdminUserId);
+
+            // Index for ordering by creation date
+            entity.HasIndex(e => e.CreatedAt);
         });
     }
 }
