@@ -88,6 +88,16 @@ public class AdminDbContext : DbContext
     /// </summary>
     public DbSet<LegalConsent> LegalConsents { get; set; } = null!;
 
+    /// <summary>
+    /// Gets or sets the feature flags.
+    /// </summary>
+    public DbSet<FeatureFlag> FeatureFlags { get; set; } = null!;
+
+    /// <summary>
+    /// Gets or sets the feature flag history records.
+    /// </summary>
+    public DbSet<FeatureFlagHistory> FeatureFlagHistories { get; set; } = null!;
+
     /// <inheritdoc/>
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -331,6 +341,41 @@ public class AdminDbContext : DbContext
                 .HasDatabaseName("IX_LegalConsents_UserId_DocumentType");
             entity.HasIndex(e => new { e.UserId, e.LegalDocumentVersionId })
                 .HasDatabaseName("IX_LegalConsents_UserId_VersionId");
+        });
+
+        modelBuilder.Entity<FeatureFlag>(entity =>
+        {
+            entity.ToTable("FeatureFlags");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Key).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.Description).HasMaxLength(1000);
+            entity.Property(e => e.TargetValue).HasColumnType("nvarchar(max)");
+            entity.Property(e => e.CreatedByUserId).IsRequired().HasMaxLength(450);
+            entity.Property(e => e.UpdatedByUserId).HasMaxLength(450);
+            entity.HasIndex(e => e.Key);
+            entity.HasIndex(e => e.Environment);
+            entity.HasIndex(e => e.IsEnabled);
+            entity.HasIndex(e => new { e.Key, e.Environment })
+                .HasDatabaseName("IX_FeatureFlags_Key_Environment").IsUnique();
+            entity.HasIndex(e => new { e.Environment, e.IsEnabled })
+                .HasDatabaseName("IX_FeatureFlags_Environment_IsEnabled");
+        });
+
+        modelBuilder.Entity<FeatureFlagHistory>(entity =>
+        {
+            entity.ToTable("FeatureFlagHistories");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.ChangeType).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.PreviousValues).HasColumnType("nvarchar(max)");
+            entity.Property(e => e.NewValues).IsRequired().HasColumnType("nvarchar(max)");
+            entity.Property(e => e.ChangedByUserId).IsRequired().HasMaxLength(450);
+            entity.Property(e => e.ChangedByUserEmail).HasMaxLength(256);
+            entity.Property(e => e.Reason).HasMaxLength(1000);
+            entity.HasIndex(e => e.FeatureFlagId);
+            entity.HasIndex(e => e.ChangedAt);
+            entity.HasIndex(e => new { e.FeatureFlagId, e.ChangedAt })
+                .HasDatabaseName("IX_FeatureFlagHistories_FeatureFlagId_ChangedAt");
         });
     }
 }
