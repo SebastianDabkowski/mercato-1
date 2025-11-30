@@ -1,0 +1,168 @@
+@page "{id:guid}"
+@model Mercato.Web.Pages.Admin.VatRules.EditModel
+@{
+    ViewData["Title"] = "Edit VAT Rule";
+}
+
+<h1>Edit VAT Rule</h1>
+
+<div class="alert alert-info">
+    <strong>Edit VAT rule</strong> - Modify tax rates and settings. All changes are tracked in history.
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Rule Details</h5>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    <input type="hidden" asp-for="Input.Id" />
+                    <div asp-validation-summary="All" class="text-danger mb-3"></div>
+
+                    <div class="mb-3">
+                        <label asp-for="Input.Name" class="form-label"></label>
+                        <input asp-for="Input.Name" class="form-control" placeholder="e.g., Germany Standard VAT" />
+                        <span asp-validation-for="Input.Name" class="text-danger"></span>
+                        <small class="form-text text-muted">A descriptive name for this VAT rule.</small>
+                    </div>
+
+                    <hr class="my-4">
+                    <h6>Location & Category</h6>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="Input.CountryCode" class="form-label"></label>
+                            <input asp-for="Input.CountryCode" class="form-control" placeholder="e.g., DE, FR, GB" maxlength="2" style="text-transform: uppercase;" />
+                            <span asp-validation-for="Input.CountryCode" class="text-danger"></span>
+                            <small class="form-text text-muted">ISO 3166-1 alpha-2 country code (2 letters).</small>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="Input.CategoryId" class="form-label"></label>
+                            <input asp-for="Input.CategoryId" class="form-control" placeholder="Leave empty for all categories" />
+                            <span asp-validation-for="Input.CategoryId" class="text-danger"></span>
+                            <small class="form-text text-muted">Optional. Enter a Category ID (GUID) for category-specific rate.</small>
+                        </div>
+                    </div>
+
+                    <hr class="my-4">
+                    <h6>Tax Rate</h6>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="Input.TaxRate" class="form-label"></label>
+                            <div class="input-group">
+                                <input asp-for="Input.TaxRate" class="form-control" step="0.01" />
+                                <span class="input-group-text">%</span>
+                            </div>
+                            <span asp-validation-for="Input.TaxRate" class="text-danger"></span>
+                            <small class="form-text text-muted">VAT rate as a percentage (e.g., 20 for 20%).</small>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="Input.Priority" class="form-label"></label>
+                            <input asp-for="Input.Priority" type="number" class="form-control" min="0" max="1000" />
+                            <span asp-validation-for="Input.Priority" class="text-danger"></span>
+                            <small class="form-text text-muted">Higher priority rules take precedence.</small>
+                        </div>
+                    </div>
+
+                    <hr class="my-4">
+                    <h6>Effective Dates</h6>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="Input.EffectiveFrom" class="form-label"></label>
+                            <input asp-for="Input.EffectiveFrom" type="date" class="form-control" />
+                            <span asp-validation-for="Input.EffectiveFrom" class="text-danger"></span>
+                            <small class="form-text text-muted">Date when this rule becomes effective.</small>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="Input.EffectiveTo" class="form-label"></label>
+                            <input asp-for="Input.EffectiveTo" type="date" class="form-control" />
+                            <span asp-validation-for="Input.EffectiveTo" class="text-danger"></span>
+                            <small class="form-text text-muted">Optional. Date when this rule expires.</small>
+                        </div>
+                    </div>
+
+                    <div class="mb-3 form-check">
+                        <input asp-for="Input.IsActive" class="form-check-input" />
+                        <label asp-for="Input.IsActive" class="form-check-label"></label>
+                        <small class="form-text text-muted d-block">Inactive rules are not applied to transactions.</small>
+                    </div>
+
+                    <hr class="my-4">
+
+                    <div class="d-flex justify-content-between">
+                        <a asp-page="Index" class="btn btn-outline-secondary">Cancel</a>
+                        <button type="submit" class="btn btn-primary">Save Changes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">Audit Information</h6>
+            </div>
+            <div class="card-body">
+                <dl class="row mb-0 small">
+                    <dt class="col-sm-4">Created:</dt>
+                    <dd class="col-sm-8">@Model.CreatedAt.ToString("yyyy-MM-dd HH:mm")</dd>
+                    
+                    <dt class="col-sm-4">Created By:</dt>
+                    <dd class="col-sm-8">@(Model.CreatedByUserId ?? "Unknown")</dd>
+                    
+                    @if (Model.UpdatedAt.HasValue)
+                    {
+                        <dt class="col-sm-4">Updated:</dt>
+                        <dd class="col-sm-8">@Model.UpdatedAt.Value.ToString("yyyy-MM-dd HH:mm")</dd>
+                        
+                        <dt class="col-sm-4">Updated By:</dt>
+                        <dd class="col-sm-8">@(Model.UpdatedByUserId ?? "Unknown")</dd>
+                    }
+                </dl>
+                <div class="mt-3">
+                    <a asp-page="History" asp-route-id="@Model.Input.Id" class="btn btn-sm btn-outline-secondary w-100">
+                        View Change History
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mt-3 border-warning">
+            <div class="card-header bg-warning text-dark">
+                <h6 class="mb-0">Important Note</h6>
+            </div>
+            <div class="card-body">
+                <p class="small text-muted mb-0">
+                    <strong>Changing effective dates:</strong> If you change the effective dates, 
+                    existing transactions will continue to use the rate that was applicable at the 
+                    time of the transaction. New transactions will use the updated rule based on 
+                    the new effective dates.
+                </p>
+            </div>
+        </div>
+
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6 class="mb-0">Rate History</h6>
+            </div>
+            <div class="card-body">
+                <p class="small text-muted mb-0">
+                    All changes to VAT rules are tracked for compliance and audit purposes.
+                    Use the "View Change History" button above to see all previous values.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

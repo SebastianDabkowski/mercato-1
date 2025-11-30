@@ -34,6 +34,8 @@ public static class AdminModuleExtensions
         services.AddScoped<ISlaTrackingRepository, SlaTrackingRepository>();
         services.AddScoped<IAdminAuditRepository, AdminAuditRepository>();
         services.AddScoped<IUserBlockRepository, UserBlockRepository>();
+        services.AddScoped<IVatRuleRepository, VatRuleRepository>();
+        services.AddScoped<IVatRuleHistoryRepository, VatRuleHistoryRepository>();
         // Note: MarketplaceDashboardRepository requires OrderDbContext, SellerDbContext, and ProductDbContext
         // which are registered by their respective modules (Orders, Seller, Product) in Program.cs.
         services.AddScoped<IMarketplaceDashboardRepository, MarketplaceDashboardRepository>();
@@ -68,6 +70,7 @@ public static class AdminModuleExtensions
         // Note: CommissionRuleManagementService requires ICommissionRuleRepository from Payments module,
         // which is registered by the Payments module in Program.cs.
         services.AddScoped<ICommissionRuleManagementService, CommissionRuleManagementService>();
+        services.AddScoped<IVatRuleManagementService, VatRuleManagementService>();
 
         return services;
     }

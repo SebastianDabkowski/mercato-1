@@ -48,6 +48,16 @@ public class AdminDbContext : DbContext
     /// </summary>
     public DbSet<UserBlockInfo> UserBlockInfos { get; set; } = null!;
 
+    /// <summary>
+    /// Gets or sets the VAT rules.
+    /// </summary>
+    public DbSet<VatRule> VatRules { get; set; } = null!;
+
+    /// <summary>
+    /// Gets or sets the VAT rule history records.
+    /// </summary>
+    public DbSet<VatRuleHistory> VatRuleHistories { get; set; } = null!;
+
     /// <inheritdoc/>
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -152,6 +162,40 @@ public class AdminDbContext : DbContext
             entity.HasIndex(e => e.IsActive);
             entity.HasIndex(e => new { e.UserId, e.IsActive })
                 .HasDatabaseName("IX_UserBlockInfos_UserId_IsActive");
+        });
+
+        modelBuilder.Entity<VatRule>(entity =>
+        {
+            entity.ToTable("VatRules");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.CountryCode).IsRequired().HasMaxLength(2);
+            entity.Property(e => e.TaxRate).HasPrecision(5, 2);
+            entity.Property(e => e.CreatedByUserId).IsRequired().HasMaxLength(450);
+            entity.Property(e => e.UpdatedByUserId).HasMaxLength(450);
+            entity.HasIndex(e => e.CountryCode);
+            entity.HasIndex(e => e.IsActive);
+            entity.HasIndex(e => e.EffectiveFrom);
+            entity.HasIndex(e => new { e.CountryCode, e.CategoryId, e.IsActive })
+                .HasDatabaseName("IX_VatRules_CountryCode_CategoryId_IsActive");
+            entity.HasIndex(e => new { e.CountryCode, e.IsActive, e.EffectiveFrom, e.EffectiveTo })
+                .HasDatabaseName("IX_VatRules_CountryCode_IsActive_EffectiveDates");
+        });
+
+        modelBuilder.Entity<VatRuleHistory>(entity =>
+        {
+            entity.ToTable("VatRuleHistories");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.ChangeType).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.PreviousValues).HasColumnType("nvarchar(max)");
+            entity.Property(e => e.NewValues).IsRequired().HasColumnType("nvarchar(max)");
+            entity.Property(e => e.ChangedByUserId).IsRequired().HasMaxLength(450);
+            entity.Property(e => e.ChangedByUserEmail).HasMaxLength(256);
+            entity.Property(e => e.Reason).HasMaxLength(1000);
+            entity.HasIndex(e => e.VatRuleId);
+            entity.HasIndex(e => e.ChangedAt);
+            entity.HasIndex(e => new { e.VatRuleId, e.ChangedAt })
+                .HasDatabaseName("IX_VatRuleHistories_VatRuleId_ChangedAt");
         });
     }
 }
