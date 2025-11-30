@@ -4,6 +4,18 @@
     ViewData["Title"] = "VAT Rules";
 }
 
+@functions {
+    private const int CategoryIdDisplayLength = 8;
+    
+    private static string TruncateCategoryId(Guid categoryId)
+    {
+        var idString = categoryId.ToString();
+        return idString.Length > CategoryIdDisplayLength 
+            ? $"{idString[..CategoryIdDisplayLength]}..." 
+            : idString;
+    }
+}
+
 <h1>VAT Rules</h1>
 
 <div class="alert alert-info">
@@ -79,8 +91,7 @@ else
                                 <td>
                                     @if (rule.CategoryId.HasValue)
                                     {
-                                        var categoryIdStr = rule.CategoryId.Value.ToString();
-                                        <span class="badge bg-secondary">@(categoryIdStr.Length >= 8 ? categoryIdStr[..8] : categoryIdStr)...</span>
+                                        <span class="badge bg-secondary" title="@rule.CategoryId.Value">@TruncateCategoryId(rule.CategoryId.Value)</span>
                                     }
                                     else
                                     {

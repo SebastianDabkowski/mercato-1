@@ -21,3 +21,8 @@ body {
     white-space: nowrap;
     line-height: 60px;
 }
+
+/* JSON preview container for VAT rule history */
+.json-preview {
+    max-height: 200px;
+}

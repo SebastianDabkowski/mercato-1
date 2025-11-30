@@ -187,8 +187,8 @@ public class AdminDbContext : DbContext
             entity.ToTable("VatRuleHistories");
             entity.HasKey(e => e.Id);
             entity.Property(e => e.ChangeType).IsRequired().HasMaxLength(50);
-            entity.Property(e => e.PreviousValues).HasMaxLength(4000);
-            entity.Property(e => e.NewValues).IsRequired().HasMaxLength(4000);
+            entity.Property(e => e.PreviousValues).HasColumnType("nvarchar(max)");
+            entity.Property(e => e.NewValues).IsRequired().HasColumnType("nvarchar(max)");
             entity.Property(e => e.ChangedByUserId).IsRequired().HasMaxLength(450);
             entity.Property(e => e.ChangedByUserEmail).HasMaxLength(256);
             entity.Property(e => e.Reason).HasMaxLength(1000);
