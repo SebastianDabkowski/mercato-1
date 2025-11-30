@@ -1,0 +1,126 @@
+@page "{roleName}"
+@model Mercato.Web.Pages.Admin.Roles.PermissionsModel
+@{
+    ViewData["Title"] = $"Manage {Model.RoleName} Permissions";
+}
+
+<h1>Manage @Model.RoleName Role Permissions</h1>
+
+<p class="text-muted">Assign or revoke permissions for the @Model.RoleName role. Changes take effect for all users with this role after the next authorization check.</p>
+
+@if (!string.IsNullOrEmpty(Model.SuccessMessage))
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <strong>Success!</strong> @Model.SuccessMessage
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+@if (!string.IsNullOrEmpty(Model.ErrorMessage))
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <strong>Error!</strong> @Model.ErrorMessage
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+@if (Model.RoleConfiguration == null)
+{
+    <div class="alert alert-warning">
+        Role configuration not found.
+    </div>
+}
+else
+{
+    <div class="mb-4">
+        <div class="d-flex align-items-center">
+            <span class="badge bg-primary fs-6 me-3">@Model.RoleName</span>
+            @{
+                var assignedCount = Model.RoleConfiguration.Permissions.Count(p => p.IsAssigned);
+                var totalCount = Model.RoleConfiguration.Permissions.Count;
+            }
+            <span class="text-muted">@assignedCount of @totalCount permissions assigned</span>
+        </div>
+    </div>
+
+    @foreach (var moduleGroup in Model.PermissionsByModule)
+    {
+        var moduleAssignedCount = moduleGroup.Count(p => p.IsAssigned);
+        var moduleTotalCount = moduleGroup.Count();
+        
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="bi bi-folder me-2"></i>@moduleGroup.Key Module
+                </h5>
+                <span class="badge bg-info">@moduleAssignedCount / @moduleTotalCount assigned</span>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th scope="col">Permission</th>
+                                <th scope="col">Description</th>
+                                <th scope="col">Status</th>
+                                <th scope="col" style="width: 150px;">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var permission in moduleGroup.OrderBy(p => p.Name))
+                            {
+                                <tr>
+                                    <td>
+                                        <strong>@permission.Name</strong>
+                                        <br />
+                                        <code class="small text-muted">@permission.Id</code>
+                                    </td>
+                                    <td class="text-muted">@permission.Description</td>
+                                    <td>
+                                        @if (permission.IsAssigned)
+                                        {
+                                            <span class="badge bg-success">
+                                                <i class="bi bi-check-circle me-1"></i>Assigned
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-secondary">
+                                                <i class="bi bi-x-circle me-1"></i>Not Assigned
+                                            </span>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (permission.IsAssigned)
+                                        {
+                                            <form method="post" asp-page-handler="Revoke" asp-route-permissionId="@permission.Id" class="d-inline">
+                                                <button type="submit" class="btn btn-sm btn-outline-danger"
+                                                        onclick="return confirm('Are you sure you want to revoke this permission from @Model.RoleName?');">
+                                                    <i class="bi bi-x-circle me-1"></i>Revoke
+                                                </button>
+                                            </form>
+                                        }
+                                        else
+                                        {
+                                            <form method="post" asp-page-handler="Assign" asp-route-permissionId="@permission.Id" class="d-inline">
+                                                <button type="submit" class="btn btn-sm btn-outline-success">
+                                                    <i class="bi bi-plus-circle me-1"></i>Assign
+                                                </button>
+                                            </form>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    }
+}
+
+<div class="mt-4">
+    <a asp-page="Index" class="btn btn-secondary">
+        &laquo; Back to RBAC Configuration
+    </a>
+</div>

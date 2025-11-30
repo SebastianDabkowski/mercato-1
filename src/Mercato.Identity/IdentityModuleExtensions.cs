@@ -1,5 +1,7 @@
 using Mercato.Identity.Application.Services;
+using Mercato.Identity.Domain.Interfaces;
 using Mercato.Identity.Infrastructure;
+using Mercato.Identity.Infrastructure.Repositories;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Mercato.Identity;
@@ -34,6 +36,13 @@ public static class IdentityModuleExtensions
         
         // Register password change service
         services.AddScoped<IPasswordChangeService, PasswordChangeService>();
+        
+        // Register RBAC repositories as singletons to maintain state across requests
+        services.AddSingleton<IPermissionRepository, PermissionRepository>();
+        services.AddSingleton<IRolePermissionRepository, RolePermissionRepository>();
+        
+        // Register RBAC configuration service
+        services.AddScoped<IRbacConfigurationService, RbacConfigurationService>();
         
         return services;
     }
