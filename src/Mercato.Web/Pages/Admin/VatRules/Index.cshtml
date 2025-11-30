@@ -1,0 +1,185 @@
+@page
+@model Mercato.Web.Pages.Admin.VatRules.IndexModel
+@{
+    ViewData["Title"] = "VAT Rules";
+}
+
+<h1>VAT Rules</h1>
+
+<div class="alert alert-info">
+    <strong>VAT Configuration</strong> - Manage VAT and tax rates for different countries and product categories
+</div>
+
+@if (!string.IsNullOrEmpty(Model.SuccessMessage))
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @Model.SuccessMessage
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+@if (!string.IsNullOrEmpty(Model.ErrorMessage))
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        @Model.ErrorMessage
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<div class="mb-4">
+    <a asp-page="Create" class="btn btn-primary">
+        <i class="bi bi-plus-circle"></i> Create New VAT Rule
+    </a>
+</div>
+
+@if (Model.Rules.Count == 0)
+{
+    <div class="alert alert-warning">
+        <strong>No VAT rules found.</strong> Create a new rule to configure VAT rates for countries and categories.
+    </div>
+}
+else
+{
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="card-title mb-0">VAT Rules</h5>
+            <span class="badge bg-secondary">@Model.Rules.Count rules</span>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover mb-0">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Name</th>
+                            <th>Country</th>
+                            <th class="text-end">Tax Rate</th>
+                            <th>Category</th>
+                            <th>Effective From</th>
+                            <th>Effective To</th>
+                            <th>Priority</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var rule in Model.Rules)
+                        {
+                            var isFutureDated = rule.EffectiveFrom > DateTimeOffset.UtcNow;
+                            var isExpired = rule.EffectiveTo.HasValue && rule.EffectiveTo.Value < DateTimeOffset.UtcNow;
+                            <tr class="@(isFutureDated ? "table-info" : isExpired ? "table-secondary" : "")">
+                                <td>
+                                    <strong>@rule.Name</strong>
+                                </td>
+                                <td>
+                                    <span class="badge bg-primary">@rule.CountryCode</span>
+                                </td>
+                                <td class="text-end">
+                                    <strong>@rule.TaxRate.ToString("F2")%</strong>
+                                </td>
+                                <td>
+                                    @if (rule.CategoryId.HasValue)
+                                    {
+                                        var categoryIdStr = rule.CategoryId.Value.ToString();
+                                        <span class="badge bg-secondary">@(categoryIdStr.Length >= 8 ? categoryIdStr[..8] : categoryIdStr)...</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">All categories</span>
+                                    }
+                                </td>
+                                <td>
+                                    @rule.EffectiveFrom.ToString("yyyy-MM-dd")
+                                    @if (isFutureDated)
+                                    {
+                                        <span class="badge bg-info ms-1">Future</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (rule.EffectiveTo.HasValue)
+                                    {
+                                        <span>@rule.EffectiveTo.Value.ToString("yyyy-MM-dd")</span>
+                                        @if (isExpired)
+                                        {
+                                            <span class="badge bg-secondary ms-1">Expired</span>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">No expiry</span>
+                                    }
+                                </td>
+                                <td class="text-center">@rule.Priority</td>
+                                <td>
+                                    @if (rule.IsActive)
+                                    {
+                                        <span class="badge bg-success">Active</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-danger">Inactive</span>
+                                    }
+                                </td>
+                                <td>
+                                    <div class="btn-group" role="group">
+                                        <a asp-page="Edit" asp-route-id="@rule.Id" class="btn btn-sm btn-outline-primary">
+                                            Edit
+                                        </a>
+                                        <a asp-page="History" asp-route-id="@rule.Id" class="btn btn-sm btn-outline-secondary">
+                                            History
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mt-4">
+        <div class="card-header">
+            <h6 class="mb-0">Legend</h6>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4">
+                    <span class="badge bg-info">Future</span>
+                    <small class="text-muted ms-2">Rule is scheduled to take effect on the specified date</small>
+                </div>
+                <div class="col-md-4">
+                    <span class="badge bg-secondary">Expired</span>
+                    <small class="text-muted ms-2">Rule has passed its effective end date</small>
+                </div>
+                <div class="col-md-4">
+                    <span class="badge bg-success">Active</span> / <span class="badge bg-danger">Inactive</span>
+                    <small class="text-muted ms-2">Manual toggle for rule availability</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mt-3">
+        <div class="card-header">
+            <h6 class="mb-0">Rule Matching</h6>
+        </div>
+        <div class="card-body">
+            <p class="small text-muted mb-0">
+                When calculating VAT for a transaction, the system finds the applicable rule by:
+                <ol class="small mt-2 mb-0">
+                    <li>Matching the country code</li>
+                    <li>If a category is specified, trying to find a category-specific rule first</li>
+                    <li>Falling back to a country-level rule (no category) if no category-specific rule exists</li>
+                    <li>Among matching rules, selecting the one with highest priority and most recent effective date</li>
+                    <li>Only considering rules that are active and within their effective date range</li>
+                </ol>
+            </p>
+        </div>
+    </div>
+}
+
+<div class="mt-4">
+    <a asp-page="/Admin/Index" class="btn btn-outline-secondary">
+        &laquo; Back to Admin Dashboard
+    </a>
+</div>
