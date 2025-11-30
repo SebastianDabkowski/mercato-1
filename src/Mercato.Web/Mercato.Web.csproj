@@ -18,6 +18,7 @@
     <ProjectReference Include="..\Mercato.Shipping\Mercato.Shipping.csproj" />
     <ProjectReference Include="..\Mercato.Notifications\Mercato.Notifications.csproj" />
     <ProjectReference Include="..\Mercato.Analytics\Mercato.Analytics.csproj" />
+    <ProjectReference Include="..\Application\Security\Mercato.Application.Security.csproj" />
   </ItemGroup>
 
   <ItemGroup>
