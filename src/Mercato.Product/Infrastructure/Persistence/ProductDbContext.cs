@@ -64,6 +64,11 @@ public class ProductDbContext : DbContext
     /// </summary>
     public DbSet<PhotoModerationDecision> PhotoModerationDecisions { get; set; }
 
+    /// <summary>
+    /// Gets or sets the category attributes DbSet.
+    /// </summary>
+    public DbSet<CategoryAttribute> CategoryAttributes { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -78,6 +83,7 @@ public class ProductDbContext : DbContext
         ConfigureProductVariant(modelBuilder);
         ConfigureProductModerationDecision(modelBuilder);
         ConfigurePhotoModerationDecision(modelBuilder);
+        ConfigureCategoryAttribute(modelBuilder);
     }
 
     private static void ConfigureProduct(ModelBuilder modelBuilder)
@@ -630,6 +636,66 @@ public class ProductDbContext : DbContext
 
             // Index for ordering by creation date
             entity.HasIndex(e => e.CreatedAt);
+        });
+    }
+
+    private static void ConfigureCategoryAttribute(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<CategoryAttribute>(entity =>
+        {
+            entity.ToTable("CategoryAttributes");
+
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.CategoryId)
+                .IsRequired();
+
+            entity.Property(e => e.Name)
+                .IsRequired()
+                .HasMaxLength(100);
+
+            entity.Property(e => e.Type)
+                .IsRequired();
+
+            entity.Property(e => e.IsRequired)
+                .IsRequired()
+                .HasDefaultValue(false);
+
+            entity.Property(e => e.IsDeprecated)
+                .IsRequired()
+                .HasDefaultValue(false);
+
+            entity.Property(e => e.ListOptions)
+                .HasMaxLength(4000);
+
+            entity.Property(e => e.DisplayOrder)
+                .IsRequired()
+                .HasDefaultValue(0);
+
+            entity.Property(e => e.CreatedAt)
+                .IsRequired();
+
+            entity.Property(e => e.LastUpdatedAt)
+                .IsRequired();
+
+            // Index for querying attributes by category
+            entity.HasIndex(e => e.CategoryId)
+                .HasDatabaseName("IX_CategoryAttributes_CategoryId");
+
+            // Index for active (non-deprecated) attributes
+            entity.HasIndex(e => new { e.CategoryId, e.IsDeprecated })
+                .HasDatabaseName("IX_CategoryAttributes_CategoryId_IsDeprecated");
+
+            // Unique index for attribute name within category
+            entity.HasIndex(e => new { e.CategoryId, e.Name })
+                .IsUnique()
+                .HasDatabaseName("IX_CategoryAttributes_CategoryId_Name");
+
+            // Relationship to category
+            entity.HasOne(e => e.Category)
+                .WithMany()
+                .HasForeignKey(e => e.CategoryId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
     }
 }
