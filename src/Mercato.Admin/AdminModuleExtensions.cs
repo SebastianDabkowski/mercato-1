@@ -32,6 +32,7 @@ public static class AdminModuleExtensions
         services.AddScoped<ISlaConfigurationRepository, SlaConfigurationRepository>();
         services.AddScoped<ISlaTrackingRepository, SlaTrackingRepository>();
         services.AddScoped<IAdminAuditRepository, AdminAuditRepository>();
+        services.AddScoped<IMarketplaceDashboardRepository, MarketplaceDashboardRepository>();
 
         // Register services
         services.AddScoped<IUserRoleManagementService, UserRoleManagementService>();
@@ -39,6 +40,7 @@ public static class AdminModuleExtensions
         services.AddScoped<ISlaTrackingService, SlaTrackingService>();
         services.AddScoped<IAdminCaseService, AdminCaseService>();
         services.AddScoped<IReviewModerationService, ReviewModerationService>();
+        services.AddScoped<IMarketplaceDashboardService, MarketplaceDashboardService>();
 
         return services;
     }

@@ -1,0 +1,146 @@
+@page
+@model Mercato.Web.Pages.Admin.PerformanceDashboardModel
+@{
+    ViewData["Title"] = "Performance Dashboard";
+}
+
+<h1>Marketplace Performance Dashboard</h1>
+<p class="text-muted">Monitor key performance indicators for the marketplace.</p>
+
+<!-- Time Period Filter -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3 align-items-end">
+            <div class="col-md-4">
+                <label for="TimePeriod" class="form-label">Time Period</label>
+                <select asp-for="TimePeriod" class="form-select" id="TimePeriod">
+                    <option value="today">Today</option>
+                    <option value="7d">Last 7 Days</option>
+                    <option value="30d">Last 30 Days</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary w-100">Apply</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@if (Model.DashboardResult != null)
+{
+    <!-- Last Refresh Time -->
+    <div class="alert alert-light mb-4">
+        <i class="bi bi-clock"></i>
+        <strong>Last Refresh:</strong> @Model.DashboardResult.RetrievedAt.ToString("yyyy-MM-dd HH:mm:ss") UTC
+        <span class="text-muted">| Showing data for @PerformanceDashboardModel.GetTimePeriodDisplay(Model.TimePeriod)</span>
+    </div>
+
+    @if (Model.HasNoData)
+    {
+        <div class="alert alert-info mb-4">
+            <i class="bi bi-info-circle"></i>
+            <strong>No data available</strong> for the selected period. Metrics will appear once orders and activity are recorded.
+        </div>
+    }
+
+    <!-- KPI Cards -->
+    <div class="row mb-4">
+        <!-- GMV -->
+        <div class="col-md-4 col-lg mb-3">
+            <a asp-page="/Admin/Orders/Index" class="text-decoration-none">
+                <div class="card h-100 border-success">
+                    <div class="card-body text-center">
+                        <h5 class="card-title text-muted">Total GMV</h5>
+                        <h2 class="display-4 text-success">@PerformanceDashboardModel.FormatCurrency(Model.DashboardResult.TotalGmv)</h2>
+                        <small class="text-muted">Gross Merchandise Value (incl. shipping)</small>
+                    </div>
+                    <div class="card-footer bg-transparent text-center">
+                        <small class="text-primary">View Orders <i class="bi bi-arrow-right"></i></small>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <!-- Orders -->
+        <div class="col-md-4 col-lg mb-3">
+            <a asp-page="/Admin/Orders/Index" class="text-decoration-none">
+                <div class="card h-100 border-primary">
+                    <div class="card-body text-center">
+                        <h5 class="card-title text-muted">Total Orders</h5>
+                        <h2 class="display-4 text-primary">@Model.DashboardResult.TotalOrders.ToString("N0")</h2>
+                        <small class="text-muted">Orders placed in period</small>
+                    </div>
+                    <div class="card-footer bg-transparent text-center">
+                        <small class="text-primary">View Orders <i class="bi bi-arrow-right"></i></small>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <!-- Active Sellers -->
+        <div class="col-md-4 col-lg mb-3">
+            <a asp-page="/Admin/Sellers/Index" class="text-decoration-none">
+                <div class="card h-100 border-info">
+                    <div class="card-body text-center">
+                        <h5 class="card-title text-muted">Active Sellers</h5>
+                        <h2 class="display-4 text-info">@Model.DashboardResult.ActiveSellers.ToString("N0")</h2>
+                        <small class="text-muted">Stores with Active or LimitedActive status</small>
+                    </div>
+                    <div class="card-footer bg-transparent text-center">
+                        <small class="text-primary">View Sellers <i class="bi bi-arrow-right"></i></small>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <!-- Active Products -->
+        <div class="col-md-6 col-lg mb-3">
+            <div class="card h-100 border-warning">
+                <div class="card-body text-center">
+                    <h5 class="card-title text-muted">Active Products</h5>
+                    <h2 class="display-4 text-warning">@Model.DashboardResult.ActiveProducts.ToString("N0")</h2>
+                    <small class="text-muted">Products with Active status</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- New Users -->
+        <div class="col-md-6 col-lg mb-3">
+            <a asp-page="/Admin/Users/Index" class="text-decoration-none">
+                <div class="card h-100 border-secondary">
+                    <div class="card-body text-center">
+                        <h5 class="card-title text-muted">New Users</h5>
+                        <h2 class="display-4 text-secondary">@Model.DashboardResult.NewUsers.ToString("N0")</h2>
+                        <small class="text-muted">Newly registered users in period</small>
+                    </div>
+                    <div class="card-footer bg-transparent text-center">
+                        <small class="text-primary">View Users <i class="bi bi-arrow-right"></i></small>
+                    </div>
+                </div>
+            </a>
+        </div>
+    </div>
+
+    <!-- Period Details -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Period Details</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Start Date:</strong> @Model.DashboardResult.StartDate.ToString("yyyy-MM-dd HH:mm:ss") UTC</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>End Date:</strong> @Model.DashboardResult.EndDate.ToString("yyyy-MM-dd HH:mm:ss") UTC</p>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<div class="mt-4">
+    <a asp-page="/Admin/Index" class="btn btn-secondary">
+        &laquo; Back to Admin Portal
+    </a>
+</div>
