@@ -48,7 +48,7 @@ public class AdminAuditLog
     /// <summary>
     /// Gets or sets whether the action was successful.
     /// </summary>
-    public bool IsSuccess { get; set; }
+    public bool IsSuccess { get; set; } = true;
 
     /// <summary>
     /// Gets or sets the failure reason if the action was not successful.

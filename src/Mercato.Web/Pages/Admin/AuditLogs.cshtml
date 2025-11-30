@@ -122,7 +122,14 @@
                                     }
                                     else
                                     {
-                                        <span class="badge bg-danger" title="@log.FailureReason">Failure</span>
+                                        @if (!string.IsNullOrEmpty(log.FailureReason))
+                                        {
+                                            <span class="badge bg-danger" title="@log.FailureReason">Failure</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-danger">Failure</span>
+                                        }
                                     }
                                 </td>
                                 <td>
