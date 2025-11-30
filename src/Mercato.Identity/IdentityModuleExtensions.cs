@@ -47,6 +47,10 @@ public static class IdentityModuleExtensions
         // Register user data export service for GDPR compliance
         services.AddScoped<IUserDataExportService, UserDataExportService>();
         
+        // Register account deletion services for GDPR compliance
+        services.AddScoped<IAccountDeletionCheckService, AccountDeletionCheckService>();
+        services.AddScoped<IAccountDeletionService, AccountDeletionService>();
+        
         return services;
     }
 }

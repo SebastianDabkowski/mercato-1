@@ -41,6 +41,13 @@ public class ProductReview
     public string BuyerId { get; set; } = string.Empty;
 
     /// <summary>
+    /// Gets or sets the display name for the buyer.
+    /// Used to show reviewer identity on the storefront.
+    /// Set to "Deleted User" when account is deleted for anonymization.
+    /// </summary>
+    public string? BuyerDisplayName { get; set; }
+
+    /// <summary>
     /// Gets or sets the rating from 1 to 5 stars.
     /// </summary>
     public int Rating { get; set; }

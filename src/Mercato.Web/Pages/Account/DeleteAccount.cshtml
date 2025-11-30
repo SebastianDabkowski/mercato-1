@@ -1,0 +1,166 @@
+@page
+@model Mercato.Web.Pages.Account.DeleteAccountModel
+@{
+    ViewData["Title"] = "Delete My Account";
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <h1>Delete My Account</h1>
+        <p class="lead">Request permanent deletion of your account and personal data.</p>
+
+        <div class="alert alert-danger mb-4" role="alert">
+            <h5 class="alert-heading"><i class="bi bi-exclamation-triangle-fill"></i> Warning: This action is permanent!</h5>
+            <p class="mb-0">
+                Once your account is deleted, you will no longer be able to sign in and all your personal data will be removed or anonymized.
+                This action cannot be undone.
+            </p>
+        </div>
+
+        @if (!string.IsNullOrEmpty(Model.StatusMessage))
+        {
+            <div class="alert @(Model.IsError ? "alert-danger" : "alert-success")" role="alert">
+                @Model.StatusMessage
+            </div>
+        }
+
+        @if (!Model.CanDelete && Model.BlockingConditions.Count > 0)
+        {
+            <div class="alert alert-warning" role="alert">
+                <h5 class="alert-heading"><i class="bi bi-x-circle"></i> Account Deletion Blocked</h5>
+                <p>You cannot delete your account at this time due to the following unresolved issues:</p>
+                <ul class="mb-0">
+                    @foreach (var condition in Model.BlockingConditions)
+                    {
+                        <li>@condition</li>
+                    }
+                </ul>
+            </div>
+        }
+
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Your Rights Under GDPR</h5>
+            </div>
+            <div class="card-body">
+                <p class="card-text">
+                    Under the General Data Protection Regulation (GDPR), you have the right to have your personal data erased.
+                    When you delete your account:
+                </p>
+                <ul>
+                    <li>Your login credentials will be permanently removed</li>
+                    <li>Your personal identifiers will be irreversibly anonymized</li>
+                    <li>You will no longer be able to sign in to your account</li>
+                </ul>
+            </div>
+        </div>
+
+        @if (Model.ImpactInfo != null && Model.ImpactInfo.UserFound)
+        {
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">What Will Happen to Your Data</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-bordered mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Data Type</th>
+                                <th>Action</th>
+                                <th>Count</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Account Information</strong></td>
+                                <td><span class="badge bg-danger">Deleted</span></td>
+                                <td>1 account (@Model.ImpactInfo.Email)</td>
+                            </tr>
+                            @if (Model.ImpactInfo.DeliveryAddressCount > 0)
+                            {
+                                <tr>
+                                    <td><strong>Delivery Addresses</strong></td>
+                                    <td><span class="badge bg-danger">Deleted</span></td>
+                                    <td>@Model.ImpactInfo.DeliveryAddressCount address(es)</td>
+                                </tr>
+                            }
+                            @if (Model.ImpactInfo.OrderCount > 0)
+                            {
+                                <tr>
+                                    <td><strong>Order History</strong></td>
+                                    <td><span class="badge bg-warning text-dark">Anonymized</span></td>
+                                    <td>@Model.ImpactInfo.OrderCount order(s)</td>
+                                </tr>
+                            }
+                            @if (Model.ImpactInfo.ReviewCount > 0)
+                            {
+                                <tr>
+                                    <td><strong>Product Reviews</strong></td>
+                                    <td><span class="badge bg-warning text-dark">Anonymized</span></td>
+                                    <td>@Model.ImpactInfo.ReviewCount review(s)</td>
+                                </tr>
+                            }
+                            @if (Model.ImpactInfo.HasStore)
+                            {
+                                <tr>
+                                    <td><strong>Store Information</strong></td>
+                                    <td><span class="badge bg-warning text-dark">Closed &amp; Anonymized</span></td>
+                                    <td>@Model.ImpactInfo.StoreName</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                    
+                    <div class="alert alert-info mt-3 mb-0" role="alert">
+                        <i class="bi bi-info-circle"></i>
+                        <strong>Note:</strong> Order records and financial transactions are retained for legal and tax purposes, 
+                        but all personal information (name, email, phone, address) will be anonymized.
+                    </div>
+                </div>
+            </div>
+        }
+
+        @if (Model.CanDelete)
+        {
+            <div class="card border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0"><i class="bi bi-trash"></i> Confirm Account Deletion</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        <div class="form-check mb-4">
+                            <input class="form-check-input" type="checkbox" asp-for="ConfirmDeletion" id="confirmDeletion">
+                            <label class="form-check-label" for="confirmDeletion">
+                                I understand that this action is permanent and cannot be undone. I confirm that I want to delete my account 
+                                and all associated personal data.
+                            </label>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-danger btn-lg">
+                            <i class="bi bi-trash"></i> Delete My Account Permanently
+                        </button>
+                    </form>
+                </div>
+            </div>
+        }
+
+        <div class="mt-4">
+            @if (User.IsInRole("Buyer"))
+            {
+                <a asp-page="/Buyer/Index" class="btn btn-outline-secondary">Back to Buyer Portal</a>
+            }
+            else if (User.IsInRole("Seller"))
+            {
+                <a asp-page="/Seller/Index" class="btn btn-outline-secondary">Back to Seller Dashboard</a>
+            }
+            else
+            {
+                <a asp-page="/Index" class="btn btn-outline-secondary">Back to Home</a>
+            }
+            
+            <a asp-page="/Account/DataExport" class="btn btn-outline-primary ms-2">
+                <i class="bi bi-download"></i> Export My Data First
+            </a>
+        </div>
+    </div>
+</div>
