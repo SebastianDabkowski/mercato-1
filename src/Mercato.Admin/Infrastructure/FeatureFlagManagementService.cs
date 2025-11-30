@@ -13,6 +13,17 @@ namespace Mercato.Admin.Infrastructure;
 /// </summary>
 public class FeatureFlagManagementService : IFeatureFlagManagementService
 {
+    /// <summary>
+    /// Maximum length for target value JSON to prevent denial of service attacks.
+    /// </summary>
+    private const int MaxTargetValueLength = 10000;
+
+    private static readonly JsonSerializerOptions SafeJsonOptions = new()
+    {
+        MaxDepth = 5,
+        PropertyNameCaseInsensitive = true
+    };
+
     private readonly IFeatureFlagRepository _featureFlagRepository;
     private readonly IFeatureFlagHistoryRepository _historyRepository;
     private readonly ILogger<FeatureFlagManagementService> _logger;
@@ -382,9 +393,15 @@ public class FeatureFlagManagementService : IFeatureFlagManagementService
             return false;
         }
 
+        // Guard against excessively large input
+        if (targetValue.Length > MaxTargetValueLength)
+        {
+            return false;
+        }
+
         try
         {
-            var sellerIds = JsonSerializer.Deserialize<List<string>>(targetValue);
+            var sellerIds = JsonSerializer.Deserialize<List<string>>(targetValue, SafeJsonOptions);
             return sellerIds != null && sellerIds.Contains(sellerId, StringComparer.OrdinalIgnoreCase);
         }
         catch (JsonException)
