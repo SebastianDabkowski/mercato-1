@@ -102,8 +102,15 @@ public class PaymentDbContext : DbContext
         {
             entity.HasKey(e => e.Id);
 
+            entity.Property(e => e.Name)
+                .HasMaxLength(200)
+                .IsRequired();
+
             entity.Property(e => e.CommissionRate)
                 .HasPrecision(18, 4);
+
+            entity.Property(e => e.FixedFee)
+                .HasPrecision(18, 2);
 
             entity.Property(e => e.MinCommission)
                 .HasPrecision(18, 4);
@@ -114,11 +121,19 @@ public class PaymentDbContext : DbContext
             entity.Property(e => e.CategoryId)
                 .HasMaxLength(100);
 
+            entity.Property(e => e.CreatedByUserId)
+                .HasMaxLength(450);
+
+            entity.Property(e => e.LastModifiedByUserId)
+                .HasMaxLength(450);
+
             entity.HasIndex(e => e.SellerId);
             entity.HasIndex(e => e.CategoryId);
             entity.HasIndex(e => e.IsActive);
             entity.HasIndex(e => e.Priority);
+            entity.HasIndex(e => e.EffectiveDate);
             entity.HasIndex(e => new { e.SellerId, e.CategoryId, e.IsActive });
+            entity.HasIndex(e => new { e.SellerId, e.CategoryId, e.EffectiveDate });
         });
 
         // Configure CommissionRecord entity

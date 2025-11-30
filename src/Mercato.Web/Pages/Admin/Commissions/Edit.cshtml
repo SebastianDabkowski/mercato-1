@@ -1,0 +1,188 @@
+@page "{id:guid}"
+@model Mercato.Web.Pages.Admin.Commissions.EditModel
+@{
+    ViewData["Title"] = "Edit Commission Rule";
+}
+
+<h1>Edit Commission Rule</h1>
+
+<div class="alert alert-info">
+    <strong>Edit commission rule</strong> - Modify rates, fees, and applicability. Changes are versioned for audit purposes.
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">Rule Details</h5>
+                <span class="badge bg-secondary">Version @Model.CurrentVersion</span>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    <input type="hidden" asp-for="Input.Id" />
+                    <div asp-validation-summary="All" class="text-danger mb-3"></div>
+
+                    <div class="mb-3">
+                        <label asp-for="Input.Name" class="form-label"></label>
+                        <input asp-for="Input.Name" class="form-control" placeholder="e.g., Global Default Rate" />
+                        <span asp-validation-for="Input.Name" class="text-danger"></span>
+                        <small class="form-text text-muted">A descriptive name for this commission rule.</small>
+                    </div>
+
+                    <hr class="my-4">
+                    <h6>Applicability</h6>
+                    <p class="text-muted small">Leave both Seller ID and Category ID empty for a global default rule.</p>
+
+                    <div class="mb-3">
+                        <label asp-for="Input.SellerId" class="form-label"></label>
+                        <input asp-for="Input.SellerId" class="form-control" placeholder="Leave empty for all sellers" />
+                        <span asp-validation-for="Input.SellerId" class="text-danger"></span>
+                        <small class="form-text text-muted">Optional. Enter a specific Seller ID (GUID) to apply this rule only to that seller.</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Input.CategoryId" class="form-label"></label>
+                        <input asp-for="Input.CategoryId" class="form-control" placeholder="Leave empty for all categories" />
+                        <span asp-validation-for="Input.CategoryId" class="text-danger"></span>
+                        <small class="form-text text-muted">Optional. Enter a Category ID to apply this rule only to products in that category.</small>
+                    </div>
+
+                    <hr class="my-4">
+                    <h6>Commission Settings</h6>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="Input.CommissionRate" class="form-label"></label>
+                            <div class="input-group">
+                                <input asp-for="Input.CommissionRate" class="form-control" step="0.01" />
+                                <span class="input-group-text">%</span>
+                            </div>
+                            <span asp-validation-for="Input.CommissionRate" class="text-danger"></span>
+                            <small class="form-text text-muted">Percentage of the transaction amount charged as commission.</small>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="Input.FixedFee" class="form-label"></label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input asp-for="Input.FixedFee" class="form-control" step="0.01" />
+                            </div>
+                            <span asp-validation-for="Input.FixedFee" class="text-danger"></span>
+                            <small class="form-text text-muted">Optional fixed fee added to each transaction.</small>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="Input.MinCommission" class="form-label"></label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input asp-for="Input.MinCommission" class="form-control" step="0.01" />
+                            </div>
+                            <span asp-validation-for="Input.MinCommission" class="text-danger"></span>
+                            <small class="form-text text-muted">Optional. Minimum commission amount per transaction.</small>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="Input.MaxCommission" class="form-label"></label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input asp-for="Input.MaxCommission" class="form-control" step="0.01" />
+                            </div>
+                            <span asp-validation-for="Input.MaxCommission" class="text-danger"></span>
+                            <small class="form-text text-muted">Optional. Maximum commission amount per transaction.</small>
+                        </div>
+                    </div>
+
+                    <hr class="my-4">
+                    <h6>Scheduling & Priority</h6>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="Input.EffectiveDate" class="form-label"></label>
+                            <input asp-for="Input.EffectiveDate" type="date" class="form-control" />
+                            <span asp-validation-for="Input.EffectiveDate" class="text-danger"></span>
+                            <small class="form-text text-muted">Date when this rule becomes applicable. Use a future date to schedule changes.</small>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="Input.Priority" class="form-label"></label>
+                            <input asp-for="Input.Priority" type="number" class="form-control" min="0" max="1000" />
+                            <span asp-validation-for="Input.Priority" class="text-danger"></span>
+                            <small class="form-text text-muted">Higher priority rules take precedence when multiple rules match.</small>
+                        </div>
+                    </div>
+
+                    <div class="mb-3 form-check">
+                        <input asp-for="Input.IsActive" class="form-check-input" />
+                        <label asp-for="Input.IsActive" class="form-check-label"></label>
+                        <small class="form-text text-muted d-block">Inactive rules are not applied to transactions.</small>
+                    </div>
+
+                    <hr class="my-4">
+
+                    <div class="d-flex justify-content-between">
+                        <a asp-page="Index" class="btn btn-outline-secondary">Cancel</a>
+                        <button type="submit" class="btn btn-primary">Save Changes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">Audit Information</h6>
+            </div>
+            <div class="card-body">
+                <dl class="row mb-0 small">
+                    <dt class="col-sm-4">Created:</dt>
+                    <dd class="col-sm-8">@Model.CreatedAt.ToString("yyyy-MM-dd HH:mm")</dd>
+                    
+                    <dt class="col-sm-4">Created By:</dt>
+                    <dd class="col-sm-8">@(Model.CreatedByUserId ?? "Unknown")</dd>
+                    
+                    <dt class="col-sm-4">Version:</dt>
+                    <dd class="col-sm-8">@Model.CurrentVersion</dd>
+                </dl>
+                <p class="text-muted small mt-3 mb-0">
+                    All changes to commission rules are tracked and versioned for audit purposes.
+                </p>
+            </div>
+        </div>
+
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6 class="mb-0">Rule Matching Priority</h6>
+            </div>
+            <div class="card-body">
+                <p class="small text-muted">Rules are matched in the following order of specificity:</p>
+                <ol class="small">
+                    <li><strong>Seller + Category</strong> - Most specific, highest priority</li>
+                    <li><strong>Seller only</strong> - Applies to all products from a seller</li>
+                    <li><strong>Category only</strong> - Applies to all sellers in a category</li>
+                    <li><strong>Global default</strong> - Applies when no specific rule matches</li>
+                </ol>
+                <p class="small text-muted">Within the same specificity level, rules with higher Priority values take precedence.</p>
+            </div>
+        </div>
+
+        <div class="card mt-3 border-warning">
+            <div class="card-header bg-warning text-dark">
+                <h6 class="mb-0">Important Note</h6>
+            </div>
+            <div class="card-body">
+                <p class="small text-muted mb-0">
+                    <strong>Changing effective dates:</strong> If you change the effective date to a future date, 
+                    the previous rate will continue to apply until the new date is reached. This allows you to 
+                    schedule rate changes in advance.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

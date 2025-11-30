@@ -67,7 +67,7 @@ public class CommissionServiceTests
         };
 
         _mockRuleRepository
-            .Setup(r => r.GetBestMatchingRuleAsync(sellerId, null))
+            .Setup(r => r.GetBestMatchingRuleAsync(sellerId, null, It.IsAny<DateTimeOffset?>()))
             .ReturnsAsync(sellerRule);
 
         _mockRecordRepository
@@ -121,7 +121,7 @@ public class CommissionServiceTests
         };
 
         _mockRuleRepository
-            .Setup(r => r.GetBestMatchingRuleAsync(sellerId, categoryId))
+            .Setup(r => r.GetBestMatchingRuleAsync(sellerId, categoryId, It.IsAny<DateTimeOffset?>()))
             .ReturnsAsync(categoryRule);
 
         _mockRecordRepository
@@ -169,7 +169,7 @@ public class CommissionServiceTests
         };
 
         _mockRuleRepository
-            .Setup(r => r.GetBestMatchingRuleAsync(sellerId, null))
+            .Setup(r => r.GetBestMatchingRuleAsync(sellerId, null, It.IsAny<DateTimeOffset?>()))
             .ReturnsAsync(globalRule);
 
         _mockRecordRepository
@@ -205,7 +205,7 @@ public class CommissionServiceTests
         };
 
         _mockRuleRepository
-            .Setup(r => r.GetBestMatchingRuleAsync(sellerId, null))
+            .Setup(r => r.GetBestMatchingRuleAsync(sellerId, null, It.IsAny<DateTimeOffset?>()))
             .ReturnsAsync((CommissionRule?)null);
 
         _mockRecordRepository
@@ -257,7 +257,7 @@ public class CommissionServiceTests
         };
 
         _mockRuleRepository
-            .Setup(r => r.GetBestMatchingRuleAsync(sellerId, null))
+            .Setup(r => r.GetBestMatchingRuleAsync(sellerId, null, It.IsAny<DateTimeOffset?>()))
             .ReturnsAsync(ruleWithMin);
 
         _mockRecordRepository
@@ -306,7 +306,7 @@ public class CommissionServiceTests
         };
 
         _mockRuleRepository
-            .Setup(r => r.GetBestMatchingRuleAsync(sellerId, null))
+            .Setup(r => r.GetBestMatchingRuleAsync(sellerId, null, It.IsAny<DateTimeOffset?>()))
             .ReturnsAsync(ruleWithMax);
 
         _mockRecordRepository
@@ -347,11 +347,11 @@ public class CommissionServiceTests
 
         // Different rules for different sellers/categories
         _mockRuleRepository
-            .Setup(r => r.GetBestMatchingRuleAsync(seller1Id, null))
+            .Setup(r => r.GetBestMatchingRuleAsync(seller1Id, null, It.IsAny<DateTimeOffset?>()))
             .ReturnsAsync((CommissionRule?)null);
 
         _mockRuleRepository
-            .Setup(r => r.GetBestMatchingRuleAsync(seller2Id, "electronics"))
+            .Setup(r => r.GetBestMatchingRuleAsync(seller2Id, "electronics", It.IsAny<DateTimeOffset?>()))
             .ReturnsAsync(new CommissionRule
             {
                 Id = Guid.NewGuid(),
@@ -363,7 +363,7 @@ public class CommissionServiceTests
             });
 
         _mockRuleRepository
-            .Setup(r => r.GetBestMatchingRuleAsync(seller3Id, "books"))
+            .Setup(r => r.GetBestMatchingRuleAsync(seller3Id, "books", It.IsAny<DateTimeOffset?>()))
             .ReturnsAsync(new CommissionRule
             {
                 Id = Guid.NewGuid(),
@@ -540,7 +540,7 @@ public class CommissionServiceTests
         };
 
         _mockRuleRepository
-            .Setup(r => r.GetBestMatchingRuleAsync(sellerId, null))
+            .Setup(r => r.GetBestMatchingRuleAsync(sellerId, null, It.IsAny<DateTimeOffset?>()))
             .ReturnsAsync((CommissionRule?)null);
 
         _mockRecordRepository
@@ -1057,7 +1057,7 @@ public class CommissionServiceTests
         };
 
         _mockRuleRepository
-            .Setup(r => r.GetBestMatchingRuleAsync(sellerId, null))
+            .Setup(r => r.GetBestMatchingRuleAsync(sellerId, null, It.IsAny<DateTimeOffset?>()))
             .ReturnsAsync((CommissionRule?)null);
 
         // Capture the records being added

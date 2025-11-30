@@ -65,6 +65,9 @@ public static class AdminModuleExtensions
         // Note: PhotoModerationService requires IPhotoModerationRepository from Product module,
         // IStoreRepository from Seller module, and INotificationService from Notifications module.
         services.AddScoped<IPhotoModerationService, PhotoModerationService>();
+        // Note: CommissionRuleManagementService requires ICommissionRuleRepository from Payments module,
+        // which is registered by the Payments module in Program.cs.
+        services.AddScoped<ICommissionRuleManagementService, CommissionRuleManagementService>();
 
         return services;
     }
