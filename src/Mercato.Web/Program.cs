@@ -16,6 +16,7 @@ using Mercato.Payments;
 using Mercato.Product;
 using Mercato.Seller;
 using Mercato.Shipping;
+using Mercato.Application.Security.Encryption;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -117,6 +118,9 @@ builder.Services.AddIdentityModule();
 builder.Services.AddAdminModule(builder.Configuration);
 builder.Services.AddAnalyticsModule(builder.Configuration);
 
+// Register encryption services for sensitive data protection
+builder.Services.AddEncryptionServices(builder.Configuration);
+
 // Register user data provider for GDPR data export
 builder.Services.AddScoped<IUserDataProvider, UserDataProvider>();
 
@@ -155,6 +159,10 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+// Add security headers early in the pipeline
+app.UseSecurityHeaders();
+
 app.UseStaticFiles();
 
 app.UseRouting();
