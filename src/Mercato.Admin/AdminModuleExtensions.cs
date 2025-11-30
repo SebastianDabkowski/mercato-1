@@ -35,6 +35,9 @@ public static class AdminModuleExtensions
         // Note: MarketplaceDashboardRepository requires OrderDbContext, SellerDbContext, and ProductDbContext
         // which are registered by their respective modules (Orders, Seller, Product) in Program.cs.
         services.AddScoped<IMarketplaceDashboardRepository, MarketplaceDashboardRepository>();
+        // Note: OrderRevenueReportRepository requires OrderDbContext and PaymentDbContext
+        // which are registered by their respective modules (Orders, Payments) in Program.cs.
+        services.AddScoped<IOrderRevenueReportRepository, OrderRevenueReportRepository>();
 
         // Register services
         services.AddScoped<IUserRoleManagementService, UserRoleManagementService>();
@@ -43,6 +46,7 @@ public static class AdminModuleExtensions
         services.AddScoped<IAdminCaseService, AdminCaseService>();
         services.AddScoped<IReviewModerationService, ReviewModerationService>();
         services.AddScoped<IMarketplaceDashboardService, MarketplaceDashboardService>();
+        services.AddScoped<IOrderRevenueReportService, OrderRevenueReportService>();
 
         return services;
     }
