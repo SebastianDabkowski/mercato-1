@@ -193,7 +193,9 @@
                     @foreach (var row in Model.Rows)
                     {
                         var orderIdStr = row.OrderId.ToString();
-                        var truncatedOrderId = orderIdStr.Length > 8 ? orderIdStr[..8] : orderIdStr;
+                        var truncatedOrderId = orderIdStr.Length > IndexModel.OrderIdDisplayLength 
+                            ? orderIdStr[..IndexModel.OrderIdDisplayLength] 
+                            : orderIdStr;
                         <tr>
                             <td>
                                 <small class="text-muted">@truncatedOrderId...</small>

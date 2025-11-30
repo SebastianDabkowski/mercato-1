@@ -17,6 +17,17 @@ public class IndexModel : PageModel
     private readonly IOrderRevenueReportService _reportService;
     private readonly ILogger<IndexModel> _logger;
     private const int DefaultPageSize = 20;
+    
+    /// <summary>
+    /// Maximum number of rows that can be exported to CSV.
+    /// This should match the service's MaxExportRows constant.
+    /// </summary>
+    private const int MaxExportPageSize = 10000;
+
+    /// <summary>
+    /// Number of characters to display for truncated order IDs.
+    /// </summary>
+    public const int OrderIdDisplayLength = 8;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="IndexModel"/> class.
@@ -178,9 +189,6 @@ public class IndexModel : PageModel
     /// <returns>The file result with the CSV content.</returns>
     public async Task<IActionResult> OnPostExportAsync()
     {
-        // Use a reasonable export limit; the service will enforce its own MaxExportRows
-        const int exportPageSize = 10000;
-        
         var query = new OrderRevenueReportFilterQuery
         {
             FromDate = FromDate,
@@ -189,7 +197,7 @@ public class IndexModel : PageModel
             OrderStatuses = OrderStatuses,
             PaymentStatuses = PaymentStatuses,
             Page = 1,
-            PageSize = exportPageSize
+            PageSize = MaxExportPageSize
         };
 
         var result = await _reportService.ExportToCsvAsync(query);

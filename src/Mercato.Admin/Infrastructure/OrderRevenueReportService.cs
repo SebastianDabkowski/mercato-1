@@ -85,15 +85,13 @@ public class OrderRevenueReportService : IOrderRevenueReportService
                 return ExportOrderRevenueReportResult.Failure(validationErrors);
             }
 
-            // First, get the total count to check if it exceeds the limit
-            var (rows, totalCount, _, _, _) = await _repository.GetReportDataAsync(
+            // First, get the total count using the optimized count method
+            var totalCount = await _repository.GetCountAsync(
                 query.FromDate,
                 query.ToDate,
                 query.SellerId,
                 query.OrderStatuses.Count > 0 ? query.OrderStatuses : null,
-                query.PaymentStatuses.Count > 0 ? query.PaymentStatuses : null,
-                1,
-                1);
+                query.PaymentStatuses.Count > 0 ? query.PaymentStatuses : null);
 
             if (totalCount > MaxExportRows)
             {
@@ -102,7 +100,7 @@ public class OrderRevenueReportService : IOrderRevenueReportService
             }
 
             // Get all rows for export (no pagination)
-            (rows, totalCount, _, _, _) = await _repository.GetReportDataAsync(
+            var (rows, _, _, _, _) = await _repository.GetReportDataAsync(
                 query.FromDate,
                 query.ToDate,
                 query.SellerId,

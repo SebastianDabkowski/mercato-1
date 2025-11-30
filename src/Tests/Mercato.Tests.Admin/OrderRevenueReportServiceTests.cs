@@ -275,15 +275,13 @@ public class OrderRevenueReportServiceTests
         };
 
         _mockRepository
-            .Setup(r => r.GetReportDataAsync(
+            .Setup(r => r.GetCountAsync(
                 It.IsAny<DateTimeOffset?>(),
                 It.IsAny<DateTimeOffset?>(),
                 It.IsAny<Guid?>(),
                 It.IsAny<IReadOnlyList<OrderStatus>?>(),
-                It.IsAny<IReadOnlyList<PaymentStatus>?>(),
-                1,
-                1))
-            .ReturnsAsync((rows, 1, 100.00m, 10.00m, 90.00m));
+                It.IsAny<IReadOnlyList<PaymentStatus>?>()))
+            .ReturnsAsync(1);
 
         _mockRepository
             .Setup(r => r.GetReportDataAsync(
@@ -340,15 +338,13 @@ public class OrderRevenueReportServiceTests
         };
 
         _mockRepository
-            .Setup(r => r.GetReportDataAsync(
+            .Setup(r => r.GetCountAsync(
                 It.IsAny<DateTimeOffset?>(),
                 It.IsAny<DateTimeOffset?>(),
                 It.IsAny<Guid?>(),
                 It.IsAny<IReadOnlyList<OrderStatus>?>(),
-                It.IsAny<IReadOnlyList<PaymentStatus>?>(),
-                1,
-                1))
-            .ReturnsAsync((rows, 1, 100.00m, 10.00m, 90.00m));
+                It.IsAny<IReadOnlyList<PaymentStatus>?>()))
+            .ReturnsAsync(1);
 
         _mockRepository
             .Setup(r => r.GetReportDataAsync(
@@ -399,15 +395,13 @@ public class OrderRevenueReportServiceTests
         };
 
         _mockRepository
-            .Setup(r => r.GetReportDataAsync(
+            .Setup(r => r.GetCountAsync(
                 It.IsAny<DateTimeOffset?>(),
                 It.IsAny<DateTimeOffset?>(),
                 It.IsAny<Guid?>(),
                 It.IsAny<IReadOnlyList<OrderStatus>?>(),
-                It.IsAny<IReadOnlyList<PaymentStatus>?>(),
-                1,
-                1))
-            .ReturnsAsync((rows, 1, 100.00m, 10.00m, 90.00m));
+                It.IsAny<IReadOnlyList<PaymentStatus>?>()))
+            .ReturnsAsync(1);
 
         _mockRepository
             .Setup(r => r.GetReportDataAsync(
@@ -440,15 +434,13 @@ public class OrderRevenueReportServiceTests
     {
         // Arrange
         _mockRepository
-            .Setup(r => r.GetReportDataAsync(
+            .Setup(r => r.GetCountAsync(
                 It.IsAny<DateTimeOffset?>(),
                 It.IsAny<DateTimeOffset?>(),
                 It.IsAny<Guid?>(),
                 It.IsAny<IReadOnlyList<OrderStatus>?>(),
-                It.IsAny<IReadOnlyList<PaymentStatus>?>(),
-                1,
-                1))
-            .ReturnsAsync((new List<OrderRevenueReportRow>(), 10001, 0m, 0m, 0m));
+                It.IsAny<IReadOnlyList<PaymentStatus>?>()))
+            .ReturnsAsync(10001);
 
         var query = new OrderRevenueReportFilterQuery
         {
@@ -469,6 +461,15 @@ public class OrderRevenueReportServiceTests
     {
         // Arrange
         var rows = new List<OrderRevenueReportRow>();
+
+        _mockRepository
+            .Setup(r => r.GetCountAsync(
+                It.IsAny<DateTimeOffset?>(),
+                It.IsAny<DateTimeOffset?>(),
+                It.IsAny<Guid?>(),
+                It.IsAny<IReadOnlyList<OrderStatus>?>(),
+                It.IsAny<IReadOnlyList<PaymentStatus>?>()))
+            .ReturnsAsync(0);
 
         _mockRepository
             .Setup(r => r.GetReportDataAsync(
@@ -503,6 +504,15 @@ public class OrderRevenueReportServiceTests
     {
         // Arrange
         var rows = new List<OrderRevenueReportRow>();
+
+        _mockRepository
+            .Setup(r => r.GetCountAsync(
+                It.IsAny<DateTimeOffset?>(),
+                It.IsAny<DateTimeOffset?>(),
+                It.IsAny<Guid?>(),
+                It.IsAny<IReadOnlyList<OrderStatus>?>(),
+                It.IsAny<IReadOnlyList<PaymentStatus>?>()))
+            .ReturnsAsync(0);
 
         _mockRepository
             .Setup(r => r.GetReportDataAsync(

@@ -67,9 +67,13 @@ public class OrderRevenueReportRepository : IOrderRevenueReportRepository
             subOrderQuery = subOrderQuery.Where(s => orderStatuses.Contains(s.Order.Status));
         }
 
-        // Get all commission records for aggregation
+        // Get order IDs to filter commission and escrow queries
+        var orderIds = await subOrderQuery.Select(s => s.OrderId).Distinct().ToListAsync();
+
+        // Get commission records filtered by order IDs
         var commissionRecords = await _paymentDbContext.CommissionRecords
             .AsNoTracking()
+            .Where(c => orderIds.Contains(c.OrderId))
             .ToListAsync();
 
         // Create a dictionary for quick lookup by OrderId and SellerId
@@ -77,9 +81,10 @@ public class OrderRevenueReportRepository : IOrderRevenueReportRepository
             .GroupBy(c => (c.OrderId, c.SellerId))
             .ToDictionary(g => g.Key, g => g.Sum(c => c.NetCommissionAmount));
 
-        // Get escrow entries for payment status information
+        // Get escrow entries filtered by order IDs for payment status information
         var escrowEntries = await _paymentDbContext.EscrowEntries
             .AsNoTracking()
+            .Where(e => orderIds.Contains(e.OrderId))
             .ToListAsync();
 
         // Create a dictionary for payment status lookup by OrderId and SellerId
@@ -155,6 +160,69 @@ public class OrderRevenueReportRepository : IOrderRevenueReportRepository
             .ToListAsync();
 
         return sellers.Select(s => (s.StoreId, s.StoreName)).ToList();
+    }
+
+    /// <inheritdoc />
+    public async Task<int> GetCountAsync(
+        DateTimeOffset? fromDate,
+        DateTimeOffset? toDate,
+        Guid? sellerId,
+        IReadOnlyList<OrderStatus>? orderStatuses,
+        IReadOnlyList<PaymentStatus>? paymentStatuses)
+    {
+        // Start with seller sub-orders as the base
+        var subOrderQuery = _orderDbContext.SellerSubOrders
+            .Include(s => s.Order)
+            .AsNoTracking();
+
+        // Apply date filter
+        if (fromDate.HasValue)
+        {
+            subOrderQuery = subOrderQuery.Where(s => s.Order.CreatedAt >= fromDate.Value);
+        }
+
+        if (toDate.HasValue)
+        {
+            subOrderQuery = subOrderQuery.Where(s => s.Order.CreatedAt <= toDate.Value);
+        }
+
+        // Apply seller filter
+        if (sellerId.HasValue)
+        {
+            subOrderQuery = subOrderQuery.Where(s => s.StoreId == sellerId.Value);
+        }
+
+        // Apply order status filter
+        if (orderStatuses != null && orderStatuses.Count > 0)
+        {
+            subOrderQuery = subOrderQuery.Where(s => orderStatuses.Contains(s.Order.Status));
+        }
+
+        // If no payment status filter, we can count directly
+        if (paymentStatuses == null || paymentStatuses.Count == 0)
+        {
+            return await subOrderQuery.CountAsync();
+        }
+
+        // If payment status filter is applied, we need to load and filter in memory
+        // This is a simplified count that may need refinement for very large datasets
+        var orderIds = await subOrderQuery.Select(s => s.OrderId).Distinct().ToListAsync();
+        var escrowEntries = await _paymentDbContext.EscrowEntries
+            .AsNoTracking()
+            .Where(e => orderIds.Contains(e.OrderId))
+            .ToListAsync();
+
+        var escrowLookup = escrowEntries
+            .GroupBy(e => (e.OrderId, e.SellerId))
+            .ToDictionary(g => g.Key, g => MapEscrowStatusToPaymentStatus(g.First().Status));
+
+        var subOrders = await subOrderQuery.Select(s => new { s.OrderId, s.StoreId }).ToListAsync();
+        
+        return subOrders.Count(s =>
+        {
+            var paymentStatus = escrowLookup.GetValueOrDefault((s.OrderId, s.StoreId), PaymentStatus.Pending);
+            return paymentStatuses.Contains(paymentStatus);
+        });
     }
 
     private static PaymentStatus MapEscrowStatusToPaymentStatus(EscrowStatus escrowStatus)
