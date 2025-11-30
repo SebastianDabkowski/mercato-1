@@ -1,0 +1,128 @@
+@page
+@model Mercato.Web.Pages.Admin.Currencies.CreateModel
+@{
+    ViewData["Title"] = "Add Currency";
+}
+
+<h1>Add Currency</h1>
+
+<div class="alert alert-info">
+    <strong>Add a new currency</strong> - Configure a new currency for use in the marketplace
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Currency Details</h5>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    <div asp-validation-summary="All" class="text-danger mb-3"></div>
+
+                    <div class="mb-3">
+                        <label asp-for="Input.Code" class="form-label"></label>
+                        <input asp-for="Input.Code" class="form-control" placeholder="e.g., USD, EUR, GBP" maxlength="3" style="text-transform: uppercase;" />
+                        <span asp-validation-for="Input.Code" class="text-danger"></span>
+                        <small class="form-text text-muted">ISO 4217 currency code (exactly 3 letters).</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Input.Name" class="form-label"></label>
+                        <input asp-for="Input.Name" class="form-control" placeholder="e.g., United States Dollar" />
+                        <span asp-validation-for="Input.Name" class="text-danger"></span>
+                        <small class="form-text text-muted">Full name of the currency.</small>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="Input.Symbol" class="form-label"></label>
+                            <input asp-for="Input.Symbol" class="form-control" placeholder="e.g., $, €, £" maxlength="5" />
+                            <span asp-validation-for="Input.Symbol" class="text-danger"></span>
+                            <small class="form-text text-muted">Currency symbol for display.</small>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="Input.DecimalPlaces" class="form-label"></label>
+                            <input asp-for="Input.DecimalPlaces" type="number" class="form-control" min="0" max="8" />
+                            <span asp-validation-for="Input.DecimalPlaces" class="text-danger"></span>
+                            <small class="form-text text-muted">Number of decimal places (typically 2).</small>
+                        </div>
+                    </div>
+
+                    <div class="mb-3 form-check">
+                        <input asp-for="Input.IsEnabled" class="form-check-input" />
+                        <label asp-for="Input.IsEnabled" class="form-check-label"></label>
+                        <small class="form-text text-muted d-block">Disabled currencies cannot be used for new listings or transactions.</small>
+                    </div>
+
+                    <hr class="my-4">
+
+                    <div class="d-flex justify-content-between">
+                        <a asp-page="Index" class="btn btn-outline-secondary">Cancel</a>
+                        <button type="submit" class="btn btn-primary">Add Currency</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">Common Currencies</h6>
+            </div>
+            <div class="card-body">
+                <table class="table table-sm small">
+                    <thead>
+                        <tr>
+                            <th>Code</th>
+                            <th>Name</th>
+                            <th>Symbol</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>USD</td><td>US Dollar</td><td>$</td></tr>
+                        <tr><td>EUR</td><td>Euro</td><td>€</td></tr>
+                        <tr><td>GBP</td><td>British Pound</td><td>£</td></tr>
+                        <tr><td>JPY</td><td>Japanese Yen</td><td>¥</td></tr>
+                        <tr><td>CHF</td><td>Swiss Franc</td><td>CHF</td></tr>
+                        <tr><td>CAD</td><td>Canadian Dollar</td><td>CA$</td></tr>
+                        <tr><td>AUD</td><td>Australian Dollar</td><td>A$</td></tr>
+                        <tr><td>CNY</td><td>Chinese Yuan</td><td>¥</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6 class="mb-0">About Exchange Rates</h6>
+            </div>
+            <div class="card-body">
+                <p class="small text-muted mb-0">
+                    Exchange rates are loaded by a separate module or integration.
+                    After adding a currency, you can view its exchange rate once
+                    it has been populated by the exchange rate service.
+                </p>
+            </div>
+        </div>
+
+        <div class="card mt-3 border-info">
+            <div class="card-header bg-info text-white">
+                <h6 class="mb-0">Base Currency</h6>
+            </div>
+            <div class="card-body">
+                <p class="small text-muted mb-0">
+                    New currencies are not set as the base currency automatically.
+                    After adding a currency, you can set it as the base currency
+                    from the currency list page if needed.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

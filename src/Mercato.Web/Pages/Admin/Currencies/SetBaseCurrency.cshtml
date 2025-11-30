@@ -1,0 +1,160 @@
+@page "{id:guid}"
+@model Mercato.Web.Pages.Admin.Currencies.SetBaseCurrencyModel
+@{
+    ViewData["Title"] = "Set Base Currency";
+}
+
+<h1>Set Base Currency</h1>
+
+<div class="alert alert-warning">
+    <strong>Warning: Major Operation</strong> - Changing the base currency is a significant operation that affects all exchange rate calculations.
+</div>
+
+@if (!string.IsNullOrEmpty(Model.ErrorMessage))
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        @Model.ErrorMessage
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card border-warning">
+            <div class="card-header bg-warning text-dark">
+                <h5 class="card-title mb-0">Confirm Base Currency Change</h5>
+            </div>
+            <div class="card-body">
+                @if (Model.Currency != null)
+                {
+                    <div class="mb-4">
+                        <h6>New Base Currency</h6>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <strong>Code:</strong> <span class="badge bg-primary fs-5">@Model.Currency.Code</span>
+                            </div>
+                            <div class="col-md-4">
+                                <strong>Name:</strong> @Model.Currency.Name
+                            </div>
+                            <div class="col-md-4">
+                                <strong>Symbol:</strong> @Model.Currency.Symbol
+                            </div>
+                        </div>
+                    </div>
+
+                    @if (Model.CurrentBaseCurrency != null)
+                    {
+                        <div class="mb-4">
+                            <h6>Current Base Currency</h6>
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <strong>Code:</strong> <span class="badge bg-secondary fs-5">@Model.CurrentBaseCurrency.Code</span>
+                                </div>
+                                <div class="col-md-4">
+                                    <strong>Name:</strong> @Model.CurrentBaseCurrency.Name
+                                </div>
+                                <div class="col-md-4">
+                                    <strong>Symbol:</strong> @Model.CurrentBaseCurrency.Symbol
+                                </div>
+                            </div>
+                        </div>
+                    }
+
+                    <hr class="my-4">
+
+                    <div class="alert alert-danger">
+                        <h6 class="alert-heading">Impact of This Change:</h6>
+                        <ul class="mb-0">
+                            <li>All exchange rates will need to be recalculated relative to the new base currency.</li>
+                            <li>This may affect existing listings and pending transactions.</li>
+                            <li>Historical data will retain original values but new calculations will use the new base.</li>
+                            <li>This operation requires additional confirmation.</li>
+                        </ul>
+                    </div>
+
+                    <form method="post">
+                        <div class="mb-4">
+                            <div class="form-check">
+                                <input asp-for="Confirmed" class="form-check-input" type="checkbox" />
+                                <label asp-for="Confirmed" class="form-check-label">
+                                    I understand that changing the base currency is a significant operation and confirm that I want to proceed.
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <a asp-page="Index" class="btn btn-outline-secondary">Cancel</a>
+                            <button type="submit" class="btn btn-warning" id="confirmButton" disabled>
+                                Confirm Change Base Currency
+                            </button>
+                        </div>
+                    </form>
+                }
+                else
+                {
+                    <div class="alert alert-danger">
+                        Currency not found.
+                    </div>
+                    <a asp-page="Index" class="btn btn-outline-secondary">Back to Currencies</a>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card border-danger">
+            <div class="card-header bg-danger text-white">
+                <h6 class="mb-0">Warning</h6>
+            </div>
+            <div class="card-body">
+                <p class="small mb-2">
+                    <strong>This is a critical operation.</strong>
+                </p>
+                <ul class="small text-muted mb-0">
+                    <li>The base currency is the reference for all exchange rates.</li>
+                    <li>Changing it affects how values are calculated across the platform.</li>
+                    <li>Consider the impact on existing data before proceeding.</li>
+                    <li>This action is logged for audit purposes.</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6 class="mb-0">Who Can Do This?</h6>
+            </div>
+            <div class="card-body">
+                <p class="small text-muted mb-0">
+                    Only administrators with the Admin role can change the base currency.
+                    This operation is logged and may require additional approval in some configurations.
+                </p>
+            </div>
+        </div>
+
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6 class="mb-0">Exchange Rate Updates</h6>
+            </div>
+            <div class="card-body">
+                <p class="small text-muted mb-0">
+                    After changing the base currency, the exchange rate module
+                    will need to update all rates relative to the new base.
+                    This may take some time depending on your exchange rate provider.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var checkbox = document.getElementById('Confirmed');
+            var button = document.getElementById('confirmButton');
+            
+            checkbox.addEventListener('change', function() {
+                button.disabled = !this.checked;
+            });
+        });
+    </script>
+}
