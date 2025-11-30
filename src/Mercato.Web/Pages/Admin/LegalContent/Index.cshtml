@@ -1,0 +1,124 @@
+@page
+@model Mercato.Web.Pages.Admin.LegalContent.IndexModel
+@{
+    ViewData["Title"] = "Legal Content Management";
+}
+
+<h1>Legal Content Management</h1>
+
+<div class="alert alert-info">
+    <strong>Legal Documents</strong> - Manage legal documents such as Terms of Service, Privacy Policy, Cookie Policy, and Seller Agreement. Create and manage versioned documents with future effective dates.
+</div>
+
+@if (!string.IsNullOrEmpty(Model.SuccessMessage))
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @Model.SuccessMessage
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+@if (!string.IsNullOrEmpty(Model.ErrorMessage))
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        @Model.ErrorMessage
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<div class="row">
+    @foreach (var doc in Model.DocumentSummaries)
+    {
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">@doc.Title</h5>
+                    @if (doc.HasDocument)
+                    {
+                        <span class="badge bg-success">Configured</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-warning text-dark">Not Configured</span>
+                    }
+                </div>
+                <div class="card-body">
+                    <p class="card-text text-muted">@doc.Description</p>
+                    
+                    @if (doc.HasDocument)
+                    {
+                        <div class="mb-3">
+                            <strong>Versions:</strong> @doc.VersionCount
+                        </div>
+                        
+                        @if (!string.IsNullOrEmpty(doc.ActiveVersionNumber))
+                        {
+                            <div class="mb-2">
+                                <span class="badge bg-primary">Active: v@doc.ActiveVersionNumber</span>
+                                <small class="text-muted ms-2">
+                                    Effective since @doc.ActiveVersionEffectiveDate?.ToString("yyyy-MM-dd")
+                                </small>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="alert alert-warning mb-2 py-1 px-2">
+                                <small>No active version. Create and publish a version to make content available.</small>
+                            </div>
+                        }
+                        
+                        @if (!string.IsNullOrEmpty(doc.UpcomingVersionNumber))
+                        {
+                            <div class="mb-2">
+                                <span class="badge bg-info">Upcoming: v@doc.UpcomingVersionNumber</span>
+                                <small class="text-muted ms-2">
+                                    Takes effect @doc.UpcomingVersionEffectiveDate?.ToString("yyyy-MM-dd")
+                                </small>
+                            </div>
+                        }
+                    }
+                </div>
+                <div class="card-footer">
+                    @if (doc.HasDocument && doc.DocumentId.HasValue)
+                    {
+                        <a asp-page="Versions" asp-route-documentType="@((int)doc.DocumentType)" 
+                           class="btn btn-primary btn-sm">
+                            <i class="bi bi-list-ul"></i> Manage Versions
+                        </a>
+                    }
+                    else
+                    {
+                        <a asp-page="Versions" asp-route-documentType="@((int)doc.DocumentType)" 
+                           class="btn btn-success btn-sm">
+                            <i class="bi bi-plus-circle"></i> Configure Document
+                        </a>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+<div class="card mt-4">
+    <div class="card-header">
+        <h6 class="mb-0">About Legal Document Versioning</h6>
+    </div>
+    <div class="card-body">
+        <p class="small text-muted mb-0">
+            Legal documents support versioning with effective dates:
+        </p>
+        <ul class="small text-muted mt-2 mb-0">
+            <li><strong>Draft versions</strong> can be created and edited before publishing.</li>
+            <li><strong>Published versions</strong> become available to users once their effective date is reached.</li>
+            <li><strong>Future-dated versions</strong> allow scheduling changes in advance. Users will see a notice about upcoming changes.</li>
+            <li><strong>Consent tracking</strong> records which version each user has accepted, supporting audit and compliance requirements.</li>
+            <li>Old versions are preserved for reference and audit purposes.</li>
+        </ul>
+    </div>
+</div>
+
+<div class="mt-4">
+    <a asp-page="/Admin/Index" class="btn btn-outline-secondary">
+        &laquo; Back to Admin Dashboard
+    </a>
+</div>

@@ -73,6 +73,21 @@ public class AdminDbContext : DbContext
     /// </summary>
     public DbSet<Integration> Integrations { get; set; } = null!;
 
+    /// <summary>
+    /// Gets or sets the legal documents.
+    /// </summary>
+    public DbSet<LegalDocument> LegalDocuments { get; set; } = null!;
+
+    /// <summary>
+    /// Gets or sets the legal document versions.
+    /// </summary>
+    public DbSet<LegalDocumentVersion> LegalDocumentVersions { get; set; } = null!;
+
+    /// <summary>
+    /// Gets or sets the legal consents.
+    /// </summary>
+    public DbSet<LegalConsent> LegalConsents { get; set; } = null!;
+
     /// <inheritdoc/>
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -268,6 +283,54 @@ public class AdminDbContext : DbContext
                 .HasDatabaseName("IX_Integrations_IntegrationType_Environment");
             entity.HasIndex(e => new { e.IsEnabled, e.Status })
                 .HasDatabaseName("IX_Integrations_IsEnabled_Status");
+        });
+
+        modelBuilder.Entity<LegalDocument>(entity =>
+        {
+            entity.ToTable("LegalDocuments");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Title).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.Description).HasMaxLength(1000);
+            entity.Property(e => e.CreatedByUserId).IsRequired().HasMaxLength(450);
+            entity.Property(e => e.UpdatedByUserId).HasMaxLength(450);
+            entity.HasIndex(e => e.DocumentType).IsUnique();
+            entity.HasIndex(e => e.IsActive);
+        });
+
+        modelBuilder.Entity<LegalDocumentVersion>(entity =>
+        {
+            entity.ToTable("LegalDocumentVersions");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.VersionNumber).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.Content).IsRequired().HasColumnType("nvarchar(max)");
+            entity.Property(e => e.ChangeSummary).HasMaxLength(2000);
+            entity.Property(e => e.CreatedByUserId).IsRequired().HasMaxLength(450);
+            entity.Property(e => e.UpdatedByUserId).HasMaxLength(450);
+            entity.HasIndex(e => e.LegalDocumentId);
+            entity.HasIndex(e => e.IsPublished);
+            entity.HasIndex(e => e.EffectiveDate);
+            entity.HasIndex(e => new { e.LegalDocumentId, e.VersionNumber })
+                .HasDatabaseName("IX_LegalDocumentVersions_DocumentId_VersionNumber").IsUnique();
+            entity.HasIndex(e => new { e.LegalDocumentId, e.IsPublished, e.EffectiveDate })
+                .HasDatabaseName("IX_LegalDocumentVersions_DocumentId_Published_EffectiveDate");
+        });
+
+        modelBuilder.Entity<LegalConsent>(entity =>
+        {
+            entity.ToTable("LegalConsents");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.UserId).IsRequired().HasMaxLength(450);
+            entity.Property(e => e.VersionNumber).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.IpAddressHash).HasMaxLength(64);
+            entity.Property(e => e.ConsentContext).IsRequired().HasMaxLength(100);
+            entity.HasIndex(e => e.UserId);
+            entity.HasIndex(e => e.LegalDocumentVersionId);
+            entity.HasIndex(e => e.DocumentType);
+            entity.HasIndex(e => e.ConsentedAt);
+            entity.HasIndex(e => new { e.UserId, e.DocumentType })
+                .HasDatabaseName("IX_LegalConsents_UserId_DocumentType");
+            entity.HasIndex(e => new { e.UserId, e.LegalDocumentVersionId })
+                .HasDatabaseName("IX_LegalConsents_UserId_VersionId");
         });
     }
 }
