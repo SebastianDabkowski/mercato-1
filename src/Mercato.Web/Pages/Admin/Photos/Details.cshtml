@@ -1,0 +1,332 @@
+@page "{id:guid}"
+@model Mercato.Web.Pages.Admin.Photos.DetailsModel
+@{
+    ViewData["Title"] = "Photo Moderation Details";
+}
+
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1><i class="bi bi-image me-2"></i>Photo Review</h1>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item"><a asp-page="Index">Photo Moderation</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Review</li>
+                </ol>
+            </nav>
+        </div>
+        <a asp-page="Index" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Back to Queue
+        </a>
+    </div>
+
+    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+    {
+        <div class="alert alert-danger alert-dismissible fade show">
+            @Model.ErrorMessage
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(Model.SuccessMessage))
+    {
+        <div class="alert alert-success alert-dismissible fade show">
+            @Model.SuccessMessage
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    @if (Model.PhotoDetails == null)
+    {
+        <div class="alert alert-warning">Photo not found.</div>
+    }
+    else
+    {
+        <div class="row">
+            @* Photo Preview *@
+            <div class="col-lg-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="bi bi-image me-2"></i>Photo Preview
+                            @if (Model.PhotoDetails.IsFlagged)
+                            {
+                                <span class="badge bg-danger ms-2">
+                                    <i class="bi bi-flag me-1"></i>Flagged
+                                </span>
+                            }
+                        </h5>
+                    </div>
+                    <div class="card-body text-center">
+                        @{
+                            var imageSrc = !string.IsNullOrEmpty(Model.PhotoDetails.OptimizedPath)
+                                ? Model.PhotoDetails.OptimizedPath
+                                : Model.PhotoDetails.StoragePath;
+
+                            // Use centralized path validation for security
+                            var isValidPath = ImagePathValidator.IsValidPath(imageSrc);
+                        }
+                        @if (!string.IsNullOrEmpty(imageSrc) && isValidPath)
+                        {
+                            <img src="@imageSrc" class="img-fluid rounded shadow" alt="Product photo"
+                                 style="max-height: 500px; cursor: pointer;" 
+                                 data-bs-toggle="modal" data-bs-target="#imageModal" />
+                            <p class="text-muted mt-2 small">
+                                <i class="bi bi-zoom-in me-1"></i>Click to enlarge
+                            </p>
+                        }
+                        else
+                        {
+                            <div class="bg-light rounded d-flex align-items-center justify-content-center"
+                                 style="height: 400px;">
+                                <i class="bi bi-image text-muted" style="font-size: 5rem;"></i>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            @* Photo Information *@
+            <div class="col-lg-6 mb-4">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-info-circle me-2"></i>Photo Information</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-sm-4 text-muted">Status:</div>
+                            <div class="col-sm-8">
+                                <span class="badge @DetailsModel.GetModerationStatusBadgeClass(Model.PhotoDetails.ModerationStatus)">
+                                    @DetailsModel.GetModerationStatusDisplayText(Model.PhotoDetails.ModerationStatus)
+                                </span>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-sm-4 text-muted">File Name:</div>
+                            <div class="col-sm-8">@Model.PhotoDetails.FileName</div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-sm-4 text-muted">File Size:</div>
+                            <div class="col-sm-8">@DetailsModel.FormatFileSize(Model.PhotoDetails.FileSize)</div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-sm-4 text-muted">Content Type:</div>
+                            <div class="col-sm-8">@Model.PhotoDetails.ContentType</div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-sm-4 text-muted">Main Image:</div>
+                            <div class="col-sm-8">
+                                @if (Model.PhotoDetails.IsMain)
+                                {
+                                    <span class="badge bg-primary">Yes - Main Image</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">No</span>
+                                }
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-sm-4 text-muted">Uploaded:</div>
+                            <div class="col-sm-8">@Model.PhotoDetails.CreatedAt.ToString("MMMM dd, yyyy 'at' h:mm tt")</div>
+                        </div>
+                        @if (Model.PhotoDetails.IsFlagged)
+                        {
+                            <hr />
+                            <div class="row mb-3">
+                                <div class="col-sm-4 text-danger"><i class="bi bi-flag me-1"></i>Flag Reason:</div>
+                                <div class="col-sm-8 text-danger">@Model.PhotoDetails.FlagReason</div>
+                            </div>
+                            @if (Model.PhotoDetails.FlaggedAt.HasValue)
+                            {
+                                <div class="row mb-3">
+                                    <div class="col-sm-4 text-muted">Flagged At:</div>
+                                    <div class="col-sm-8">@Model.PhotoDetails.FlaggedAt.Value.ToString("MMMM dd, yyyy 'at' h:mm tt")</div>
+                                </div>
+                            }
+                        }
+                        @if (Model.PhotoDetails.ModeratedAt.HasValue)
+                        {
+                            <hr />
+                            <div class="row mb-3">
+                                <div class="col-sm-4 text-muted">Last Moderated:</div>
+                                <div class="col-sm-8">@Model.PhotoDetails.ModeratedAt.Value.ToString("MMMM dd, yyyy 'at' h:mm tt")</div>
+                            </div>
+                            @if (!string.IsNullOrEmpty(Model.PhotoDetails.ModeratedBy))
+                            {
+                                <div class="row mb-3">
+                                    <div class="col-sm-4 text-muted">Moderated By:</div>
+                                    <div class="col-sm-8">@Model.PhotoDetails.ModeratedBy</div>
+                                </div>
+                            }
+                            @if (!string.IsNullOrEmpty(Model.PhotoDetails.ModerationReason))
+                            {
+                                <div class="row mb-3">
+                                    <div class="col-sm-4 text-muted">Reason:</div>
+                                    <div class="col-sm-8">@Model.PhotoDetails.ModerationReason</div>
+                                </div>
+                            }
+                        }
+                    </div>
+                </div>
+
+                @* Product Information *@
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-box-seam me-2"></i>Related Product</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-sm-4 text-muted">Product:</div>
+                            <div class="col-sm-8">
+                                <a asp-page="/Admin/Products/Details" asp-route-id="@Model.PhotoDetails.ProductId">
+                                    @Model.PhotoDetails.ProductTitle
+                                </a>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-sm-4 text-muted">Store:</div>
+                            <div class="col-sm-8">@Model.PhotoDetails.StoreName</div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-sm-4 text-muted">Other Photos:</div>
+                            <div class="col-sm-8">
+                                @if (Model.PhotoDetails.OtherProductImagesCount > 0)
+                                {
+                                    <span>@Model.PhotoDetails.OtherProductImagesCount other image@(Model.PhotoDetails.OtherProductImagesCount > 1 ? "s" : "") for this product</span>
+                                }
+                                else
+                                {
+                                    <span class="text-warning"><i class="bi bi-exclamation-triangle me-1"></i>This is the only image for this product</span>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @* Moderation Actions *@
+        @if (Model.PhotoDetails.ModerationStatus == Mercato.Product.Domain.Entities.PhotoModerationStatus.PendingReview)
+        {
+            <div class="row">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="mb-0"><i class="bi bi-check2-square me-2"></i>Moderation Actions</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                @* Approve Action *@
+                                <div class="col-md-6 mb-3 mb-md-0">
+                                    <div class="border rounded p-4 h-100 bg-light">
+                                        <h6 class="text-success mb-3"><i class="bi bi-check-circle me-2"></i>Approve Photo</h6>
+                                        <p class="text-muted small">Photo will remain visible on the product page. The decision will be stored for audit purposes.</p>
+                                        <form method="post" asp-page-handler="Approve" asp-route-id="@Model.PhotoDetails.Id">
+                                            <div class="mb-3">
+                                                <label class="form-label">Approval Note (Optional)</label>
+                                                <textarea asp-for="ApprovalReason" class="form-control" rows="2"
+                                                          placeholder="Add any notes for this approval..."></textarea>
+                                            </div>
+                                            <button type="submit" class="btn btn-success">
+                                                <i class="bi bi-check-lg me-1"></i>Approve Photo
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+
+                                @* Remove Action *@
+                                <div class="col-md-6">
+                                    <div class="border border-danger rounded p-4 h-100">
+                                        <h6 class="text-danger mb-3"><i class="bi bi-x-circle me-2"></i>Remove Photo</h6>
+                                        <p class="text-muted small">Photo will no longer be displayed on the product page. The seller will be notified with the reason. Photo is archived for legal retention.</p>
+                                        <form method="post" asp-page-handler="Remove" asp-route-id="@Model.PhotoDetails.Id">
+                                            <div class="mb-3">
+                                                <label class="form-label">Removal Reason <span class="text-danger">*</span></label>
+                                                <textarea asp-for="RemovalReason" class="form-control" rows="2" required
+                                                          placeholder="Explain why this photo is being removed..."></textarea>
+                                                <div class="form-text">This reason will be shared with the seller.</div>
+                                            </div>
+                                            <button type="submit" class="btn btn-danger">
+                                                <i class="bi bi-trash me-1"></i>Remove Photo
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+
+        @* Moderation History *@
+        @if (Model.PhotoDetails.ModerationHistory.Count > 0)
+        {
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-clock-history me-2"></i>Moderation History</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Admin</th>
+                                    <th>Decision</th>
+                                    <th>Previous Status</th>
+                                    <th>Reason</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var entry in Model.PhotoDetails.ModerationHistory)
+                                {
+                                    <tr>
+                                        <td>@entry.CreatedAt.ToString("MMM dd, yyyy h:mm tt")</td>
+                                        <td>@entry.AdminUserId</td>
+                                        <td>
+                                            <span class="badge @DetailsModel.GetModerationStatusBadgeClass(entry.Decision)">
+                                                @DetailsModel.GetModerationStatusDisplayText(entry.Decision)
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span class="badge @DetailsModel.GetModerationStatusBadgeClass(entry.PreviousStatus)">
+                                                @DetailsModel.GetModerationStatusDisplayText(entry.PreviousStatus)
+                                            </span>
+                                        </td>
+                                        <td>@(entry.Reason ?? "-")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        }
+    }
+</div>
+
+@* Image Modal *@
+@if (Model.PhotoDetails != null)
+{
+    var modalImageSrc = !string.IsNullOrEmpty(Model.PhotoDetails.StoragePath) ? Model.PhotoDetails.StoragePath : "";
+    var isValidModalPath = ImagePathValidator.IsValidPath(modalImageSrc);
+
+    if (!string.IsNullOrEmpty(modalImageSrc) && isValidModalPath)
+    {
+        <div class="modal fade" id="imageModal" tabindex="-1" aria-labelledby="imageModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-xl modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="imageModalLabel">@Model.PhotoDetails.FileName</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body text-center">
+                        <img src="@modalImageSrc" class="img-fluid" alt="Product photo full size" />
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+}

@@ -61,6 +61,42 @@ public class ProductImage
     public string? OptimizedPath { get; set; }
 
     /// <summary>
+    /// Gets or sets the moderation status for admin review.
+    /// </summary>
+    public PhotoModerationStatus ModerationStatus { get; set; } = PhotoModerationStatus.PendingReview;
+
+    /// <summary>
+    /// Gets or sets the reason for removal when moderation status is Removed.
+    /// </summary>
+    public string? ModerationReason { get; set; }
+
+    /// <summary>
+    /// Gets or sets the date and time when the photo was last moderated.
+    /// </summary>
+    public DateTimeOffset? ModeratedAt { get; set; }
+
+    /// <summary>
+    /// Gets or sets the ID of the admin who last moderated this photo.
+    /// </summary>
+    public string? ModeratedBy { get; set; }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether the photo was flagged for review.
+    /// This can be set by automatic checks or user reports.
+    /// </summary>
+    public bool IsFlagged { get; set; }
+
+    /// <summary>
+    /// Gets or sets the reason why the photo was flagged.
+    /// </summary>
+    public string? FlagReason { get; set; }
+
+    /// <summary>
+    /// Gets or sets the date and time when the photo was flagged.
+    /// </summary>
+    public DateTimeOffset? FlaggedAt { get; set; }
+
+    /// <summary>
     /// Navigation property to the parent product.
     /// </summary>
     public Product? Product { get; set; }

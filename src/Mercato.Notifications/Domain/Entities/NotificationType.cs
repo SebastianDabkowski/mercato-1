@@ -58,5 +58,10 @@ public enum NotificationType
     /// <summary>
     /// Notification for when a product is rejected by moderation.
     /// </summary>
-    ProductRejected = 10
+    ProductRejected = 10,
+
+    /// <summary>
+    /// Notification for when a product photo is removed by admin moderation.
+    /// </summary>
+    PhotoImageRemoved = 11
 }
