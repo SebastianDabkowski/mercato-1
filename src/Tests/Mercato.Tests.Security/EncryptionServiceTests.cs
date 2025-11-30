@@ -121,16 +121,13 @@ public class EncryptionServiceTests
     }
 
     [Fact]
-    public void EncryptBytes_WithNullData_ReturnsNull()
+    public void EncryptBytes_WithNullData_ThrowsArgumentNullException()
     {
         // Arrange - intentionally testing null input behavior
         byte[] data = null!;
 
-        // Act
-        var result = _service.EncryptBytes(data);
-
-        // Assert
-        Assert.Null(result);
+        // Act & Assert
+        Assert.Throws<ArgumentNullException>(() => _service.EncryptBytes(data));
     }
 
     [Fact]
@@ -167,16 +164,13 @@ public class EncryptionServiceTests
     }
 
     [Fact]
-    public void DecryptBytes_WithNullData_ReturnsNull()
+    public void DecryptBytes_WithNullData_ThrowsArgumentNullException()
     {
         // Arrange - intentionally testing null input behavior
         byte[] encryptedData = null!;
 
-        // Act
-        var result = _service.DecryptBytes(encryptedData);
-
-        // Assert
-        Assert.Null(result);
+        // Act & Assert
+        Assert.Throws<ArgumentNullException>(() => _service.DecryptBytes(encryptedData));
     }
 
     [Fact]

@@ -47,9 +47,11 @@ public class DataProtectionEncryptionService : IEncryptionService
     /// <inheritdoc />
     public byte[] EncryptBytes(byte[] data)
     {
-        if (data == null || data.Length == 0)
+        ArgumentNullException.ThrowIfNull(data);
+
+        if (data.Length == 0)
         {
-            return data!;
+            return data;
         }
 
         return _protector.Protect(data);
@@ -58,9 +60,11 @@ public class DataProtectionEncryptionService : IEncryptionService
     /// <inheritdoc />
     public byte[] DecryptBytes(byte[] encryptedData)
     {
-        if (encryptedData == null || encryptedData.Length == 0)
+        ArgumentNullException.ThrowIfNull(encryptedData);
+
+        if (encryptedData.Length == 0)
         {
-            return encryptedData!;
+            return encryptedData;
         }
 
         return _protector.Unprotect(encryptedData);
