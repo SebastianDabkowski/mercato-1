@@ -286,4 +286,19 @@ public interface IOrderService
     /// <param name="query">The filter query parameters.</param>
     /// <returns>The result containing the filtered and paginated cases.</returns>
     Task<GetFilteredCasesResult> GetFilteredCasesForSellerAsync(SellerCaseFilterQuery query);
+
+    /// <summary>
+    /// Gets a seller revenue report with financial fields including commission data.
+    /// </summary>
+    /// <param name="query">The filter query parameters.</param>
+    /// <returns>The result containing the seller report with financial summary.</returns>
+    Task<GetSellerReportResult> GetSellerReportAsync(SellerReportFilterQuery query);
+
+    /// <summary>
+    /// Exports seller revenue report to CSV format with financial fields.
+    /// </summary>
+    /// <param name="storeId">The store ID for authorization.</param>
+    /// <param name="query">The filter query parameters.</param>
+    /// <returns>The CSV file as a byte array.</returns>
+    Task<byte[]> ExportSellerReportToCsvAsync(Guid storeId, SellerReportFilterQuery query);
 }

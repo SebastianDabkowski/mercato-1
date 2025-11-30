@@ -1,0 +1,280 @@
+@page
+@model Mercato.Web.Pages.Seller.Reports.IndexModel
+@{
+    ViewData["Title"] = "Revenue Reports";
+}
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1>Revenue Reports</h1>
+            <p class="text-muted mb-0">View your order revenue and commission breakdown</p>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+    {
+        <div class="alert alert-danger">@Model.ErrorMessage</div>
+    }
+
+    @if (TempData["Error"] is string error)
+    {
+        <div class="alert alert-danger">@error</div>
+    }
+
+    @if (TempData["Warning"] is string warning)
+    {
+        <div class="alert alert-warning">@warning</div>
+    }
+
+    @if (TempData["Success"] is string success)
+    {
+        <div class="alert alert-success">@success</div>
+    }
+
+    @if (Model.Store == null)
+    {
+        <div class="alert alert-warning">
+            <h5>No Store Found</h5>
+            <p>You need to set up your store before you can view reports.</p>
+            <a asp-page="/Seller/Onboarding/Index" class="btn btn-primary">Complete Onboarding</a>
+        </div>
+    }
+    else
+    {
+        @* Filter Section *@
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-funnel me-2"></i>Filter Reports</h5>
+            </div>
+            <div class="card-body">
+                <form method="get" asp-page="Index">
+                    <div class="row g-3">
+                        @* Status Filter *@
+                        <div class="col-md-4">
+                            <label class="form-label">Status</label>
+                            <select name="Status" class="form-select" multiple size="4">
+                                @foreach (var status in IndexModel.AllStatuses)
+                                {
+                                    <option value="@status" selected="@Model.Status.Contains(status)">
+                                        @IndexModel.GetStatusDisplayText(status)
+                                    </option>
+                                }
+                            </select>
+                            <small class="text-muted">Hold Ctrl/Cmd to select multiple</small>
+                        </div>
+
+                        @* Date Range Filter *@
+                        <div class="col-md-3">
+                            <label class="form-label">From Date</label>
+                            <input type="date" name="FromDate" class="form-control" 
+                                   value="@(Model.FromDate?.ToString("yyyy-MM-dd"))" />
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label">To Date</label>
+                            <input type="date" name="ToDate" class="form-control" 
+                                   value="@(Model.ToDate?.ToString("yyyy-MM-dd"))" />
+                        </div>
+
+                        @* Filter Actions *@
+                        <div class="col-md-2 d-flex align-items-end">
+                            <div class="w-100">
+                                <button type="submit" class="btn btn-primary w-100 mb-1">
+                                    <i class="bi bi-search me-1"></i>Apply
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-3">
+                        <a asp-page="Index" class="btn btn-outline-secondary">
+                            <i class="bi bi-x-circle me-1"></i>Clear Filters
+                        </a>
+                        <a href="@Model.GetExportQueryString()" class="btn btn-outline-success ms-2">
+                            <i class="bi bi-download me-1"></i>Export CSV
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        @* Summary Cards *@
+        @if (Model.TotalCount > 0)
+        {
+            <div class="row mb-4">
+                <div class="col-md-4">
+                    <div class="card bg-primary text-white">
+                        <div class="card-body">
+                            <h6 class="card-title"><i class="bi bi-cart-check me-2"></i>Total Order Value</h6>
+                            <h3 class="mb-0">@Model.TotalOrderValue.ToString("C")</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card bg-warning text-dark">
+                        <div class="card-body">
+                            <h6 class="card-title"><i class="bi bi-percent me-2"></i>Total Commission</h6>
+                            <h3 class="mb-0">@Model.TotalCommissionAmount.ToString("C")</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card bg-success text-white">
+                        <div class="card-body">
+                            <h6 class="card-title"><i class="bi bi-wallet2 me-2"></i>Net Amount</h6>
+                            <h3 class="mb-0">@Model.TotalNetAmount.ToString("C")</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+
+        @* Results Summary *@
+        @if (Model.TotalCount > 0)
+        {
+            <p class="text-muted">
+                Showing @((Model.CurrentPage - 1) * Model.PageSize + 1) - @Math.Min(Model.CurrentPage * Model.PageSize, Model.TotalCount) of @Model.TotalCount order@(Model.TotalCount > 1 ? "s" : "")
+            </p>
+        }
+
+        @if (Model.ReportItems.Count == 0)
+        {
+            <div class="text-center py-5">
+                <i class="bi bi-graph-up text-muted" style="font-size: 4rem;"></i>
+                <h3 class="mt-3 text-muted">No Orders Found</h3>
+                @if (Model.Status.Count > 0 || Model.FromDate.HasValue || Model.ToDate.HasValue)
+                {
+                    <p class="text-muted">No orders match your filter criteria. Try adjusting the filters.</p>
+                    <a asp-page="Index" class="btn btn-outline-primary mt-2">
+                        <i class="bi bi-x-circle me-1"></i>Clear Filters
+                    </a>
+                }
+                else
+                {
+                    <p class="text-muted">You don't have any orders yet. Reports will appear here when customers purchase your products.</p>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="card">
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Sub-Order #</th>
+                                    <th>Order Date</th>
+                                    <th>Status</th>
+                                    <th class="text-end">Order Value</th>
+                                    <th class="text-end">Commission</th>
+                                    <th class="text-end">Net Amount</th>
+                                    <th class="text-end">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in Model.ReportItems)
+                                {
+                                    <tr>
+                                        <td>
+                                            <a asp-page="/Seller/Orders/Details" asp-route-id="@item.SubOrderId" class="fw-bold text-decoration-none">
+                                                @item.SubOrderNumber
+                                            </a>
+                                        </td>
+                                        <td>@item.OrderDate.ToString("MMM dd, yyyy")</td>
+                                        <td>
+                                            <span class="badge @IndexModel.GetStatusBadgeClass(item.Status)">
+                                                @IndexModel.GetStatusDisplayText(item.Status)
+                                            </span>
+                                        </td>
+                                        <td class="text-end">@item.OrderValue.ToString("C")</td>
+                                        <td class="text-end text-warning">@item.CommissionAmount.ToString("C")</td>
+                                        <td class="text-end text-success fw-bold">@item.NetAmount.ToString("C")</td>
+                                        <td class="text-end">
+                                            <a asp-page="/Seller/Orders/Details" asp-route-id="@item.SubOrderId" class="btn btn-sm btn-outline-primary">
+                                                <i class="bi bi-eye me-1"></i>View
+                                            </a>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                            <tfoot class="table-secondary">
+                                <tr class="fw-bold">
+                                    <td colspan="3" class="text-end">Page Totals:</td>
+                                    <td class="text-end">@Model.ReportItems.Sum(i => i.OrderValue).ToString("C")</td>
+                                    <td class="text-end text-warning">@Model.ReportItems.Sum(i => i.CommissionAmount).ToString("C")</td>
+                                    <td class="text-end text-success">@Model.ReportItems.Sum(i => i.NetAmount).ToString("C")</td>
+                                    <td></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            @* Pagination *@
+            @if (Model.TotalPages > 1)
+            {
+                <nav aria-label="Report pagination" class="mt-4">
+                    <ul class="pagination justify-content-center">
+                        @* Previous Button *@
+                        <li class="page-item @(Model.HasPreviousPage ? "" : "disabled")">
+                            <a class="page-link" href="@Model.GetPaginationQueryString(Model.CurrentPage - 1)" 
+                               aria-label="Previous" tabindex="@(Model.HasPreviousPage ? 0 : -1)">
+                                <span aria-hidden="true">&laquo;</span>
+                            </a>
+                        </li>
+
+                        @* Page Numbers *@
+                        @{
+                            var startPage = Math.Max(1, Model.CurrentPage - 2);
+                            var endPage = Math.Min(Model.TotalPages, Model.CurrentPage + 2);
+
+                            if (startPage > 1)
+                            {
+                                <li class="page-item">
+                                    <a class="page-link" href="@Model.GetPaginationQueryString(1)">1</a>
+                                </li>
+                                if (startPage > 2)
+                                {
+                                    <li class="page-item disabled">
+                                        <span class="page-link">...</span>
+                                    </li>
+                                }
+                            }
+
+                            for (var i = startPage; i <= endPage; i++)
+                            {
+                                <li class="page-item @(i == Model.CurrentPage ? "active" : "")">
+                                    <a class="page-link" href="@Model.GetPaginationQueryString(i)">@i</a>
+                                </li>
+                            }
+
+                            if (endPage < Model.TotalPages)
+                            {
+                                if (endPage < Model.TotalPages - 1)
+                                {
+                                    <li class="page-item disabled">
+                                        <span class="page-link">...</span>
+                                    </li>
+                                }
+                                <li class="page-item">
+                                    <a class="page-link" href="@Model.GetPaginationQueryString(Model.TotalPages)">@Model.TotalPages</a>
+                                </li>
+                            }
+                        }
+
+                        @* Next Button *@
+                        <li class="page-item @(Model.HasNextPage ? "" : "disabled")">
+                            <a class="page-link" href="@Model.GetPaginationQueryString(Model.CurrentPage + 1)" 
+                               aria-label="Next" tabindex="@(Model.HasNextPage ? 0 : -1)">
+                                <span aria-hidden="true">&raquo;</span>
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
+            }
+        }
+    }
+</div>
