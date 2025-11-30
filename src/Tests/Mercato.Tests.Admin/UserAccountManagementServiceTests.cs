@@ -489,8 +489,12 @@ public class UserAccountManagementServiceTests
         mockUserBlockRepo.Verify(x => x.AddAsync(It.Is<UserBlockInfo>(
             b => b.UserId == userId &&
                  b.BlockedByAdminId == "admin-1" &&
-                 b.Reason == BlockReason.Fraud)), Times.Once);
-        mockUserManager.Verify(x => x.SetLockoutEndDateAsync(user, DateTimeOffset.MaxValue), Times.Once);
+                 b.Reason == BlockReason.Fraud &&
+                 b.IsActive == true &&
+                 b.BlockedAt > DateTimeOffset.UtcNow.AddMinutes(-1))), Times.Once);
+        // Verify lockout is set to a far future date (100 years from now)
+        mockUserManager.Verify(x => x.SetLockoutEndDateAsync(user, It.Is<DateTimeOffset?>(
+            d => d.HasValue && d.Value > DateTimeOffset.UtcNow.AddYears(50))), Times.Once);
     }
 
     [Fact]

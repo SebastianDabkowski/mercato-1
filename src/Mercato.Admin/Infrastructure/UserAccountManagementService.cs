@@ -239,7 +239,9 @@ public class UserAccountManagementService : IUserAccountManagementService
         // Set lockout on user first to prevent login
         // This is done before creating the block record to ensure the user is locked out
         // even if the block record creation fails (fail-safe approach)
-        var lockoutResult = await _userManager.SetLockoutEndDateAsync(user, DateTimeOffset.MaxValue);
+        // Using 100 years from now instead of MaxValue to avoid database storage issues
+        var permanentLockoutEnd = DateTimeOffset.UtcNow.AddYears(100);
+        var lockoutResult = await _userManager.SetLockoutEndDateAsync(user, permanentLockoutEnd);
         if (!lockoutResult.Succeeded)
         {
             var errorMessages = lockoutResult.Errors.Select(e => e.Description).ToList();
@@ -271,7 +273,14 @@ public class UserAccountManagementService : IUserAccountManagementService
         {
             // If block record creation fails, attempt to remove the lockout to restore consistency
             _logger.LogError(ex, "Failed to create block record for user {UserId}. Attempting to remove lockout.", command.UserId);
-            await _userManager.SetLockoutEndDateAsync(user, null);
+            try
+            {
+                await _userManager.SetLockoutEndDateAsync(user, null);
+            }
+            catch (Exception rollbackEx)
+            {
+                _logger.LogCritical(rollbackEx, "Failed to rollback lockout for user {UserId}. System may be in inconsistent state.", command.UserId);
+            }
             return BlockUserResult.Failure("Failed to create block record. Please try again.");
         }
 
