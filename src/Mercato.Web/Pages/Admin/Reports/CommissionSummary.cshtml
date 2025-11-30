@@ -1,0 +1,183 @@
+@page
+@model Mercato.Web.Pages.Admin.Reports.CommissionSummaryModel
+@{
+    ViewData["Title"] = "Commission Summary";
+}
+
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1><i class="bi bi-cash-coin me-2"></i>Commission Summary</h1>
+    </div>
+
+    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+    {
+        <div class="alert alert-danger">@Model.ErrorMessage</div>
+    }
+
+    @* Filter Section *@
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="bi bi-funnel me-2"></i>Filter by Date Range</h5>
+        </div>
+        <div class="card-body">
+            <form method="get" asp-page="CommissionSummary">
+                <div class="row g-3">
+                    @* Date Range Filter *@
+                    <div class="col-md-3">
+                        <label class="form-label">From Date</label>
+                        <input type="date" name="FromDate" class="form-control" 
+                               value="@(Model.FromDate?.ToString("yyyy-MM-dd"))" />
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label">To Date</label>
+                        <input type="date" name="ToDate" class="form-control" 
+                               value="@(Model.ToDate?.ToString("yyyy-MM-dd"))" />
+                    </div>
+
+                    <div class="col-md-6 d-flex align-items-end">
+                        <div>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-search me-1"></i>Search
+                            </button>
+                            <a asp-page="CommissionSummary" class="btn btn-outline-secondary ms-1">
+                                <i class="bi bi-x-circle me-1"></i>Clear
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    @* Summary Cards *@
+    @if (Model.Rows.Count > 0)
+    {
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card bg-primary text-white">
+                    <div class="card-body">
+                        <h6 class="card-subtitle mb-1">Total GMV</h6>
+                        <h3 class="card-title mb-0">@Model.TotalGMV.ToString("C")</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-success text-white">
+                    <div class="card-body">
+                        <h6 class="card-subtitle mb-1">Total Commission</h6>
+                        <h3 class="card-title mb-0">@Model.TotalCommission.ToString("C")</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-info text-white">
+                    <div class="card-body">
+                        <h6 class="card-subtitle mb-1">Total Net Payout</h6>
+                        <h3 class="card-title mb-0">@Model.TotalNetPayout.ToString("C")</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-secondary text-white">
+                    <div class="card-body">
+                        <h6 class="card-subtitle mb-1">Total Orders</h6>
+                        <h3 class="card-title mb-0">@Model.TotalOrderCount</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    @* Export Button and Results Summary *@
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        @if (Model.Rows.Count > 0)
+        {
+            <p class="text-muted mb-0">
+                Showing @Model.Rows.Count seller@(Model.Rows.Count > 1 ? "s" : "")
+            </p>
+            <form method="post" asp-page-handler="Export">
+                @* Preserve filter values for export *@
+                @if (Model.FromDate.HasValue)
+                {
+                    <input type="hidden" name="FromDate" value="@Model.FromDate.Value.ToString("yyyy-MM-dd")" />
+                }
+                @if (Model.ToDate.HasValue)
+                {
+                    <input type="hidden" name="ToDate" value="@Model.ToDate.Value.ToString("yyyy-MM-dd")" />
+                }
+                <button type="submit" class="btn btn-success">
+                    <i class="bi bi-download me-1"></i>Export CSV
+                </button>
+            </form>
+        }
+        else
+        {
+            <p class="text-muted mb-0">&nbsp;</p>
+        }
+    </div>
+
+    @if (Model.Rows.Count == 0)
+    {
+        <div class="text-center py-5">
+            <i class="bi bi-inbox text-muted" style="font-size: 4rem;"></i>
+            <h3 class="mt-3 text-muted">No Data Found</h3>
+            <p class="text-muted">No commission records match your search criteria.</p>
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Seller</th>
+                        <th class="text-end">Total GMV</th>
+                        <th class="text-end">Total Commission</th>
+                        <th class="text-end">Total Net Payout</th>
+                        <th class="text-center">Order Count</th>
+                        <th class="text-center">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in Model.Rows)
+                    {
+                        <tr>
+                            <td>
+                                <strong>@row.SellerName</strong>
+                                <small class="text-muted d-block">@row.SellerId</small>
+                            </td>
+                            <td class="text-end">
+                                <strong>@row.TotalGMV.ToString("C")</strong>
+                            </td>
+                            <td class="text-end">
+                                @row.TotalCommission.ToString("C")
+                            </td>
+                            <td class="text-end">
+                                @row.TotalNetPayout.ToString("C")
+                            </td>
+                            <td class="text-center">
+                                <span class="badge bg-secondary">@row.OrderCount</span>
+                            </td>
+                            <td class="text-center">
+                                <a href="@Model.GetDetailsUrl(row.SellerId)" class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-eye me-1"></i>View Orders
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+                <tfoot class="table-light">
+                    <tr>
+                        <th>Grand Totals:</th>
+                        <th class="text-end">@Model.TotalGMV.ToString("C")</th>
+                        <th class="text-end">@Model.TotalCommission.ToString("C")</th>
+                        <th class="text-end">@Model.TotalNetPayout.ToString("C")</th>
+                        <th class="text-center">@Model.TotalOrderCount</th>
+                        <th></th>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    }
+</div>
