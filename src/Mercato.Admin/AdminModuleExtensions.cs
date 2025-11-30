@@ -62,6 +62,9 @@ public static class AdminModuleExtensions
         // Note: ProductModerationService requires IProductModerationRepository from Product module,
         // IStoreRepository from Seller module, and INotificationService from Notifications module.
         services.AddScoped<IProductModerationService, ProductModerationService>();
+        // Note: PhotoModerationService requires IPhotoModerationRepository from Product module,
+        // IStoreRepository from Seller module, and INotificationService from Notifications module.
+        services.AddScoped<IPhotoModerationService, PhotoModerationService>();
 
         return services;
     }

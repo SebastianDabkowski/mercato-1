@@ -59,6 +59,11 @@ public class ProductDbContext : DbContext
     /// </summary>
     public DbSet<ProductModerationDecision> ProductModerationDecisions { get; set; }
 
+    /// <summary>
+    /// Gets or sets the photo moderation decisions DbSet.
+    /// </summary>
+    public DbSet<PhotoModerationDecision> PhotoModerationDecisions { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -72,6 +77,7 @@ public class ProductDbContext : DbContext
         ConfigureProductVariantAttributeValue(modelBuilder);
         ConfigureProductVariant(modelBuilder);
         ConfigureProductModerationDecision(modelBuilder);
+        ConfigurePhotoModerationDecision(modelBuilder);
     }
 
     private static void ConfigureProduct(ModelBuilder modelBuilder)
@@ -355,11 +361,39 @@ public class ProductDbContext : DbContext
             entity.Property(e => e.OptimizedPath)
                 .HasMaxLength(ProductImageValidationConstants.StoragePathMaxLength);
 
+            // Moderation fields
+            entity.Property(e => e.ModerationStatus)
+                .IsRequired()
+                .HasDefaultValue(PhotoModerationStatus.PendingReview);
+
+            entity.Property(e => e.ModerationReason)
+                .HasMaxLength(2000);
+
+            entity.Property(e => e.ModeratedAt);
+
+            entity.Property(e => e.ModeratedBy)
+                .HasMaxLength(450);
+
+            entity.Property(e => e.IsFlagged)
+                .IsRequired()
+                .HasDefaultValue(false);
+
+            entity.Property(e => e.FlagReason)
+                .HasMaxLength(500);
+
+            entity.Property(e => e.FlaggedAt);
+
             // Index for querying images by product
             entity.HasIndex(e => e.ProductId);
 
             // Index for finding main image
             entity.HasIndex(e => new { e.ProductId, e.IsMain });
+
+            // Index for moderation queue queries
+            entity.HasIndex(e => e.ModerationStatus);
+
+            // Index for flagged photos in moderation queue
+            entity.HasIndex(e => new { e.ModerationStatus, e.IsFlagged });
 
             // Relationship to product
             entity.HasOne(e => e.Product)
@@ -526,6 +560,56 @@ public class ProductDbContext : DbContext
 
             entity.Property(e => e.IpAddress)
                 .HasMaxLength(45);
+
+            // Index for querying decisions by product
+            entity.HasIndex(e => e.ProductId);
+
+            // Index for querying by admin user
+            entity.HasIndex(e => e.AdminUserId);
+
+            // Index for ordering by creation date
+            entity.HasIndex(e => e.CreatedAt);
+        });
+    }
+
+    private static void ConfigurePhotoModerationDecision(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<PhotoModerationDecision>(entity =>
+        {
+            entity.ToTable("PhotoModerationDecisions");
+
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.ProductImageId)
+                .IsRequired();
+
+            entity.Property(e => e.ProductId)
+                .IsRequired();
+
+            entity.Property(e => e.StoreId)
+                .IsRequired();
+
+            entity.Property(e => e.AdminUserId)
+                .IsRequired()
+                .HasMaxLength(450);
+
+            entity.Property(e => e.Decision)
+                .IsRequired();
+
+            entity.Property(e => e.Reason)
+                .HasMaxLength(2000);
+
+            entity.Property(e => e.PreviousStatus)
+                .IsRequired();
+
+            entity.Property(e => e.CreatedAt)
+                .IsRequired();
+
+            entity.Property(e => e.IpAddress)
+                .HasMaxLength(45);
+
+            // Index for querying decisions by photo
+            entity.HasIndex(e => e.ProductImageId);
 
             // Index for querying decisions by product
             entity.HasIndex(e => e.ProductId);
