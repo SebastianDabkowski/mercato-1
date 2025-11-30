@@ -37,6 +37,8 @@ public class CategoryServiceTests
 
         _mockRepository.Setup(r => r.ExistsByNameAsync(command.Name, command.ParentId, null))
             .ReturnsAsync(false);
+        _mockRepository.Setup(r => r.ExistsBySlugAsync(It.IsAny<string>(), null))
+            .ReturnsAsync(false);
         _mockRepository.Setup(r => r.AddAsync(It.IsAny<Category>()))
             .ReturnsAsync((Category c) => c);
 
@@ -65,6 +67,8 @@ public class CategoryServiceTests
         _mockRepository.Setup(r => r.GetByIdAsync(TestParentCategoryId))
             .ReturnsAsync(parentCategory);
         _mockRepository.Setup(r => r.ExistsByNameAsync(command.Name, command.ParentId, null))
+            .ReturnsAsync(false);
+        _mockRepository.Setup(r => r.ExistsBySlugAsync(It.IsAny<string>(), null))
             .ReturnsAsync(false);
         _mockRepository.Setup(r => r.AddAsync(It.IsAny<Category>()))
             .ReturnsAsync((Category c) => c);
@@ -249,6 +253,8 @@ public class CategoryServiceTests
 
         _mockRepository.Setup(r => r.ExistsByNameAsync(command.Name, command.ParentId, command.CategoryId))
             .ReturnsAsync(false);
+        _mockRepository.Setup(r => r.ExistsBySlugAsync(command.Slug, command.CategoryId))
+            .ReturnsAsync(false);
         _mockRepository.Setup(r => r.GetByIdAsync(command.CategoryId))
             .ReturnsAsync(category);
         _mockRepository.Setup(r => r.UpdateAsync(It.IsAny<Category>()))
@@ -274,6 +280,8 @@ public class CategoryServiceTests
         var command = CreateValidUpdateCommand();
 
         _mockRepository.Setup(r => r.ExistsByNameAsync(command.Name, command.ParentId, command.CategoryId))
+            .ReturnsAsync(false);
+        _mockRepository.Setup(r => r.ExistsBySlugAsync(command.Slug, command.CategoryId))
             .ReturnsAsync(false);
         _mockRepository.Setup(r => r.GetByIdAsync(command.CategoryId))
             .ReturnsAsync((Category?)null);
@@ -339,6 +347,8 @@ public class CategoryServiceTests
 
         _mockRepository.Setup(r => r.ExistsByNameAsync(command.Name, command.ParentId, command.CategoryId))
             .ReturnsAsync(true);
+        _mockRepository.Setup(r => r.ExistsBySlugAsync(command.Slug, command.CategoryId))
+            .ReturnsAsync(false);
 
         // Act
         var result = await _service.UpdateCategoryAsync(command);
@@ -346,6 +356,25 @@ public class CategoryServiceTests
         // Assert
         Assert.False(result.Succeeded);
         Assert.Contains("A category with this name already exists under the same parent.", result.Errors);
+    }
+
+    [Fact]
+    public async Task UpdateCategoryAsync_DuplicateSlug_ReturnsFailure()
+    {
+        // Arrange
+        var command = CreateValidUpdateCommand();
+
+        _mockRepository.Setup(r => r.ExistsByNameAsync(command.Name, command.ParentId, command.CategoryId))
+            .ReturnsAsync(false);
+        _mockRepository.Setup(r => r.ExistsBySlugAsync(command.Slug, command.CategoryId))
+            .ReturnsAsync(true);
+
+        // Act
+        var result = await _service.UpdateCategoryAsync(command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains("A category with this slug already exists. Please choose a different slug.", result.Errors);
     }
 
     [Fact]
@@ -357,6 +386,8 @@ public class CategoryServiceTests
         var category = CreateTestCategory();
 
         _mockRepository.Setup(r => r.ExistsByNameAsync(command.Name, command.ParentId, command.CategoryId))
+            .ReturnsAsync(false);
+        _mockRepository.Setup(r => r.ExistsBySlugAsync(command.Slug, command.CategoryId))
             .ReturnsAsync(false);
         _mockRepository.Setup(r => r.GetByIdAsync(command.CategoryId))
             .ReturnsAsync(category);
@@ -664,6 +695,148 @@ public class CategoryServiceTests
 
     #endregion
 
+    #region GetCategoryBySlugAsync Tests
+
+    [Fact]
+    public async Task GetCategoryBySlugAsync_WhenCategoryExists_ReturnsCategory()
+    {
+        // Arrange
+        var expectedCategory = CreateTestCategory();
+        var categorySlug = expectedCategory.Slug;
+        
+        _mockRepository.Setup(r => r.GetBySlugAsync(categorySlug))
+            .ReturnsAsync(expectedCategory);
+
+        // Act
+        var result = await _service.GetCategoryBySlugAsync(categorySlug);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(expectedCategory.Id, result.Id);
+        Assert.Equal(expectedCategory.Slug, result.Slug);
+        _mockRepository.Verify(r => r.GetBySlugAsync(categorySlug), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetCategoryBySlugAsync_WhenCategoryNotExists_ReturnsNull()
+    {
+        // Arrange
+        var categorySlug = "non-existent-slug";
+        
+        _mockRepository.Setup(r => r.GetBySlugAsync(categorySlug))
+            .ReturnsAsync((Category?)null);
+
+        // Act
+        var result = await _service.GetCategoryBySlugAsync(categorySlug);
+
+        // Assert
+        Assert.Null(result);
+        _mockRepository.Verify(r => r.GetBySlugAsync(categorySlug), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetCategoryBySlugAsync_EmptySlug_ReturnsNull()
+    {
+        // Arrange
+        var categorySlug = string.Empty;
+
+        // Act
+        var result = await _service.GetCategoryBySlugAsync(categorySlug);
+
+        // Assert
+        Assert.Null(result);
+        _mockRepository.Verify(r => r.GetBySlugAsync(It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GetCategoryBySlugAsync_WhitespaceSlug_ReturnsNull()
+    {
+        // Arrange
+        var categorySlug = "   ";
+
+        // Act
+        var result = await _service.GetCategoryBySlugAsync(categorySlug);
+
+        // Assert
+        Assert.Null(result);
+        _mockRepository.Verify(r => r.GetBySlugAsync(It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GetCategoryBySlugAsync_NullSlug_ReturnsNull()
+    {
+        // Act
+        var result = await _service.GetCategoryBySlugAsync(null!);
+
+        // Assert
+        Assert.Null(result);
+        _mockRepository.Verify(r => r.GetBySlugAsync(It.IsAny<string>()), Times.Never);
+    }
+
+    #endregion
+
+    #region Slug Generation Tests
+
+    [Fact]
+    public async Task CreateCategoryAsync_GeneratesSlugFromName()
+    {
+        // Arrange
+        var command = new CreateCategoryCommand
+        {
+            Name = "Electronics & Gadgets",
+            Description = "Electronic devices",
+            ParentId = null
+        };
+
+        _mockRepository.Setup(r => r.ExistsByNameAsync(command.Name, command.ParentId, null))
+            .ReturnsAsync(false);
+        _mockRepository.Setup(r => r.ExistsBySlugAsync(It.IsAny<string>(), null))
+            .ReturnsAsync(false);
+        _mockRepository.Setup(r => r.AddAsync(It.IsAny<Category>()))
+            .ReturnsAsync((Category c) => c);
+
+        // Act
+        var result = await _service.CreateCategoryAsync(command);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        _mockRepository.Verify(r => r.AddAsync(It.Is<Category>(c =>
+            c.Slug == "electronics-gadgets"
+        )), Times.Once);
+    }
+
+    [Fact]
+    public async Task CreateCategoryAsync_GeneratesUniqueSlugWhenDuplicateExists()
+    {
+        // Arrange
+        var command = new CreateCategoryCommand
+        {
+            Name = "Test Category",
+            Description = null,
+            ParentId = null
+        };
+
+        _mockRepository.Setup(r => r.ExistsByNameAsync(command.Name, command.ParentId, null))
+            .ReturnsAsync(false);
+        // First slug check returns true (already exists), second returns false
+        _mockRepository.SetupSequence(r => r.ExistsBySlugAsync(It.IsAny<string>(), null))
+            .ReturnsAsync(true)
+            .ReturnsAsync(false);
+        _mockRepository.Setup(r => r.AddAsync(It.IsAny<Category>()))
+            .ReturnsAsync((Category c) => c);
+
+        // Act
+        var result = await _service.CreateCategoryAsync(command);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        _mockRepository.Verify(r => r.AddAsync(It.Is<Category>(c =>
+            c.Slug == "test-category-1"
+        )), Times.Once);
+    }
+
+    #endregion
+
     #region Helper Methods
 
     private static CreateCategoryCommand CreateValidCreateCommand()
@@ -671,6 +844,7 @@ public class CategoryServiceTests
         return new CreateCategoryCommand
         {
             Name = "Test Category",
+            Description = "Test category description",
             ParentId = null
         };
     }
@@ -681,6 +855,8 @@ public class CategoryServiceTests
         {
             CategoryId = TestCategoryId,
             Name = "Updated Category",
+            Slug = "updated-category",
+            Description = "Updated description",
             ParentId = null,
             DisplayOrder = 1,
             IsActive = true
@@ -701,6 +877,8 @@ public class CategoryServiceTests
         {
             Id = id ?? TestCategoryId,
             Name = "Test Category",
+            Slug = "test-category",
+            Description = "Test category description",
             ParentId = null,
             DisplayOrder = 0,
             IsActive = true,

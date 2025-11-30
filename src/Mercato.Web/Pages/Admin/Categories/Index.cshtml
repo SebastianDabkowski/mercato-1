@@ -52,10 +52,11 @@
                     <thead class="table-dark">
                         <tr>
                             <th scope="col">Name</th>
+                            <th scope="col">Slug</th>
+                            <th scope="col">Description</th>
                             <th scope="col">Parent</th>
-                            <th scope="col">Display Order</th>
+                            <th scope="col">Order</th>
                             <th scope="col">Status</th>
-                            <th scope="col">Created</th>
                             <th scope="col">Actions</th>
                         </tr>
                     </thead>
@@ -72,6 +73,11 @@
                             {
                                 indent = "└─ ";
                             }
+                            var truncatedDescription = string.IsNullOrEmpty(category.Description) 
+                                ? "" 
+                                : category.Description.Length > 50 
+                                    ? category.Description[..50] + "..." 
+                                    : category.Description;
                             <tr class="@(category.IsActive ? "" : "text-muted")">
                                 <td>
                                     @if (category.ParentId.HasValue)
@@ -80,12 +86,13 @@
                                     }
                                     @category.Name
                                 </td>
+                                <td><code class="small">@category.Slug</code></td>
+                                <td class="small" title="@category.Description">@truncatedDescription</td>
                                 <td>@parentName</td>
                                 <td>@category.DisplayOrder</td>
                                 <td>
                                     <span class="badge @badgeClass">@statusText</span>
                                 </td>
-                                <td>@category.CreatedAt.ToString("yyyy-MM-dd")</td>
                                 <td>
                                     <a asp-page="Edit" asp-route-id="@category.Id" 
                                        class="btn btn-sm btn-outline-primary"

@@ -17,6 +17,17 @@ public class Category
     public string Name { get; set; } = string.Empty;
 
     /// <summary>
+    /// Gets or sets the URL-friendly slug for the category.
+    /// Used for SEO-friendly URLs and breadcrumb navigation.
+    /// </summary>
+    public string Slug { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the optional category description.
+    /// </summary>
+    public string? Description { get; set; }
+
+    /// <summary>
     /// Gets or sets the parent category ID.
     /// Null for root categories.
     /// </summary>

@@ -23,6 +23,23 @@
                     </div>
 
                     <div class="mb-3">
+                        <label asp-for="Command.Slug" class="form-label">URL Slug <span class="text-danger">*</span></label>
+                        <input asp-for="Command.Slug" class="form-control" placeholder="e.g., electronics-accessories" />
+                        <span asp-validation-for="Command.Slug" class="text-danger"></span>
+                        <div class="form-text">
+                            SEO-friendly URL identifier. Use lowercase letters, numbers, and hyphens only.
+                            <br /><small class="text-warning"><i class="bi bi-exclamation-triangle"></i> Changing the slug may affect existing bookmarks and search rankings.</small>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Command.Description" class="form-label">Description</label>
+                        <textarea asp-for="Command.Description" class="form-control" rows="3" placeholder="Optional description for the category"></textarea>
+                        <span asp-validation-for="Command.Description" class="text-danger"></span>
+                        <div class="form-text">A brief description of what products this category contains.</div>
+                    </div>
+
+                    <div class="mb-3">
                         <label asp-for="Command.ParentId" class="form-label">Parent Category</label>
                         <select asp-for="Command.ParentId" class="form-select" asp-items="Model.ParentCategories">
                             <option value="">-- No Parent (Root Category) --</option>

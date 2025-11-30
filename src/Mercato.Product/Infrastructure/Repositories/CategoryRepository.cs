@@ -88,6 +88,32 @@ public class CategoryRepository : ICategoryRepository
     }
 
     /// <inheritdoc />
+    public async Task<bool> ExistsBySlugAsync(string slug, Guid? excludeCategoryId = null)
+    {
+        var query = _context.Categories
+            .Where(c => c.Slug == slug);
+
+        if (excludeCategoryId.HasValue)
+        {
+            query = query.Where(c => c.Id != excludeCategoryId.Value);
+        }
+
+        return await query.AnyAsync();
+    }
+
+    /// <inheritdoc />
+    public async Task<Category?> GetBySlugAsync(string slug)
+    {
+        if (string.IsNullOrWhiteSpace(slug))
+        {
+            return null;
+        }
+
+        return await _context.Categories
+            .FirstOrDefaultAsync(c => c.Slug == slug && c.IsActive);
+    }
+
+    /// <inheritdoc />
     public async Task<int> GetProductCountAsync(Guid categoryId)
     {
         var category = await _context.Categories.FindAsync(categoryId);

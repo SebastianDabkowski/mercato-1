@@ -202,6 +202,13 @@ public class ProductDbContext : DbContext
                 .IsRequired()
                 .HasMaxLength(ProductValidationConstants.CategoryNameMaxLength);
 
+            entity.Property(e => e.Slug)
+                .IsRequired()
+                .HasMaxLength(ProductValidationConstants.CategorySlugMaxLength);
+
+            entity.Property(e => e.Description)
+                .HasMaxLength(ProductValidationConstants.CategoryDescriptionMaxLength);
+
             entity.Property(e => e.ParentId);
 
             entity.Property(e => e.DisplayOrder)
@@ -226,6 +233,10 @@ public class ProductDbContext : DbContext
 
             // Unique index for name within parent to enforce uniqueness
             entity.HasIndex(e => new { e.ParentId, e.Name })
+                .IsUnique();
+
+            // Unique index for slug to ensure SEO-friendly URLs are unique
+            entity.HasIndex(e => e.Slug)
                 .IsUnique();
         });
     }

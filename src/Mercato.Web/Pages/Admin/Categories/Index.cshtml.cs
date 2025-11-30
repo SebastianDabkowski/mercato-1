@@ -82,6 +82,8 @@ public class IndexModel : PageModel
         {
             CategoryId = id,
             Name = category.Name,
+            Slug = category.Slug,
+            Description = category.Description,
             ParentId = category.ParentId,
             DisplayOrder = category.DisplayOrder,
             IsActive = false
@@ -120,6 +122,8 @@ public class IndexModel : PageModel
         {
             CategoryId = id,
             Name = category.Name,
+            Slug = category.Slug,
+            Description = category.Description,
             ParentId = category.ParentId,
             DisplayOrder = category.DisplayOrder,
             IsActive = true
