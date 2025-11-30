@@ -1,0 +1,130 @@
+@page "{userId?}"
+@model Mercato.Web.Pages.Admin.Users.BlockModel
+@using Mercato.Admin.Domain.Entities
+@{
+    ViewData["Title"] = "Block User";
+}
+
+<h1>Block User</h1>
+
+<p class="text-muted">Block a user account to prevent them from accessing the platform.</p>
+
+@if (Model.UserInfo == null)
+{
+    <div class="alert alert-danger">
+        User not found.
+    </div>
+    <a asp-page="Index" class="btn btn-secondary">
+        &laquo; Back to Users
+    </a>
+}
+else
+{
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">User Information</h5>
+                </div>
+                <div class="card-body">
+                    <dl class="row mb-0">
+                        <dt class="col-sm-4">User ID</dt>
+                        <dd class="col-sm-8"><code>@Model.UserInfo.UserId</code></dd>
+
+                        <dt class="col-sm-4">Email</dt>
+                        <dd class="col-sm-8">@Model.UserInfo.Email</dd>
+
+                        <dt class="col-sm-4">Role(s)</dt>
+                        <dd class="col-sm-8">
+                            @if (Model.UserInfo.Roles.Count == 0)
+                            {
+                                <span class="badge bg-secondary">No roles</span>
+                            }
+                            else
+                            {
+                                @foreach (var role in Model.UserInfo.Roles)
+                                {
+                                    var badgeClass = role switch
+                                    {
+                                        "Admin" => "bg-danger",
+                                        "Seller" => "bg-primary",
+                                        "Buyer" => "bg-success",
+                                        _ => "bg-secondary"
+                                    };
+                                    <span class="badge @badgeClass me-1">@role</span>
+                                }
+                            }
+                        </dd>
+                    </dl>
+                </div>
+            </div>
+
+            <div class="card mt-4">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">⛔ Block User Account</h5>
+                </div>
+                <div class="card-body">
+                    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+                    {
+                        <div class="alert alert-danger" role="alert">
+                            @Model.ErrorMessage
+                        </div>
+                    }
+
+                    <form method="post">
+                        <input type="hidden" asp-for="Input.UserId" />
+
+                        <div class="mb-3">
+                            <label asp-for="Input.Reason" class="form-label">Block Reason</label>
+                            <select asp-for="Input.Reason" class="form-select" asp-items="@(new SelectList(Enum.GetValues(typeof(BlockReason))))">
+                                <option value="">-- Select a reason --</option>
+                            </select>
+                            <span asp-validation-for="Input.Reason" class="text-danger"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="Input.ReasonDetails" class="form-label">Additional Details (Optional)</label>
+                            <textarea asp-for="Input.ReasonDetails" class="form-control" rows="3" 
+                                      placeholder="Provide additional details about the reason for blocking this user..."></textarea>
+                            <span asp-validation-for="Input.ReasonDetails" class="text-danger"></span>
+                        </div>
+
+                        <div class="alert alert-danger">
+                            <h6 class="alert-heading">⚠️ Warning</h6>
+                            <p class="mb-0">
+                                Blocking this user will have the following effects:
+                            </p>
+                            <ul class="mt-2 mb-0">
+                                <li>The user will be immediately logged out</li>
+                                <li>The user will not be able to log in</li>
+                                <li>If this is a seller, their store will be hidden from buyers</li>
+                                <li>This action is logged for audit purposes</li>
+                            </ul>
+                        </div>
+
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" asp-for="Input.ConfirmBlock" />
+                            <label class="form-check-label" asp-for="Input.ConfirmBlock">
+                                I confirm that I want to block this user account
+                            </label>
+                            <span asp-validation-for="Input.ConfirmBlock" class="text-danger d-block"></span>
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-danger">
+                                Block User
+                            </button>
+                            <a asp-page="Details" asp-route-userId="@Model.UserInfo.UserId" class="btn btn-secondary">
+                                Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

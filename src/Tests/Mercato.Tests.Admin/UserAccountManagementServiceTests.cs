@@ -1,3 +1,4 @@
+using Mercato.Admin.Application.Commands;
 using Mercato.Admin.Application.Queries;
 using Mercato.Admin.Domain.Entities;
 using Mercato.Admin.Domain.Interfaces;
@@ -10,6 +11,14 @@ namespace Mercato.Tests.Admin;
 
 public class UserAccountManagementServiceTests
 {
+    private static Mock<IUserBlockRepository> CreateMockUserBlockRepository()
+    {
+        var mock = new Mock<IUserBlockRepository>();
+        mock.Setup(x => x.GetActiveBlockAsync(It.IsAny<string>()))
+            .ReturnsAsync((UserBlockInfo?)null);
+        return mock;
+    }
+
     [Fact]
     public async Task GetUsersAsync_WithNoFilters_ReturnsAllUsers()
     {
@@ -24,11 +33,13 @@ public class UserAccountManagementServiceTests
         mockUserManager.Setup(x => x.GetRolesAsync(user2)).ReturnsAsync(new List<string> { "Seller" });
 
         var mockAuthEventRepo = new Mock<IAuthenticationEventRepository>();
+        var mockUserBlockRepo = CreateMockUserBlockRepository();
         var mockLogger = new Mock<ILogger<UserAccountManagementService>>();
 
         var service = new UserAccountManagementService(
             mockUserManager.Object,
             mockAuthEventRepo.Object,
+            mockUserBlockRepo.Object,
             mockLogger.Object);
 
         var query = new UserAccountFilterQuery();
@@ -57,11 +68,13 @@ public class UserAccountManagementServiceTests
         mockUserManager.Setup(x => x.GetRolesAsync(user2)).ReturnsAsync(new List<string> { "Seller" });
 
         var mockAuthEventRepo = new Mock<IAuthenticationEventRepository>();
+        var mockUserBlockRepo = CreateMockUserBlockRepository();
         var mockLogger = new Mock<ILogger<UserAccountManagementService>>();
 
         var service = new UserAccountManagementService(
             mockUserManager.Object,
             mockAuthEventRepo.Object,
+            mockUserBlockRepo.Object,
             mockLogger.Object);
 
         var query = new UserAccountFilterQuery { Role = "Seller" };
@@ -89,11 +102,13 @@ public class UserAccountManagementServiceTests
         mockUserManager.Setup(x => x.GetRolesAsync(user2)).ReturnsAsync(new List<string> { "Buyer" });
 
         var mockAuthEventRepo = new Mock<IAuthenticationEventRepository>();
+        var mockUserBlockRepo = CreateMockUserBlockRepository();
         var mockLogger = new Mock<ILogger<UserAccountManagementService>>();
 
         var service = new UserAccountManagementService(
             mockUserManager.Object,
             mockAuthEventRepo.Object,
+            mockUserBlockRepo.Object,
             mockLogger.Object);
 
         var query = new UserAccountFilterQuery { Status = UserAccountStatus.PendingVerification };
@@ -122,11 +137,13 @@ public class UserAccountManagementServiceTests
         mockUserManager.Setup(x => x.GetRolesAsync(user2)).ReturnsAsync(new List<string> { "Buyer" });
 
         var mockAuthEventRepo = new Mock<IAuthenticationEventRepository>();
+        var mockUserBlockRepo = CreateMockUserBlockRepository();
         var mockLogger = new Mock<ILogger<UserAccountManagementService>>();
 
         var service = new UserAccountManagementService(
             mockUserManager.Object,
             mockAuthEventRepo.Object,
+            mockUserBlockRepo.Object,
             mockLogger.Object);
 
         var query = new UserAccountFilterQuery { SearchTerm = "john" };
@@ -161,11 +178,13 @@ public class UserAccountManagementServiceTests
         }
 
         var mockAuthEventRepo = new Mock<IAuthenticationEventRepository>();
+        var mockUserBlockRepo = CreateMockUserBlockRepository();
         var mockLogger = new Mock<ILogger<UserAccountManagementService>>();
 
         var service = new UserAccountManagementService(
             mockUserManager.Object,
             mockAuthEventRepo.Object,
+            mockUserBlockRepo.Object,
             mockLogger.Object);
 
         var query = new UserAccountFilterQuery { Page = 2, PageSize = 10 };
@@ -200,11 +219,13 @@ public class UserAccountManagementServiceTests
         mockUserManager.Setup(x => x.GetRolesAsync(lockedUser)).ReturnsAsync(new List<string> { "Buyer" });
 
         var mockAuthEventRepo = new Mock<IAuthenticationEventRepository>();
+        var mockUserBlockRepo = CreateMockUserBlockRepository();
         var mockLogger = new Mock<ILogger<UserAccountManagementService>>();
 
         var service = new UserAccountManagementService(
             mockUserManager.Object,
             mockAuthEventRepo.Object,
+            mockUserBlockRepo.Object,
             mockLogger.Object);
 
         var query = new UserAccountFilterQuery();
@@ -260,11 +281,13 @@ public class UserAccountManagementServiceTests
             It.IsAny<CancellationToken>()))
             .ReturnsAsync(authEvents);
 
+        var mockUserBlockRepo = CreateMockUserBlockRepository();
         var mockLogger = new Mock<ILogger<UserAccountManagementService>>();
 
         var service = new UserAccountManagementService(
             mockUserManager.Object,
             mockAuthEventRepo.Object,
+            mockUserBlockRepo.Object,
             mockLogger.Object);
 
         // Act
@@ -291,11 +314,13 @@ public class UserAccountManagementServiceTests
         mockUserManager.Setup(x => x.FindByIdAsync("invalid-id")).ReturnsAsync((IdentityUser?)null);
 
         var mockAuthEventRepo = new Mock<IAuthenticationEventRepository>();
+        var mockUserBlockRepo = CreateMockUserBlockRepository();
         var mockLogger = new Mock<ILogger<UserAccountManagementService>>();
 
         var service = new UserAccountManagementService(
             mockUserManager.Object,
             mockAuthEventRepo.Object,
+            mockUserBlockRepo.Object,
             mockLogger.Object);
 
         // Act
@@ -311,11 +336,13 @@ public class UserAccountManagementServiceTests
         // Arrange
         var mockUserManager = CreateMockUserManager();
         var mockAuthEventRepo = new Mock<IAuthenticationEventRepository>();
+        var mockUserBlockRepo = CreateMockUserBlockRepository();
         var mockLogger = new Mock<ILogger<UserAccountManagementService>>();
 
         var service = new UserAccountManagementService(
             mockUserManager.Object,
             mockAuthEventRepo.Object,
+            mockUserBlockRepo.Object,
             mockLogger.Object);
 
         // Act
@@ -330,11 +357,12 @@ public class UserAccountManagementServiceTests
     {
         // Arrange
         var mockAuthEventRepo = new Mock<IAuthenticationEventRepository>();
+        var mockUserBlockRepo = CreateMockUserBlockRepository();
         var mockLogger = new Mock<ILogger<UserAccountManagementService>>();
 
         // Act & Assert
         Assert.Throws<ArgumentNullException>(() =>
-            new UserAccountManagementService(null!, mockAuthEventRepo.Object, mockLogger.Object));
+            new UserAccountManagementService(null!, mockAuthEventRepo.Object, mockUserBlockRepo.Object, mockLogger.Object));
     }
 
     [Fact]
@@ -342,11 +370,12 @@ public class UserAccountManagementServiceTests
     {
         // Arrange
         var mockUserManager = CreateMockUserManager();
+        var mockUserBlockRepo = CreateMockUserBlockRepository();
         var mockLogger = new Mock<ILogger<UserAccountManagementService>>();
 
         // Act & Assert
         Assert.Throws<ArgumentNullException>(() =>
-            new UserAccountManagementService(mockUserManager.Object, null!, mockLogger.Object));
+            new UserAccountManagementService(mockUserManager.Object, null!, mockUserBlockRepo.Object, mockLogger.Object));
     }
 
     [Fact]
@@ -355,10 +384,11 @@ public class UserAccountManagementServiceTests
         // Arrange
         var mockUserManager = CreateMockUserManager();
         var mockAuthEventRepo = new Mock<IAuthenticationEventRepository>();
+        var mockUserBlockRepo = CreateMockUserBlockRepository();
 
         // Act & Assert
         Assert.Throws<ArgumentNullException>(() =>
-            new UserAccountManagementService(mockUserManager.Object, mockAuthEventRepo.Object, null!));
+            new UserAccountManagementService(mockUserManager.Object, mockAuthEventRepo.Object, mockUserBlockRepo.Object, null!));
     }
 
     [Fact]
@@ -367,11 +397,13 @@ public class UserAccountManagementServiceTests
         // Arrange
         var mockUserManager = CreateMockUserManager();
         var mockAuthEventRepo = new Mock<IAuthenticationEventRepository>();
+        var mockUserBlockRepo = CreateMockUserBlockRepository();
         var mockLogger = new Mock<ILogger<UserAccountManagementService>>();
 
         var service = new UserAccountManagementService(
             mockUserManager.Object,
             mockAuthEventRepo.Object,
+            mockUserBlockRepo.Object,
             mockLogger.Object);
 
         // Act & Assert
@@ -393,11 +425,13 @@ public class UserAccountManagementServiceTests
         mockUserManager.Setup(x => x.GetRolesAsync(user2)).ReturnsAsync(new List<string> { "Buyer" });
 
         var mockAuthEventRepo = new Mock<IAuthenticationEventRepository>();
+        var mockUserBlockRepo = CreateMockUserBlockRepository();
         var mockLogger = new Mock<ILogger<UserAccountManagementService>>();
 
         var service = new UserAccountManagementService(
             mockUserManager.Object,
             mockAuthEventRepo.Object,
+            mockUserBlockRepo.Object,
             mockLogger.Object);
 
         var query = new UserAccountFilterQuery { SearchTerm = "abc123" };
@@ -409,6 +443,367 @@ public class UserAccountManagementServiceTests
         Assert.Equal(1, result.TotalCount);
         Assert.Single(result.Items);
         Assert.Equal("abc123-user", result.Items[0].UserId);
+    }
+
+    [Fact]
+    public async Task BlockUserAsync_WithValidCommand_SuccessfullyBlocksUser()
+    {
+        // Arrange
+        var userId = "user-to-block";
+        var user = new IdentityUser { Id = userId, Email = "user@example.com", EmailConfirmed = true };
+
+        var mockUserManager = CreateMockUserManager();
+        mockUserManager.Setup(x => x.FindByIdAsync(userId)).ReturnsAsync(user);
+        mockUserManager.Setup(x => x.SetLockoutEndDateAsync(user, It.IsAny<DateTimeOffset?>()))
+            .ReturnsAsync(IdentityResult.Success);
+
+        var mockAuthEventRepo = new Mock<IAuthenticationEventRepository>();
+        var mockUserBlockRepo = new Mock<IUserBlockRepository>();
+        mockUserBlockRepo.Setup(x => x.GetActiveBlockAsync(userId)).ReturnsAsync((UserBlockInfo?)null);
+        mockUserBlockRepo.Setup(x => x.AddAsync(It.IsAny<UserBlockInfo>()))
+            .ReturnsAsync((UserBlockInfo b) => b);
+
+        var mockLogger = new Mock<ILogger<UserAccountManagementService>>();
+
+        var service = new UserAccountManagementService(
+            mockUserManager.Object,
+            mockAuthEventRepo.Object,
+            mockUserBlockRepo.Object,
+            mockLogger.Object);
+
+        var command = new BlockUserCommand
+        {
+            UserId = userId,
+            AdminUserId = "admin-1",
+            AdminEmail = "admin@example.com",
+            Reason = BlockReason.Fraud,
+            ReasonDetails = "Fraudulent activity detected"
+        };
+
+        // Act
+        var result = await service.BlockUserAsync(command);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.Empty(result.Errors);
+        mockUserBlockRepo.Verify(x => x.AddAsync(It.Is<UserBlockInfo>(
+            b => b.UserId == userId &&
+                 b.BlockedByAdminId == "admin-1" &&
+                 b.Reason == BlockReason.Fraud)), Times.Once);
+        mockUserManager.Verify(x => x.SetLockoutEndDateAsync(user, DateTimeOffset.MaxValue), Times.Once);
+    }
+
+    [Fact]
+    public async Task BlockUserAsync_WithNonExistentUser_ReturnsFailure()
+    {
+        // Arrange
+        var mockUserManager = CreateMockUserManager();
+        mockUserManager.Setup(x => x.FindByIdAsync("non-existent")).ReturnsAsync((IdentityUser?)null);
+
+        var mockAuthEventRepo = new Mock<IAuthenticationEventRepository>();
+        var mockUserBlockRepo = CreateMockUserBlockRepository();
+        var mockLogger = new Mock<ILogger<UserAccountManagementService>>();
+
+        var service = new UserAccountManagementService(
+            mockUserManager.Object,
+            mockAuthEventRepo.Object,
+            mockUserBlockRepo.Object,
+            mockLogger.Object);
+
+        var command = new BlockUserCommand
+        {
+            UserId = "non-existent",
+            AdminUserId = "admin-1",
+            AdminEmail = "admin@example.com",
+            Reason = BlockReason.Spam
+        };
+
+        // Act
+        var result = await service.BlockUserAsync(command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains("User not found.", result.Errors);
+    }
+
+    [Fact]
+    public async Task BlockUserAsync_WithAlreadyBlockedUser_ReturnsFailure()
+    {
+        // Arrange
+        var userId = "already-blocked";
+        var user = new IdentityUser { Id = userId, Email = "user@example.com" };
+
+        var mockUserManager = CreateMockUserManager();
+        mockUserManager.Setup(x => x.FindByIdAsync(userId)).ReturnsAsync(user);
+
+        var mockAuthEventRepo = new Mock<IAuthenticationEventRepository>();
+        var mockUserBlockRepo = new Mock<IUserBlockRepository>();
+        mockUserBlockRepo.Setup(x => x.GetActiveBlockAsync(userId))
+            .ReturnsAsync(new UserBlockInfo { UserId = userId, IsActive = true });
+
+        var mockLogger = new Mock<ILogger<UserAccountManagementService>>();
+
+        var service = new UserAccountManagementService(
+            mockUserManager.Object,
+            mockAuthEventRepo.Object,
+            mockUserBlockRepo.Object,
+            mockLogger.Object);
+
+        var command = new BlockUserCommand
+        {
+            UserId = userId,
+            AdminUserId = "admin-1",
+            AdminEmail = "admin@example.com",
+            Reason = BlockReason.PolicyViolation
+        };
+
+        // Act
+        var result = await service.BlockUserAsync(command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains("User is already blocked.", result.Errors);
+    }
+
+    [Fact]
+    public async Task UnblockUserAsync_WithValidCommand_SuccessfullyUnblocksUser()
+    {
+        // Arrange
+        var userId = "user-to-unblock";
+        var user = new IdentityUser { Id = userId, Email = "user@example.com" };
+        var existingBlock = new UserBlockInfo
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            BlockedByAdminId = "admin-1",
+            IsActive = true
+        };
+
+        var mockUserManager = CreateMockUserManager();
+        mockUserManager.Setup(x => x.FindByIdAsync(userId)).ReturnsAsync(user);
+        mockUserManager.Setup(x => x.SetLockoutEndDateAsync(user, null))
+            .ReturnsAsync(IdentityResult.Success);
+        mockUserManager.Setup(x => x.ResetAccessFailedCountAsync(user))
+            .ReturnsAsync(IdentityResult.Success);
+
+        var mockAuthEventRepo = new Mock<IAuthenticationEventRepository>();
+        var mockUserBlockRepo = new Mock<IUserBlockRepository>();
+        mockUserBlockRepo.Setup(x => x.GetActiveBlockAsync(userId)).ReturnsAsync(existingBlock);
+        mockUserBlockRepo.Setup(x => x.UpdateAsync(It.IsAny<UserBlockInfo>())).Returns(Task.CompletedTask);
+
+        var mockLogger = new Mock<ILogger<UserAccountManagementService>>();
+
+        var service = new UserAccountManagementService(
+            mockUserManager.Object,
+            mockAuthEventRepo.Object,
+            mockUserBlockRepo.Object,
+            mockLogger.Object);
+
+        var command = new UnblockUserCommand
+        {
+            UserId = userId,
+            AdminUserId = "admin-2",
+            AdminEmail = "admin2@example.com"
+        };
+
+        // Act
+        var result = await service.UnblockUserAsync(command);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.Empty(result.Errors);
+        mockUserBlockRepo.Verify(x => x.UpdateAsync(It.Is<UserBlockInfo>(
+            b => b.IsActive == false &&
+                 b.UnblockedByAdminId == "admin-2" &&
+                 b.UnblockedAt.HasValue)), Times.Once);
+        mockUserManager.Verify(x => x.SetLockoutEndDateAsync(user, null), Times.Once);
+    }
+
+    [Fact]
+    public async Task UnblockUserAsync_WithNonBlockedUser_ReturnsFailure()
+    {
+        // Arrange
+        var userId = "not-blocked";
+        var user = new IdentityUser { Id = userId, Email = "user@example.com" };
+
+        var mockUserManager = CreateMockUserManager();
+        mockUserManager.Setup(x => x.FindByIdAsync(userId)).ReturnsAsync(user);
+
+        var mockAuthEventRepo = new Mock<IAuthenticationEventRepository>();
+        var mockUserBlockRepo = new Mock<IUserBlockRepository>();
+        mockUserBlockRepo.Setup(x => x.GetActiveBlockAsync(userId)).ReturnsAsync((UserBlockInfo?)null);
+
+        var mockLogger = new Mock<ILogger<UserAccountManagementService>>();
+
+        var service = new UserAccountManagementService(
+            mockUserManager.Object,
+            mockAuthEventRepo.Object,
+            mockUserBlockRepo.Object,
+            mockLogger.Object);
+
+        var command = new UnblockUserCommand
+        {
+            UserId = userId,
+            AdminUserId = "admin-1",
+            AdminEmail = "admin@example.com"
+        };
+
+        // Act
+        var result = await service.UnblockUserAsync(command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains("User is not currently blocked.", result.Errors);
+    }
+
+    [Fact]
+    public async Task GetUserDetailAsync_WithBlockedUser_ReturnsBlockInfo()
+    {
+        // Arrange
+        var userId = "blocked-user";
+        var user = new IdentityUser
+        {
+            Id = userId,
+            Email = "blocked@example.com",
+            EmailConfirmed = true
+        };
+
+        var mockUserManager = CreateMockUserManager();
+        mockUserManager.Setup(x => x.FindByIdAsync(userId)).ReturnsAsync(user);
+        mockUserManager.Setup(x => x.GetRolesAsync(user)).ReturnsAsync(new List<string> { "Buyer" });
+
+        var mockAuthEventRepo = new Mock<IAuthenticationEventRepository>();
+        mockAuthEventRepo.Setup(x => x.GetFilteredAsync(
+            It.IsAny<DateTimeOffset?>(),
+            It.IsAny<DateTimeOffset?>(),
+            It.IsAny<AuthenticationEventType?>(),
+            It.IsAny<string?>(),
+            It.IsAny<string?>(),
+            It.IsAny<bool?>(),
+            It.IsAny<int>(),
+            It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<AuthenticationEvent>());
+
+        var activeBlock = new UserBlockInfo
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            BlockedByAdminId = "admin-1",
+            BlockedByAdminEmail = "admin@example.com",
+            Reason = BlockReason.Fraud,
+            ReasonDetails = "Fraud detected",
+            BlockedAt = DateTimeOffset.UtcNow.AddDays(-1),
+            IsActive = true
+        };
+
+        var mockUserBlockRepo = new Mock<IUserBlockRepository>();
+        mockUserBlockRepo.Setup(x => x.GetActiveBlockAsync(userId)).ReturnsAsync(activeBlock);
+
+        var mockLogger = new Mock<ILogger<UserAccountManagementService>>();
+
+        var service = new UserAccountManagementService(
+            mockUserManager.Object,
+            mockAuthEventRepo.Object,
+            mockUserBlockRepo.Object,
+            mockLogger.Object);
+
+        // Act
+        var result = await service.GetUserDetailAsync(userId);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.True(result.IsBlocked);
+        Assert.Equal("admin@example.com", result.BlockedByAdminEmail);
+        Assert.Equal("Fraud", result.BlockReason);
+        Assert.Equal("Fraud detected", result.BlockReasonDetails);
+        Assert.NotNull(result.BlockedAt);
+    }
+
+    [Fact]
+    public async Task GetActiveBlockAsync_WithBlockedUser_ReturnsBlockInfo()
+    {
+        // Arrange
+        var userId = "blocked-user";
+        var activeBlock = new UserBlockInfo
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            IsActive = true
+        };
+
+        var mockUserManager = CreateMockUserManager();
+        var mockAuthEventRepo = new Mock<IAuthenticationEventRepository>();
+        var mockUserBlockRepo = new Mock<IUserBlockRepository>();
+        mockUserBlockRepo.Setup(x => x.GetActiveBlockAsync(userId)).ReturnsAsync(activeBlock);
+
+        var mockLogger = new Mock<ILogger<UserAccountManagementService>>();
+
+        var service = new UserAccountManagementService(
+            mockUserManager.Object,
+            mockAuthEventRepo.Object,
+            mockUserBlockRepo.Object,
+            mockLogger.Object);
+
+        // Act
+        var result = await service.GetActiveBlockAsync(userId);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(userId, result.UserId);
+        Assert.True(result.IsActive);
+    }
+
+    [Fact]
+    public async Task GetActiveBlockAsync_WithEmptyUserId_ReturnsNull()
+    {
+        // Arrange
+        var mockUserManager = CreateMockUserManager();
+        var mockAuthEventRepo = new Mock<IAuthenticationEventRepository>();
+        var mockUserBlockRepo = CreateMockUserBlockRepository();
+        var mockLogger = new Mock<ILogger<UserAccountManagementService>>();
+
+        var service = new UserAccountManagementService(
+            mockUserManager.Object,
+            mockAuthEventRepo.Object,
+            mockUserBlockRepo.Object,
+            mockLogger.Object);
+
+        // Act
+        var result = await service.GetActiveBlockAsync("");
+
+        // Assert
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public async Task BlockUserAsync_WithMissingUserId_ReturnsValidationError()
+    {
+        // Arrange
+        var mockUserManager = CreateMockUserManager();
+        var mockAuthEventRepo = new Mock<IAuthenticationEventRepository>();
+        var mockUserBlockRepo = CreateMockUserBlockRepository();
+        var mockLogger = new Mock<ILogger<UserAccountManagementService>>();
+
+        var service = new UserAccountManagementService(
+            mockUserManager.Object,
+            mockAuthEventRepo.Object,
+            mockUserBlockRepo.Object,
+            mockLogger.Object);
+
+        var command = new BlockUserCommand
+        {
+            UserId = "",
+            AdminUserId = "admin-1",
+            AdminEmail = "admin@example.com",
+            Reason = BlockReason.Spam
+        };
+
+        // Act
+        var result = await service.BlockUserAsync(command);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Contains("User ID is required.", result.Errors);
     }
 
     private static Mock<UserManager<IdentityUser>> CreateMockUserManager()

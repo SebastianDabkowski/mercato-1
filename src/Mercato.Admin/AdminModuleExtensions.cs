@@ -3,6 +3,7 @@ using Mercato.Admin.Domain.Interfaces;
 using Mercato.Admin.Infrastructure;
 using Mercato.Admin.Infrastructure.Persistence;
 using Mercato.Admin.Infrastructure.Repositories;
+using Mercato.Identity.Application.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -32,6 +33,7 @@ public static class AdminModuleExtensions
         services.AddScoped<ISlaConfigurationRepository, SlaConfigurationRepository>();
         services.AddScoped<ISlaTrackingRepository, SlaTrackingRepository>();
         services.AddScoped<IAdminAuditRepository, AdminAuditRepository>();
+        services.AddScoped<IUserBlockRepository, UserBlockRepository>();
         // Note: MarketplaceDashboardRepository requires OrderDbContext, SellerDbContext, and ProductDbContext
         // which are registered by their respective modules (Orders, Seller, Product) in Program.cs.
         services.AddScoped<IMarketplaceDashboardRepository, MarketplaceDashboardRepository>();
@@ -56,6 +58,7 @@ public static class AdminModuleExtensions
         services.AddScoped<IOrderRevenueReportService, OrderRevenueReportService>();
         services.AddScoped<ICommissionSummaryService, CommissionSummaryService>();
         services.AddScoped<IUserAnalyticsService, UserAnalyticsService>();
+        services.AddScoped<IUserBlockCheckService, UserBlockCheckService>();
 
         return services;
     }

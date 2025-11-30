@@ -16,6 +16,11 @@ public class LoginSellerResult
     public bool IsLockedOut { get; init; }
 
     /// <summary>
+    /// Gets a value indicating whether the account is blocked by an admin.
+    /// </summary>
+    public bool IsBlocked { get; init; }
+
+    /// <summary>
     /// Gets a value indicating whether two-factor authentication is required.
     /// Reserved for future use when two-factor authentication is implemented.
     /// </summary>
@@ -107,6 +112,19 @@ public class LoginSellerResult
         {
             Succeeded = false,
             ErrorMessage = "This login page is for sellers only. Please use the appropriate login for your account type."
+        };
+    }
+
+    /// <summary>
+    /// Creates a failed login result indicating the account is blocked.
+    /// </summary>
+    public static LoginSellerResult Blocked()
+    {
+        return new LoginSellerResult
+        {
+            Succeeded = false,
+            IsBlocked = true,
+            ErrorMessage = "Your account has been blocked. Please contact support for assistance."
         };
     }
 }

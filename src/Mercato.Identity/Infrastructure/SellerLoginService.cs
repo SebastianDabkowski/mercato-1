@@ -10,15 +10,20 @@ namespace Mercato.Identity.Infrastructure;
 public class SellerLoginService : ISellerLoginService
 {
     private readonly UserManager<IdentityUser> _userManager;
+    private readonly IUserBlockCheckService? _userBlockCheckService;
     private const string SellerRole = "Seller";
 
     /// <summary>
     /// Initializes a new instance of the <see cref="SellerLoginService"/> class.
     /// </summary>
     /// <param name="userManager">The ASP.NET Core Identity user manager.</param>
-    public SellerLoginService(UserManager<IdentityUser> userManager)
+    /// <param name="userBlockCheckService">The user block check service (optional).</param>
+    public SellerLoginService(
+        UserManager<IdentityUser> userManager,
+        IUserBlockCheckService? userBlockCheckService = null)
     {
         _userManager = userManager ?? throw new ArgumentNullException(nameof(userManager));
+        _userBlockCheckService = userBlockCheckService;
     }
 
     /// <inheritdoc />
@@ -31,6 +36,16 @@ public class SellerLoginService : ISellerLoginService
         if (user == null)
         {
             return LoginSellerResult.InvalidCredentials();
+        }
+
+        // Check if the account is blocked (using the block check service if available)
+        if (_userBlockCheckService != null)
+        {
+            var isBlocked = await _userBlockCheckService.IsUserBlockedAsync(user.Id);
+            if (isBlocked)
+            {
+                return LoginSellerResult.Blocked();
+            }
         }
 
         // Check if the account is locked out
