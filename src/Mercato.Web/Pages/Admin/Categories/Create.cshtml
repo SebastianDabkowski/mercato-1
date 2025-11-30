@@ -22,6 +22,13 @@
                     </div>
 
                     <div class="mb-3">
+                        <label asp-for="Command.Description" class="form-label">Description</label>
+                        <textarea asp-for="Command.Description" class="form-control" rows="3" placeholder="Optional description for the category"></textarea>
+                        <span asp-validation-for="Command.Description" class="text-danger"></span>
+                        <div class="form-text">A brief description of what products this category contains.</div>
+                    </div>
+
+                    <div class="mb-3">
                         <label asp-for="Command.ParentId" class="form-label">Parent Category</label>
                         <select asp-for="Command.ParentId" class="form-select" asp-items="Model.ParentCategories">
                             <option value="">-- No Parent (Root Category) --</option>

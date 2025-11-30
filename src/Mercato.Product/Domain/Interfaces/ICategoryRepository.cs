@@ -58,6 +58,21 @@ public interface ICategoryRepository
     Task<bool> ExistsByNameAsync(string name, Guid? parentId, Guid? excludeCategoryId = null);
 
     /// <summary>
+    /// Checks if a category with the specified slug exists.
+    /// </summary>
+    /// <param name="slug">The slug to check.</param>
+    /// <param name="excludeCategoryId">Optional category ID to exclude from the check (for updates).</param>
+    /// <returns>True if a category with the slug exists; otherwise, false.</returns>
+    Task<bool> ExistsBySlugAsync(string slug, Guid? excludeCategoryId = null);
+
+    /// <summary>
+    /// Gets a category by its slug.
+    /// </summary>
+    /// <param name="slug">The category slug.</param>
+    /// <returns>The category if found; otherwise, null.</returns>
+    Task<Category?> GetBySlugAsync(string slug);
+
+    /// <summary>
     /// Gets the count of products assigned to a category.
     /// </summary>
     /// <param name="categoryId">The category ID.</param>

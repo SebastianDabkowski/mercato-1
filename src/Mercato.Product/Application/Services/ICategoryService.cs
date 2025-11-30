@@ -29,6 +29,13 @@ public interface ICategoryService
     Task<Category?> GetCategoryByIdAsync(Guid id);
 
     /// <summary>
+    /// Gets a category by its slug.
+    /// </summary>
+    /// <param name="slug">The category slug.</param>
+    /// <returns>The category if found; otherwise, null.</returns>
+    Task<Category?> GetCategoryBySlugAsync(string slug);
+
+    /// <summary>
     /// Updates an existing category.
     /// </summary>
     /// <param name="command">The update category command.</param>

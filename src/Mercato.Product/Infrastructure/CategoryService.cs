@@ -1,3 +1,6 @@
+using System.Globalization;
+using System.Text;
+using System.Text.RegularExpressions;
 using Mercato.Product.Application.Commands;
 using Mercato.Product.Application.Services;
 using Mercato.Product.Domain;
@@ -37,10 +40,16 @@ public class CategoryService : ICategoryService
 
         try
         {
+            // Generate slug from name
+            var baseSlug = GenerateSlug(command.Name);
+            var slug = await EnsureUniqueSlugAsync(baseSlug, null);
+
             var category = new Category
             {
                 Id = Guid.NewGuid(),
                 Name = command.Name,
+                Slug = slug,
+                Description = command.Description,
                 ParentId = command.ParentId,
                 DisplayOrder = 0,
                 IsActive = true,
@@ -51,9 +60,10 @@ public class CategoryService : ICategoryService
             await _repository.AddAsync(category);
 
             _logger.LogInformation(
-                "Category {CategoryId} created with name '{CategoryName}' under parent {ParentId}",
+                "Category {CategoryId} created with name '{CategoryName}' and slug '{Slug}' under parent {ParentId}",
                 category.Id,
                 category.Name,
+                category.Slug,
                 command.ParentId?.ToString() ?? "root");
 
             return CreateCategoryResult.Success(category.Id);
@@ -75,6 +85,17 @@ public class CategoryService : ICategoryService
     public async Task<Category?> GetCategoryByIdAsync(Guid id)
     {
         return await _repository.GetByIdAsync(id);
+    }
+
+    /// <inheritdoc />
+    public async Task<Category?> GetCategoryBySlugAsync(string slug)
+    {
+        if (string.IsNullOrWhiteSpace(slug))
+        {
+            return null;
+        }
+
+        return await _repository.GetBySlugAsync(slug);
     }
 
     /// <inheritdoc />
@@ -100,13 +121,27 @@ public class CategoryService : ICategoryService
                 return UpdateCategoryResult.Failure("Cannot set parent category to a descendant of this category.");
             }
 
+            // Store old slug for logging
+            var oldSlug = category.Slug;
+
             category.Name = command.Name;
+            category.Slug = command.Slug;
+            category.Description = command.Description;
             category.ParentId = command.ParentId;
             category.DisplayOrder = command.DisplayOrder;
             category.IsActive = command.IsActive;
             category.LastUpdatedAt = DateTimeOffset.UtcNow;
 
             await _repository.UpdateAsync(category);
+
+            if (oldSlug != command.Slug)
+            {
+                _logger.LogInformation(
+                    "Category {CategoryId} slug changed from '{OldSlug}' to '{NewSlug}'",
+                    command.CategoryId,
+                    oldSlug,
+                    command.Slug);
+            }
 
             _logger.LogInformation(
                 "Category {CategoryId} updated with name '{CategoryName}'",
@@ -200,6 +235,7 @@ public class CategoryService : ICategoryService
         var errors = new List<string>();
 
         ValidateName(command.Name, errors);
+        ValidateDescription(command.Description, errors);
 
         // Return early if there are basic validation errors
         if (errors.Count > 0)
@@ -241,6 +277,8 @@ public class CategoryService : ICategoryService
         }
 
         ValidateName(command.Name, errors);
+        ValidateSlug(command.Slug, errors);
+        ValidateDescription(command.Description, errors);
 
         if (command.DisplayOrder < 0)
         {
@@ -282,6 +320,16 @@ public class CategoryService : ICategoryService
             }
         }
 
+        // Check slug uniqueness (excluding current category)
+        if (!string.IsNullOrWhiteSpace(command.Slug) && command.CategoryId != Guid.Empty)
+        {
+            var slugExists = await _repository.ExistsBySlugAsync(command.Slug, command.CategoryId);
+            if (slugExists)
+            {
+                errors.Add("A category with this slug already exists. Please choose a different slug.");
+            }
+        }
+
         return errors;
     }
 
@@ -308,6 +356,119 @@ public class CategoryService : ICategoryService
         {
             errors.Add($"Name must be between {ProductValidationConstants.CategoryNameMinLength} and {ProductValidationConstants.CategoryNameMaxLength} characters.");
         }
+    }
+
+    private static void ValidateSlug(string slug, List<string> errors)
+    {
+        if (string.IsNullOrWhiteSpace(slug))
+        {
+            errors.Add("Slug is required.");
+            return;
+        }
+
+        if (slug.Length < ProductValidationConstants.CategorySlugMinLength ||
+            slug.Length > ProductValidationConstants.CategorySlugMaxLength)
+        {
+            errors.Add($"Slug must be between {ProductValidationConstants.CategorySlugMinLength} and {ProductValidationConstants.CategorySlugMaxLength} characters.");
+            return;
+        }
+
+        // Validate slug format (lowercase, alphanumeric, hyphens only)
+        if (!Regex.IsMatch(slug, @"^[a-z0-9]+(?:-[a-z0-9]+)*$"))
+        {
+            errors.Add("Slug must be lowercase, alphanumeric, and use hyphens to separate words.");
+        }
+    }
+
+    private static void ValidateDescription(string? description, List<string> errors)
+    {
+        if (description != null && description.Length > ProductValidationConstants.CategoryDescriptionMaxLength)
+        {
+            errors.Add($"Description cannot exceed {ProductValidationConstants.CategoryDescriptionMaxLength} characters.");
+        }
+    }
+
+    /// <summary>
+    /// Generates a URL-friendly slug from a given name.
+    /// </summary>
+    /// <param name="name">The name to convert to a slug.</param>
+    /// <returns>A lowercase, hyphenated slug.</returns>
+    internal static string GenerateSlug(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return string.Empty;
+        }
+
+        // Convert to lowercase
+        var slug = name.ToLowerInvariant();
+
+        // Normalize unicode characters and remove diacritics
+        slug = RemoveDiacritics(slug);
+
+        // Replace spaces and underscores with hyphens
+        slug = Regex.Replace(slug, @"[\s_]+", "-");
+
+        // Remove any characters that are not alphanumeric or hyphen
+        slug = Regex.Replace(slug, @"[^a-z0-9\-]", "");
+
+        // Replace multiple consecutive hyphens with single hyphen
+        slug = Regex.Replace(slug, @"-+", "-");
+
+        // Trim hyphens from start and end
+        slug = slug.Trim('-');
+
+        // Ensure minimum length
+        if (slug.Length < ProductValidationConstants.CategorySlugMinLength)
+        {
+            slug = slug.PadRight(ProductValidationConstants.CategorySlugMinLength, '0');
+        }
+
+        // Truncate if too long
+        if (slug.Length > ProductValidationConstants.CategorySlugMaxLength)
+        {
+            slug = slug.Substring(0, ProductValidationConstants.CategorySlugMaxLength).TrimEnd('-');
+        }
+
+        return slug;
+    }
+
+    private static string RemoveDiacritics(string text)
+    {
+        var normalizedString = text.Normalize(NormalizationForm.FormD);
+        var stringBuilder = new StringBuilder();
+
+        foreach (var c in normalizedString)
+        {
+            var unicodeCategory = CharUnicodeInfo.GetUnicodeCategory(c);
+            if (unicodeCategory != UnicodeCategory.NonSpacingMark)
+            {
+                stringBuilder.Append(c);
+            }
+        }
+
+        return stringBuilder.ToString().Normalize(NormalizationForm.FormC);
+    }
+
+    private async Task<string> EnsureUniqueSlugAsync(string baseSlug, Guid? excludeCategoryId)
+    {
+        var slug = baseSlug;
+        var counter = 1;
+
+        while (await _repository.ExistsBySlugAsync(slug, excludeCategoryId))
+        {
+            slug = $"{baseSlug}-{counter}";
+            counter++;
+
+            // Safety check to prevent infinite loops
+            if (counter > 100)
+            {
+                slug = $"{baseSlug}-{Guid.NewGuid().ToString("N").Substring(0, 8)}";
+                break;
+            }
+        }
+
+        return slug;
     }
 
     private async Task<bool> WouldCreateCircularReferenceAsync(Guid categoryId, Guid newParentId)

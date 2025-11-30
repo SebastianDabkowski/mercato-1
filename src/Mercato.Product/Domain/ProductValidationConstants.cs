@@ -64,4 +64,19 @@ public static class ProductValidationConstants
     /// Maximum length for category name.
     /// </summary>
     public const int CategoryNameMaxLength = 100;
+
+    /// <summary>
+    /// Maximum length for category description.
+    /// </summary>
+    public const int CategoryDescriptionMaxLength = 500;
+
+    /// <summary>
+    /// Minimum length for category slug.
+    /// </summary>
+    public const int CategorySlugMinLength = 2;
+
+    /// <summary>
+    /// Maximum length for category slug.
+    /// </summary>
+    public const int CategorySlugMaxLength = 120;
 }

@@ -20,6 +20,19 @@ public class UpdateCategoryCommand
     public string Name { get; set; } = string.Empty;
 
     /// <summary>
+    /// Gets or sets the URL-friendly slug for the category.
+    /// </summary>
+    [StringLength(120, MinimumLength = 2, ErrorMessage = "Slug must be between 2 and 120 characters.")]
+    [RegularExpression(@"^[a-z0-9]+(?:-[a-z0-9]+)*$", ErrorMessage = "Slug must be lowercase, alphanumeric, and use hyphens to separate words.")]
+    public string Slug { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the optional category description.
+    /// </summary>
+    [StringLength(500, ErrorMessage = "Description cannot exceed 500 characters.")]
+    public string? Description { get; set; }
+
+    /// <summary>
     /// Gets or sets the parent category ID.
     /// Null for root categories.
     /// </summary>

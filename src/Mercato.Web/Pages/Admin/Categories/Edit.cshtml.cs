@@ -69,6 +69,8 @@ public class EditModel : PageModel
         {
             CategoryId = category.Id,
             Name = category.Name,
+            Slug = category.Slug,
+            Description = category.Description,
             ParentId = category.ParentId,
             DisplayOrder = category.DisplayOrder,
             IsActive = category.IsActive

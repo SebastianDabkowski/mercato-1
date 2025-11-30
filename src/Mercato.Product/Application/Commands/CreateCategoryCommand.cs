@@ -15,6 +15,12 @@ public class CreateCategoryCommand
     public string Name { get; set; } = string.Empty;
 
     /// <summary>
+    /// Gets or sets the optional category description.
+    /// </summary>
+    [StringLength(500, ErrorMessage = "Description cannot exceed 500 characters.")]
+    public string? Description { get; set; }
+
+    /// <summary>
     /// Gets or sets the parent category ID.
     /// Null for root categories.
     /// </summary>
