@@ -310,9 +310,10 @@ public class IntegrationManagementService : IIntegrationManagementService
 
     /// <summary>
     /// Masks an API key, showing only the last 4 characters.
+    /// Uses a fixed-length mask to prevent attackers from inferring the original key length.
     /// </summary>
     /// <param name="apiKey">The full API key.</param>
-    /// <returns>The masked API key.</returns>
+    /// <returns>The masked API key, or null if no key is provided.</returns>
     private static string? MaskApiKey(string? apiKey)
     {
         if (string.IsNullOrWhiteSpace(apiKey))
@@ -320,21 +321,36 @@ public class IntegrationManagementService : IIntegrationManagementService
             return null;
         }
 
-        // Use a fixed-length mask to prevent inferring the original key length
+        // Security: Use a fixed-length mask to prevent inferring the original key length
         const int maskLength = 8;
-        var lastFourChars = apiKey.Length >= 4 ? apiKey[^4..] : apiKey;
+        const int visibleChars = 4;
 
-        return new string('*', maskLength) + lastFourChars;
+        // Always show exactly 4 characters at the end, padding with asterisks if key is too short
+        string lastChars;
+        if (apiKey.Length >= visibleChars)
+        {
+            lastChars = apiKey[^visibleChars..];
+        }
+        else
+        {
+            // Pad short keys with asterisks to always show exactly 4 characters
+            lastChars = new string('*', visibleChars - apiKey.Length) + apiKey;
+        }
+
+        return new string('*', maskLength) + lastChars;
     }
 
     /// <summary>
     /// Simulates a health check for an integration.
+    /// NOTE: This is placeholder logic for demonstration purposes.
+    /// In a production environment, this should be replaced with actual HTTP connectivity tests
+    /// to verify the integration endpoint is reachable and responding correctly.
     /// </summary>
     /// <param name="integration">The integration to check.</param>
     /// <returns>A tuple containing the health status and message.</returns>
     private static (bool IsHealthy, string Message) SimulateHealthCheck(Integration integration)
     {
-        // Simulate health check based on configuration
+        // Validate required configuration before attempting connection
         if (string.IsNullOrWhiteSpace(integration.ApiEndpoint))
         {
             return (false, "API endpoint is not configured.");
@@ -345,6 +361,10 @@ public class IntegrationManagementService : IIntegrationManagementService
             return (false, "API key is not configured.");
         }
 
+        // NOTE: In production, replace this with actual HTTP connectivity tests
+        // using HttpClient to verify the endpoint is reachable.
+        // Example: await httpClient.GetAsync(integration.ApiEndpoint);
+        
         // Simulate success for endpoints containing "api"
         if (integration.ApiEndpoint.Contains("api", StringComparison.OrdinalIgnoreCase))
         {

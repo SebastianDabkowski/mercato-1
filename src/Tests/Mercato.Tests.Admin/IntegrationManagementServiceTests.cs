@@ -277,7 +277,8 @@ public class IntegrationManagementServiceTests
         Assert.NotNull(capturedIntegration);
         Assert.NotNull(capturedIntegration.ApiKeyMasked);
         Assert.EndsWith("cdef", capturedIntegration.ApiKeyMasked);
-        Assert.StartsWith("********", capturedIntegration.ApiKeyMasked); // Fixed-length mask
+        // Security: Fixed-length mask prevents inferring the original key length
+        Assert.StartsWith("********", capturedIntegration.ApiKeyMasked);
         Assert.DoesNotContain("sk_test_1234567890ab", capturedIntegration.ApiKeyMasked);
     }
 
