@@ -1,0 +1,258 @@
+@page "{userId?}"
+@model Mercato.Web.Pages.Admin.Users.DetailsModel
+@using Mercato.Admin.Application.Queries
+@{
+    ViewData["Title"] = "User Details";
+}
+
+<h1>User Details</h1>
+
+<p class="text-muted">View detailed information about a user account including verification status, login activity, and security settings.</p>
+
+@if (Model.UserDetail == null)
+{
+    <div class="alert alert-danger">
+        User not found.
+    </div>
+    <a asp-page="Index" class="btn btn-secondary">
+        &laquo; Back to Users
+    </a>
+}
+else
+{
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Account Information</h5>
+                </div>
+                <div class="card-body">
+                    <dl class="row mb-0">
+                        <dt class="col-sm-4">User ID</dt>
+                        <dd class="col-sm-8">
+                            <code>@Model.UserDetail.UserId</code>
+                        </dd>
+
+                        <dt class="col-sm-4">Email</dt>
+                        <dd class="col-sm-8">@Model.UserDetail.Email</dd>
+
+                        <dt class="col-sm-4">Role(s)</dt>
+                        <dd class="col-sm-8">
+                            @if (Model.UserDetail.Roles.Count == 0)
+                            {
+                                <span class="badge bg-secondary">No roles</span>
+                            }
+                            else
+                            {
+                                @foreach (var role in Model.UserDetail.Roles)
+                                {
+                                    var badgeClass = role switch
+                                    {
+                                        "Admin" => "bg-danger",
+                                        "Seller" => "bg-primary",
+                                        "Buyer" => "bg-success",
+                                        _ => "bg-secondary"
+                                    };
+                                    <span class="badge @badgeClass me-1">@role</span>
+                                }
+                            }
+                        </dd>
+
+                        <dt class="col-sm-4">Status</dt>
+                        <dd class="col-sm-8">
+                            @{
+                                var (statusBadge, statusText) = Model.UserDetail.Status switch
+                                {
+                                    UserAccountStatus.Active => ("bg-success", "Active"),
+                                    UserAccountStatus.Blocked => ("bg-danger", "Blocked"),
+                                    UserAccountStatus.PendingVerification => ("bg-warning text-dark", "Pending Verification"),
+                                    _ => ("bg-secondary", Model.UserDetail.Status.ToString())
+                                };
+                            }
+                            <span class="badge @statusBadge">@statusText</span>
+                        </dd>
+
+                        <dt class="col-sm-4">Last Login</dt>
+                        <dd class="col-sm-8">
+                            @if (Model.UserDetail.LastLoginAt.HasValue)
+                            {
+                                <span>@Model.UserDetail.LastLoginAt.Value.ToString("yyyy-MM-dd HH:mm:ss UTC")</span>
+                            }
+                            else
+                            {
+                                <span class="text-muted">Never</span>
+                            }
+                        </dd>
+                    </dl>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Verification Status</h5>
+                </div>
+                <div class="card-body">
+                    <dl class="row mb-0">
+                        <dt class="col-sm-6">Email Confirmed</dt>
+                        <dd class="col-sm-6">
+                            @if (Model.UserDetail.EmailConfirmed)
+                            {
+                                <span class="badge bg-success">Yes</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-warning text-dark">No</span>
+                            }
+                        </dd>
+
+                        <dt class="col-sm-6">Phone Confirmed</dt>
+                        <dd class="col-sm-6">
+                            @if (Model.UserDetail.PhoneNumberConfirmed)
+                            {
+                                <span class="badge bg-success">Yes</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary">No</span>
+                            }
+                        </dd>
+
+                        <dt class="col-sm-6">Two-Factor Enabled</dt>
+                        <dd class="col-sm-6">
+                            @if (Model.UserDetail.TwoFactorEnabled)
+                            {
+                                <span class="badge bg-success">Yes</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary">No</span>
+                            }
+                        </dd>
+                    </dl>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Security Flags</h5>
+                </div>
+                <div class="card-body">
+                    <dl class="row mb-0">
+                        <dt class="col-sm-6">Lockout Enabled</dt>
+                        <dd class="col-sm-6">
+                            @if (Model.UserDetail.LockoutEnabled)
+                            {
+                                <span class="badge bg-info">Yes</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary">No</span>
+                            }
+                        </dd>
+
+                        <dt class="col-sm-6">Lockout End</dt>
+                        <dd class="col-sm-6">
+                            @if (Model.UserDetail.LockoutEnd.HasValue && Model.UserDetail.LockoutEnd.Value > DateTimeOffset.UtcNow)
+                            {
+                                <span class="badge bg-danger">@Model.UserDetail.LockoutEnd.Value.ToString("yyyy-MM-dd HH:mm:ss UTC")</span>
+                            }
+                            else
+                            {
+                                <span class="text-muted">Not locked</span>
+                            }
+                        </dd>
+
+                        <dt class="col-sm-6">Failed Access Attempts</dt>
+                        <dd class="col-sm-6">
+                            @if (Model.UserDetail.AccessFailedCount > 0)
+                            {
+                                <span class="badge bg-warning text-dark">@Model.UserDetail.AccessFailedCount</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-success">0</span>
+                            }
+                        </dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Recent Login Activity</h5>
+                </div>
+                <div class="card-body">
+                    @if (Model.UserDetail.RecentLoginActivity.Count == 0)
+                    {
+                        <div class="alert alert-info mb-0">
+                            No recent login activity recorded.
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Timestamp</th>
+                                        <th>Event</th>
+                                        <th>Result</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var activity in Model.UserDetail.RecentLoginActivity)
+                                    {
+                                        <tr>
+                                            <td>
+                                                <small>@activity.Timestamp.ToString("yyyy-MM-dd HH:mm")</small>
+                                            </td>
+                                            <td>@activity.EventType</td>
+                                            <td>
+                                                @if (activity.IsSuccessful)
+                                                {
+                                                    <span class="badge bg-success">Success</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge bg-danger">Failed</span>
+                                                }
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            @if (Model.UserDetail.AdminNotes.Count > 0)
+            {
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">Admin Notes</h5>
+                    </div>
+                    <div class="card-body">
+                        <ul class="list-group list-group-flush">
+                            @foreach (var note in Model.UserDetail.AdminNotes)
+                            {
+                                <li class="list-group-item">@note</li>
+                            }
+                        </ul>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="mt-4 d-flex gap-2">
+        <a asp-page="ChangeRole" asp-route-userId="@Model.UserDetail.UserId" class="btn btn-warning">
+            <i class="bi bi-pencil"></i> Change Role
+        </a>
+        <a asp-page="Index" class="btn btn-secondary">
+            &laquo; Back to Users
+        </a>
+    </div>
+}
