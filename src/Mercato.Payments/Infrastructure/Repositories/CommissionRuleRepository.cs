@@ -28,19 +28,31 @@ public class CommissionRuleRepository : ICommissionRuleRepository
     }
 
     /// <inheritdoc />
+    public async Task<IReadOnlyList<CommissionRule>> GetAllRulesAsync()
+    {
+        return await _dbContext.CommissionRules
+            .OrderByDescending(r => r.Priority)
+            .ThenByDescending(r => r.EffectiveDate)
+            .ToListAsync();
+    }
+
+    /// <inheritdoc />
     public async Task<IReadOnlyList<CommissionRule>> GetActiveRulesAsync()
     {
         return await _dbContext.CommissionRules
             .Where(r => r.IsActive)
             .OrderByDescending(r => r.Priority)
+            .ThenByDescending(r => r.EffectiveDate)
             .ToListAsync();
     }
 
     /// <inheritdoc />
-    public async Task<CommissionRule?> GetBestMatchingRuleAsync(Guid? sellerId, string? categoryId)
+    public async Task<CommissionRule?> GetBestMatchingRuleAsync(Guid? sellerId, string? categoryId, DateTimeOffset? asOfDate = null)
     {
+        var evaluationDate = asOfDate ?? DateTimeOffset.UtcNow;
+
         var activeRules = await _dbContext.CommissionRules
-            .Where(r => r.IsActive)
+            .Where(r => r.IsActive && r.EffectiveDate <= evaluationDate)
             .ToListAsync();
 
         CommissionRule? bestMatch = null;
@@ -55,7 +67,8 @@ public class CommissionRuleRepository : ICommissionRuleRepository
 
             var matchScore = CalculateMatchScore(rule);
             if (bestMatch == null || matchScore > bestMatchScore || 
-                (matchScore == bestMatchScore && rule.Priority > bestMatch.Priority))
+                (matchScore == bestMatchScore && rule.Priority > bestMatch.Priority) ||
+                (matchScore == bestMatchScore && rule.Priority == bestMatch.Priority && rule.EffectiveDate > bestMatch.EffectiveDate))
             {
                 bestMatch = rule;
                 bestMatchScore = matchScore;
@@ -63,6 +76,35 @@ public class CommissionRuleRepository : ICommissionRuleRepository
         }
 
         return bestMatch;
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<CommissionRule>> GetConflictingRulesAsync(
+        Guid? sellerId,
+        string? categoryId,
+        DateTimeOffset effectiveDate,
+        Guid? excludeRuleId = null)
+    {
+        var rules = await _dbContext.CommissionRules
+            .Where(r => r.IsActive)
+            .Where(r => excludeRuleId == null || r.Id != excludeRuleId)
+            .ToListAsync();
+
+        var conflictingRules = new List<CommissionRule>();
+
+        foreach (var rule in rules)
+        {
+            // Check for exact scope match (same seller and category)
+            var exactScopeMatch = rule.SellerId == sellerId &&
+                                  string.Equals(rule.CategoryId, categoryId, StringComparison.OrdinalIgnoreCase);
+
+            if (exactScopeMatch && rule.EffectiveDate == effectiveDate)
+            {
+                conflictingRules.Add(rule);
+            }
+        }
+
+        return conflictingRules;
     }
 
     /// <inheritdoc />
