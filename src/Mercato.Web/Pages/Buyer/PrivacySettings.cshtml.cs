@@ -62,32 +62,33 @@ public class PrivacySettingsModel : PageModel
             return Forbid();
         }
 
-        var consentsUpdated = 0;
-
-        foreach (var update in ConsentUpdates)
+        if (ConsentUpdates.Count > 0)
         {
-            var command = new RecordConsentCommand
+            var command = new RecordMultipleConsentsCommand
             {
                 UserId = userId,
-                ConsentVersionId = update.CurrentVersionId,
-                IsGranted = update.IsGranted,
+                Consents = ConsentUpdates.Select(u => new ConsentDecision
+                {
+                    ConsentTypeCode = u.ConsentTypeCode,
+                    IsGranted = u.IsGranted
+                }).ToList(),
                 IpAddress = HttpContext.Connection.RemoteIpAddress?.ToString(),
                 UserAgent = Request.Headers.UserAgent.ToString()
             };
 
-            var result = await _consentService.RecordConsentAsync(command);
-            if (result.Succeeded)
-            {
-                consentsUpdated++;
-            }
-        }
+            var result = await _consentService.RecordMultipleConsentsAsync(command);
 
-        if (consentsUpdated > 0)
-        {
-            _logger.LogInformation(
-                "Updated {Count} consents for user {UserId}",
-                consentsUpdated, userId);
-            StatusMessage = "Your privacy preferences have been updated successfully.";
+            if (result.Succeeded && result.ConsentsRecorded > 0)
+            {
+                _logger.LogInformation(
+                    "Updated {Count} consents for user {UserId}",
+                    result.ConsentsRecorded, userId);
+                StatusMessage = "Your privacy preferences have been updated successfully.";
+            }
+            else
+            {
+                StatusMessage = "No changes were made to your preferences.";
+            }
         }
         else
         {

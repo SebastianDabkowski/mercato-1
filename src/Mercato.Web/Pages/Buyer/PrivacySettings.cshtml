@@ -2,6 +2,7 @@
 @model Mercato.Web.Pages.Buyer.PrivacySettingsModel
 @{
     ViewData["Title"] = "Privacy Settings";
+    string FormatConsentDate(DateTimeOffset date) => date.ToString("MMMM dd, yyyy 'at' HH:mm");
 }
 
 <div class="container">
@@ -72,11 +73,11 @@
                                                     <i class="bi bi-calendar-check me-1"></i>
                                                     @if (consent.IsGranted)
                                                     {
-                                                        <span>Consented on @consent.ConsentedAt.ToString("MMMM dd, yyyy 'at' HH:mm")</span>
+                                                        <span>Consented on @FormatConsentDate(consent.ConsentedAt)</span>
                                                     }
                                                     else
                                                     {
-                                                        <span>Withdrawn on @consent.ConsentedAt.ToString("MMMM dd, yyyy 'at' HH:mm")</span>
+                                                        <span>Withdrawn on @FormatConsentDate(consent.ConsentedAt)</span>
                                                     }
                                                 </div>
                                                 <div class="col-auto">
