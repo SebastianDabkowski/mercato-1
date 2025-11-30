@@ -57,4 +57,53 @@ public class AdminAuditRepository : IAdminAuditRepository
             .OrderByDescending(a => a.Timestamp)
             .ToListAsync();
     }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<AdminAuditLog>> GetFilteredAsync(
+        DateTimeOffset? startDate = null,
+        DateTimeOffset? endDate = null,
+        string? adminUserId = null,
+        string? entityType = null,
+        string? action = null,
+        string? entityId = null,
+        int maxResults = 100,
+        CancellationToken cancellationToken = default)
+    {
+        var query = _context.AdminAuditLogs.AsQueryable();
+
+        if (startDate.HasValue)
+        {
+            query = query.Where(a => a.Timestamp >= startDate.Value);
+        }
+
+        if (endDate.HasValue)
+        {
+            query = query.Where(a => a.Timestamp <= endDate.Value);
+        }
+
+        if (!string.IsNullOrEmpty(adminUserId))
+        {
+            query = query.Where(a => a.AdminUserId == adminUserId);
+        }
+
+        if (!string.IsNullOrEmpty(entityType))
+        {
+            query = query.Where(a => a.EntityType == entityType);
+        }
+
+        if (!string.IsNullOrEmpty(action))
+        {
+            query = query.Where(a => a.Action == action);
+        }
+
+        if (!string.IsNullOrEmpty(entityId))
+        {
+            query = query.Where(a => a.EntityId == entityId);
+        }
+
+        return await query
+            .OrderByDescending(a => a.Timestamp)
+            .Take(maxResults)
+            .ToListAsync(cancellationToken);
+    }
 }

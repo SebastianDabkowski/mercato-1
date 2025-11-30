@@ -80,6 +80,7 @@ public static class AdminModuleExtensions
         services.AddScoped<ICurrencyManagementService, CurrencyManagementService>();
         services.AddScoped<IIntegrationManagementService, IntegrationManagementService>();
         services.AddScoped<ILegalContentManagementService, LegalContentManagementService>();
+        services.AddScoped<IAuditLogService, AuditLogService>();
 
         return services;
     }

@@ -30,4 +30,26 @@ public interface IAdminAuditRepository
     /// <param name="toDate">Optional end date filter.</param>
     /// <returns>A list of audit log entries.</returns>
     Task<IReadOnlyList<AdminAuditLog>> GetByAdminUserAsync(string adminUserId, DateTimeOffset? fromDate = null, DateTimeOffset? toDate = null);
+
+    /// <summary>
+    /// Gets audit logs with comprehensive filtering options.
+    /// </summary>
+    /// <param name="startDate">Optional start date filter.</param>
+    /// <param name="endDate">Optional end date filter.</param>
+    /// <param name="adminUserId">Optional admin user ID filter.</param>
+    /// <param name="entityType">Optional entity type filter.</param>
+    /// <param name="action">Optional action filter.</param>
+    /// <param name="entityId">Optional entity ID filter.</param>
+    /// <param name="maxResults">Maximum number of results to return. Default is 100.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>A filtered list of audit log entries.</returns>
+    Task<IReadOnlyList<AdminAuditLog>> GetFilteredAsync(
+        DateTimeOffset? startDate = null,
+        DateTimeOffset? endDate = null,
+        string? adminUserId = null,
+        string? entityType = null,
+        string? action = null,
+        string? entityId = null,
+        int maxResults = 100,
+        CancellationToken cancellationToken = default);
 }
