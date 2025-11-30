@@ -213,7 +213,7 @@ public class IndexModel : PageModel
                 return RedirectToPage();
             }
 
-            var fileName = $"revenue-report-{DateTime.UtcNow:yyyyMMdd-HHmmss}.csv";
+            var fileName = $"revenue-report-{DateTime.UtcNow:yyyyMMdd-HHmmss-fff}.csv";
             return File(csvBytes, "text/csv", fileName);
         }
         catch (Exception ex)

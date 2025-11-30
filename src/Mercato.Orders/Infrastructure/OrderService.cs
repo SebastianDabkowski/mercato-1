@@ -2337,7 +2337,9 @@ public class OrderService : IOrderService
                 1,
                 MaxReportExportRecords);
 
-            // Get commission records for the store (sellerId in commission context is storeId)
+            // Get commission records for the store.
+            // Note: In the Payments module, CommissionRecord.SellerId represents the StoreId,
+            // as commission is calculated per seller store, not per user account.
             var commissionResult = await _commissionService.GetCommissionRecordsBySellerIdAsync(query.StoreId);
             var commissionByOrderId = commissionResult.Succeeded
                 ? commissionResult.Records.ToDictionary(c => c.OrderId, c => c)
