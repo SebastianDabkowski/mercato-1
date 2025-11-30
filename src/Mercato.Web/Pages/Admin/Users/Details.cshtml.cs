@@ -3,6 +3,7 @@ using Mercato.Admin.Application.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using System.Security.Claims;
 
 namespace Mercato.Web.Pages.Admin.Users;
 
@@ -13,13 +14,16 @@ namespace Mercato.Web.Pages.Admin.Users;
 public class DetailsModel : PageModel
 {
     private readonly IUserAccountManagementService _userAccountManagementService;
+    private readonly ISensitiveAccessAuditService _sensitiveAccessAuditService;
     private readonly ILogger<DetailsModel> _logger;
 
     public DetailsModel(
         IUserAccountManagementService userAccountManagementService,
+        ISensitiveAccessAuditService sensitiveAccessAuditService,
         ILogger<DetailsModel> logger)
     {
         _userAccountManagementService = userAccountManagementService;
+        _sensitiveAccessAuditService = sensitiveAccessAuditService;
         _logger = logger;
     }
 
@@ -47,6 +51,17 @@ public class DetailsModel : PageModel
             _logger.LogWarning("Admin attempted to access details for non-existent user {UserId}.", userId);
             TempData["ErrorMessage"] = "User not found.";
             return RedirectToPage("Index");
+        }
+
+        // Log sensitive access for viewing customer profile
+        var adminUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!string.IsNullOrEmpty(adminUserId))
+        {
+            var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+            await _sensitiveAccessAuditService.LogCustomerProfileAccessAsync(
+                adminUserId,
+                userId,
+                ipAddress);
         }
 
         _logger.LogInformation("Admin viewing details for user {UserId} ({Email}).", userId, UserDetail.Email);
