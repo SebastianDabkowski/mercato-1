@@ -54,7 +54,7 @@ self.addEventListener('push', function(event) {
                 title: 'Dismiss'
             }
         ],
-        tag: data.data?.notificationId || 'mercato-notification',
+        tag: (data.data && data.data.notificationId) ? data.data.notificationId : 'mercato-notification',
         requireInteraction: true
     };
 

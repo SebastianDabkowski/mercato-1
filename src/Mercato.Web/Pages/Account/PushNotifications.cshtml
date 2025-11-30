@@ -89,6 +89,7 @@
 </div>
 
 @section Scripts {
+    @Html.AntiForgeryToken()
     <script>
         (function() {
             'use strict';
@@ -105,6 +106,16 @@
             const subscriptionCountEl = document.getElementById('subscription-count');
             const enableBtn = document.getElementById('btn-enable-push');
             const disableBtn = document.getElementById('btn-disable-push');
+
+            // Get anti-forgery token - this should always be present
+            function getAntiForgeryToken() {
+                const tokenInput = document.querySelector('input[name="__RequestVerificationToken"]');
+                if (!tokenInput) {
+                    console.error('Anti-forgery token not found');
+                    return '';
+                }
+                return tokenInput.value;
+            }
 
             function hideAllStatus() {
                 loadingEl.style.display = 'none';
@@ -212,12 +223,12 @@
                     const subscriptionJson = subscription.toJSON();
 
                     // Send subscription to server
-                    const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value;
+                    const token = getAntiForgeryToken();
                     const response = await fetch(`${subscriptionApiUrl}?handler=Subscribe`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
-                            'RequestVerificationToken': token || ''
+                            'RequestVerificationToken': token
                         },
                         body: JSON.stringify({
                             endpoint: subscriptionJson.endpoint,
@@ -257,12 +268,12 @@
                     }
 
                     // Remove subscription from server
-                    const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value;
+                    const token = getAntiForgeryToken();
                     const response = await fetch(`${subscriptionApiUrl}?handler=Unsubscribe`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
-                            'RequestVerificationToken': token || ''
+                            'RequestVerificationToken': token
                         }
                     });
 
@@ -290,5 +301,4 @@
             checkStatus();
         })();
     </script>
-    @Html.AntiForgeryToken()
 }
