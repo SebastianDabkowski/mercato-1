@@ -1,0 +1,64 @@
+@page
+@model Mercato.Web.Pages.Admin.LoginModel
+@{
+    ViewData["Title"] = "Admin Login";
+    Layout = "~/Pages/Shared/_Layout.cshtml";
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <div class="text-center mb-4">
+                    <h1 class="h3">Admin Login</h1>
+                    <p class="text-muted">Access the administrator dashboard</p>
+                </div>
+                
+                @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+                {
+                    <div class="alert alert-danger" role="alert">
+                        @Model.ErrorMessage
+                    </div>
+                }
+                
+                <form method="post">
+                    <div asp-validation-summary="ModelOnly" class="text-danger" role="alert"></div>
+                    
+                    <div class="form-floating mb-3">
+                        <input asp-for="Input.Email" class="form-control" autocomplete="email" aria-required="true" placeholder="name@example.com" />
+                        <label asp-for="Input.Email">Email</label>
+                        <span asp-validation-for="Input.Email" class="text-danger"></span>
+                    </div>
+                    
+                    <div class="form-floating mb-3">
+                        <input asp-for="Input.Password" class="form-control" autocomplete="current-password" aria-required="true" placeholder="Password" />
+                        <label asp-for="Input.Password">Password</label>
+                        <span asp-validation-for="Input.Password" class="text-danger"></span>
+                    </div>
+                    
+                    <div class="form-check mb-3">
+                        <input asp-for="Input.RememberMe" class="form-check-input" />
+                        <label asp-for="Input.RememberMe" class="form-check-label">Remember me</label>
+                    </div>
+                    
+                    <button type="submit" class="w-100 btn btn-lg btn-primary">Log in</button>
+                </form>
+                
+                <hr class="my-4" />
+                
+                <div class="text-center">
+                    <p class="text-muted small">
+                        <strong>Notice:</strong> This login is for administrators only.
+                    </p>
+                    <p class="small">
+                        <a asp-page="/Account/Login">Buyer Login</a> | <a asp-page="/Seller/Login">Seller Login</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

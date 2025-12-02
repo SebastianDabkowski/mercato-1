@@ -101,8 +101,14 @@ public class OrderDbContext : DbContext
             entity.Property(e => e.DeliveryPhoneNumber).HasMaxLength(30);
             entity.Property(e => e.BuyerEmail).HasMaxLength(256);
             entity.Property(e => e.DeliveryInstructions).HasMaxLength(1000);
-            entity.HasMany(e => e.Items).WithOne(i => i.Order).HasForeignKey(i => i.OrderId);
-            entity.HasMany(e => e.SellerSubOrders).WithOne(s => s.Order).HasForeignKey(s => s.OrderId);
+            entity.HasMany(e => e.Items)
+                .WithOne(i => i.Order)
+                .HasForeignKey(i => i.OrderId)
+                .OnDelete(DeleteBehavior.NoAction);
+            entity.HasMany(e => e.SellerSubOrders)
+                .WithOne(s => s.Order)
+                .HasForeignKey(s => s.OrderId)
+                .OnDelete(DeleteBehavior.NoAction);
         });
 
         modelBuilder.Entity<OrderItem>(entity =>
@@ -130,7 +136,10 @@ public class OrderDbContext : DbContext
             entity.Property(e => e.TrackingNumber).HasMaxLength(100);
             entity.Property(e => e.ShippingCarrier).HasMaxLength(100);
             entity.Property(e => e.ShippingMethodName).HasMaxLength(100);
-            entity.HasMany(e => e.Items).WithOne(i => i.SellerSubOrder).HasForeignKey(i => i.SellerSubOrderId);
+            entity.HasMany(e => e.Items)
+                .WithOne(i => i.SellerSubOrder)
+                .HasForeignKey(i => i.SellerSubOrderId)
+                .OnDelete(DeleteBehavior.NoAction);
             // Ignore computed properties
             entity.Ignore(e => e.CancelledItemsTotal);
             entity.Ignore(e => e.ShippedItemsTotal);
@@ -175,16 +184,20 @@ public class OrderDbContext : DbContext
                 .HasDatabaseName("IX_ReturnRequests_Status");
             entity.HasOne(e => e.SellerSubOrder)
                 .WithMany()
-                .HasForeignKey(e => e.SellerSubOrderId);
+                .HasForeignKey(e => e.SellerSubOrderId)
+                .OnDelete(DeleteBehavior.NoAction);
             entity.HasMany(e => e.CaseItems)
                 .WithOne(ci => ci.ReturnRequest)
-                .HasForeignKey(ci => ci.ReturnRequestId);
+                .HasForeignKey(ci => ci.ReturnRequestId)
+                .OnDelete(DeleteBehavior.NoAction);
             entity.HasMany(e => e.Messages)
                 .WithOne(m => m.ReturnRequest)
-                .HasForeignKey(m => m.ReturnRequestId);
+                .HasForeignKey(m => m.ReturnRequestId)
+                .OnDelete(DeleteBehavior.NoAction);
             entity.HasMany(e => e.StatusHistory)
                 .WithOne(h => h.ReturnRequest)
-                .HasForeignKey(h => h.ReturnRequestId);
+                .HasForeignKey(h => h.ReturnRequestId)
+                .OnDelete(DeleteBehavior.NoAction);
             // Ignore computed properties
             entity.Ignore(e => e.HasSelectedItems);
         });
@@ -199,7 +212,8 @@ public class OrderDbContext : DbContext
                 .HasDatabaseName("IX_CaseItems_ItemId_RequestId");
             entity.HasOne(e => e.SellerSubOrderItem)
                 .WithMany()
-                .HasForeignKey(e => e.SellerSubOrderItemId);
+                .HasForeignKey(e => e.SellerSubOrderItemId)
+                .OnDelete(DeleteBehavior.NoAction);
         });
 
         modelBuilder.Entity<CaseMessage>(entity =>
@@ -224,7 +238,8 @@ public class OrderDbContext : DbContext
             entity.HasIndex(e => e.ChangedAt);
             entity.HasOne(e => e.SellerSubOrder)
                 .WithMany()
-                .HasForeignKey(e => e.SellerSubOrderId);
+                .HasForeignKey(e => e.SellerSubOrderId)
+                .OnDelete(DeleteBehavior.NoAction);
         });
 
         modelBuilder.Entity<CaseStatusHistory>(entity =>
@@ -254,10 +269,12 @@ public class OrderDbContext : DbContext
                 .HasDatabaseName("IX_ProductReviews_ProductId_Status");
             entity.HasOne(e => e.SellerSubOrderItem)
                 .WithMany()
-                .HasForeignKey(e => e.SellerSubOrderItemId);
+                .HasForeignKey(e => e.SellerSubOrderItemId)
+                .OnDelete(DeleteBehavior.NoAction);
             entity.HasOne(e => e.SellerSubOrder)
                 .WithMany()
-                .HasForeignKey(e => e.SellerSubOrderId);
+                .HasForeignKey(e => e.SellerSubOrderId)
+                .OnDelete(DeleteBehavior.NoAction);
         });
 
         modelBuilder.Entity<SellerRating>(entity =>
@@ -272,7 +289,8 @@ public class OrderDbContext : DbContext
                 .HasDatabaseName("IX_SellerRatings_StoreId_CreatedAt");
             entity.HasOne(e => e.SellerSubOrder)
                 .WithMany()
-                .HasForeignKey(e => e.SellerSubOrderId);
+                .HasForeignKey(e => e.SellerSubOrderId)
+                .OnDelete(DeleteBehavior.NoAction);
         });
 
         modelBuilder.Entity<ReviewReport>(entity =>

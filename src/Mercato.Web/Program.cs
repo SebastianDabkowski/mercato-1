@@ -73,6 +73,30 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.LogoutPath = "/Account/Logout";
     options.AccessDeniedPath = "/Account/AccessDenied";
     options.SlidingExpiration = true;
+    
+    // Redirect to appropriate login page based on the requested path
+    options.Events.OnRedirectToLogin = context =>
+    {
+        var requestPath = context.Request.Path.Value ?? string.Empty;
+        
+        // Check if accessing Admin area
+        if (requestPath.StartsWith("/Admin", StringComparison.OrdinalIgnoreCase))
+        {
+            context.Response.Redirect("/Admin/Login?ReturnUrl=" + Uri.EscapeDataString(requestPath));
+        }
+        // Check if accessing Seller area
+        else if (requestPath.StartsWith("/Seller", StringComparison.OrdinalIgnoreCase))
+        {
+            context.Response.Redirect("/Seller/Login?ReturnUrl=" + Uri.EscapeDataString(requestPath));
+        }
+        // Default to Buyer/Account login
+        else
+        {
+            context.Response.Redirect("/Account/Login?ReturnUrl=" + Uri.EscapeDataString(requestPath));
+        }
+        
+        return Task.CompletedTask;
+    };
 });
 
 // Configure Google OAuth authentication
@@ -128,6 +152,52 @@ builder.Services.AddScoped<IUserDataProvider, UserDataProvider>();
 builder.Services.AddScoped<IAccountDeletionDataProvider, AccountDeletionDataProvider>();
 
 var app = builder.Build();
+
+// Seed roles and a default admin (first run bootstrap)
+using (var scope = app.Services.CreateScope())
+{
+    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<IdentityUser>>();
+    var config = scope.ServiceProvider.GetRequiredService<IConfiguration>();
+
+    // Ensure roles exist
+    await RoleSeeder.SeedRolesAsync(roleManager);
+
+    var adminEmail = config["SeedAdmin:Email"];
+    var adminPassword = config["SeedAdmin:Password"];
+
+    if (!string.IsNullOrWhiteSpace(adminEmail))
+    {
+        var admin = await userManager.FindByEmailAsync(adminEmail);
+        if (admin is null)
+        {
+            admin = new IdentityUser
+            {
+                UserName = adminEmail,
+                Email = adminEmail,
+                EmailConfirmed = true
+            };
+
+            var createResult = await userManager.CreateAsync(admin, adminPassword ?? "ChangeMe!123!");
+            if (!createResult.Succeeded)
+            {
+                throw new InvalidOperationException("Failed to create seed admin: " +
+                    string.Join(", ", createResult.Errors.Select(e => e.Description)));
+            }
+        }
+
+        // Ensure Admin role assignment
+        if (!await userManager.IsInRoleAsync(admin, RoleSeeder.AdminRole))
+        {
+            var addRoleResult = await userManager.AddToRoleAsync(admin, RoleSeeder.AdminRole);
+            if (!addRoleResult.Succeeded)
+            {
+                throw new InvalidOperationException("Failed to assign Admin role: " +
+                    string.Join(", ", addRoleResult.Errors.Select(e => e.Description)));
+            }
+        }
+    }
+}
 
 // TODO: FIX it: RoleSeeder runs before ensuring database exists or is migrated.
 // This causes startup failure if database is not pre-created. Consider:
